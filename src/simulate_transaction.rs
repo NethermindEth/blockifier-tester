@@ -14,13 +14,13 @@ use starknet::{
     providers::{Provider, ProviderError},
 };
 
-use crate::juno_manager::{JunoManager, ManagerError};
+use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
 
-trait TransactionSimulator {
+pub trait TransactionSimulator {
     async fn get_expected_transaction_result(
-        &self,
+        &mut self,
         tx_hash: FieldElement,
-    ) -> Result<TransactionResult, ProviderError>;
+    ) -> Result<TransactionResult, ManagerError>;
     async fn get_transactions_to_simulate(
         &mut self,
         block: &MaybePendingBlockWithTxs,
@@ -29,6 +29,11 @@ trait TransactionSimulator {
         &mut self,
         block_number: u64,
     ) -> Result<Vec<SimulationReport>, ManagerError>;
+    async fn binary_repeat_simulate_until_success(
+        &mut self,
+        block_id: BlockId,
+        transactions: &[TransactionToSimulate],
+    ) -> Result<Vec<SimulatedTransaction>, ManagerError>;
     async fn pessimistic_repeat_simulate_until_success(
         &mut self,
         block_id: BlockId,
@@ -38,35 +43,34 @@ trait TransactionSimulator {
 
 impl TransactionSimulator for JunoManager {
     async fn get_expected_transaction_result(
-        &self,
+        &mut self,
         tx_hash: FieldElement,
-    ) -> Result<TransactionResult, ProviderError> {
-        self.rpc_client
+    ) -> Result<TransactionResult, ManagerError> {
+        println!("Getting transaction receipt for {}", tx_hash);
+        self.ensure_usable().await?;
+        let result = self.rpc_client
             .get_transaction_receipt(tx_hash)
-            .await
-            .map(|receipt| receipt.into())
+            .await?.into();
+        Ok(result)
     }
 
     async fn get_transactions_to_simulate(
         &mut self,
         block: &MaybePendingBlockWithTxs,
     ) -> Result<Vec<TransactionToSimulate>, ManagerError> {
-        join_all(block.transactions().iter().map(|tx| async {
-            let tx_hash = get_block_transaction_hash(tx);
-            self.get_expected_transaction_result(tx_hash)
-                .await
-                .map_err(ManagerError::from)
-                .and_then(|expected_result| {
-                    Ok(TransactionToSimulate {
-                        tx: block_transaction_to_broadcasted_transaction(tx)?,
-                        hash: tx_hash,
-                        expected_result,
-                    })
-                })
-        }))
-        .await
-        .into_iter()
-        .collect::<Result<Vec<_>, ManagerError>>()
+        let mut result = vec![];
+        for transaction in block.transactions() {
+            let tx_hash = get_block_transaction_hash(transaction);
+            let expected_result = self
+                .get_expected_transaction_result(tx_hash)
+                .await?;
+            result.push(TransactionToSimulate {
+                tx: block_transaction_to_broadcasted_transaction(transaction)?,
+                hash: tx_hash,
+                expected_result,
+            })
+        }
+        Ok(result)
     }
 
     async fn simulate_block(
@@ -130,18 +134,56 @@ impl TransactionSimulator for JunoManager {
                 results = simulation_result.unwrap();
             } else {
                 // Wait for current juno process to die so that a new one can be safely started
-                self.process.wait().unwrap();
-                self.process = Self::spawn_process_unchecked();
+                self.process.as_mut().expect("TODO option").wait().unwrap();
+                self.spawn_process_unchecked();
                 self.ensure_usable().await?;
                 return Ok(results);
             }
         }
         Ok(results)
     }
+
+    async fn binary_repeat_simulate_until_success(
+        &mut self,
+        block_id: BlockId,
+        transactions: &[TransactionToSimulate],
+    ) -> Result<Vec<SimulatedTransaction>, ManagerError> {
+        let broadcasted_transactions = transactions.iter().map(|tx| tx.tx.clone()).collect_vec();
+        let mut successful_results = vec![];
+        let mut known_failure_length = transactions.len()+1;
+        let mut i = known_failure_length/2;
+        loop {
+            let transactions_to_try = &broadcasted_transactions[0..i + 1];
+            println!("Trying {} tranactions", transactions_to_try.len());
+            self.ensure_usable().await?;
+            let simulation_result = self
+                .rpc_client
+                .simulate_transactions(block_id, transactions_to_try, [])
+                .await;
+    
+            if simulation_result.is_ok() {
+                successful_results = simulation_result.unwrap();
+                if i+1 >= known_failure_length {
+                    return Ok(successful_results);
+                } else {
+                    i = (i + known_failure_length)/2;
+                }
+            } else {
+                // TODO branch on error
+                println!("Got error {:?}", simulation_result.unwrap_err());
+                if i-1 <= successful_results.len() {
+                    return Ok(successful_results)
+                } else {
+                    known_failure_length = i;
+                    i = (i + successful_results.len())/2;
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
-enum TransactionResult {
+pub enum TransactionResult {
     Success,
     Revert { reason: String },
     Crash,
@@ -367,7 +409,7 @@ fn get_simulated_transaction_result(transaction: &SimulatedTransaction) -> Trans
 
 pub async fn simulate_main() -> Result<(), ManagerError> {
     let block_number = 610026;
-    let mut juno_manager = JunoManager::new().await?;
+    let mut juno_manager = JunoManager::new(JunoBranch::Native).await?;
     let block_report = juno_manager.simulate_block(block_number).await?;
     log_block_report(block_number, block_report);
     println!("//Done {block_number}");

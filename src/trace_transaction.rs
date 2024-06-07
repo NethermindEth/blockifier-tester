@@ -5,7 +5,7 @@ use starknet::{
     providers::{Provider, ProviderError},
 };
 
-use crate::juno_manager::{JunoManager, ManagerError};
+use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
 
 #[derive(Clone, Debug)]
 pub enum TraceResult {
@@ -98,6 +98,8 @@ impl TransactionTracer for JunoManager {
             // TODO implement timeout
             let out = self
                 .process
+                .as_mut()
+                .expect("TODO option")
                 .stdout
                 .as_mut()
                 .expect("failed to get stdout from juno process");
@@ -121,7 +123,7 @@ impl TransactionTracer for JunoManager {
 pub async fn transaction_hash_main() -> Result<(), ManagerError> {
     // let hash = "0x6faeed8967da5d3c0853b8cf4b40b55661a0f949678d5509254b643d133b769"; // DNE
     let hash = "0x07e3ace3b1c3f76b83b734b7a2ea990fb2823e931fb2ecef5d2677887aed9082"; // Crashes on native
-    let mut juno_manager = JunoManager::new().await?;
+    let mut juno_manager = JunoManager::new(JunoBranch::Native).await?;
     let trace_report = juno_manager.trace_transaction(hash).await?;
     println!("transaction: {:?}", trace_report.transaction);
     println!("juno: {:?}", trace_report.juno_output);

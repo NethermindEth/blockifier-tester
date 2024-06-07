@@ -1,4 +1,5 @@
 use std::{
+    fmt::Display,
     process::{self, Command, Stdio},
     time::Duration,
 };
@@ -8,18 +9,41 @@ use starknet::{
     providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider, ProviderError, Url},
 };
 
+#[derive(Clone, Copy, Debug)]
+#[repr(i8)]
+pub enum JunoBranch {
+    Base,
+    Native,
+}
+
+impl Display for JunoBranch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                JunoBranch::Base => "Base",
+                JunoBranch::Native => "Native",
+            }
+        )
+    }
+}
+
 pub struct JunoManager {
-    pub(crate) process: process::Child,
-    pub(crate) rpc_client: JsonRpcClient<HttpTransport>,
+    pub branch: JunoBranch,
+    pub process: Option<process::Child>,
+    pub rpc_client: JsonRpcClient<HttpTransport>,
 }
 
 impl Drop for JunoManager {
     fn drop(&mut self) {
-        match self.process.kill() {
-            Err(e) => println!(
-                "Failed to kill juno. You will have to kill it manually to run another one. {e}"
-            ),
-            Ok(_) => println!("Successfully killed juno."),
+        if let Some(mut process) = self.process.take() {
+            match process.kill() {
+                Err(e) => println!(
+                    "Failed to kill juno. You will have to kill it manually to run another one. {e}"
+                ),
+                Ok(_) => println!("Successfully killed juno."),
+            }
         }
     }
 }
@@ -37,25 +61,18 @@ impl From<ProviderError> for ManagerError {
 }
 
 impl JunoManager {
-    pub async fn new() -> Result<Self, ManagerError> {
+    pub async fn new(branch: JunoBranch) -> Result<Self, ManagerError> {
         let mut juno_manager = JunoManager {
-            process: Self::spawn_process_unchecked(),
+            branch,
+            process: None,
             rpc_client: Self::create_rpc_client(),
         };
 
         juno_manager.ensure_usable().await?;
+        if juno_manager.process.is_none() {
+            println!("JunoManager::new found existing juno instance");
+        }
         Ok(juno_manager)
-    }
-
-    pub fn spawn_process_unchecked() -> process::Child {
-        let process = Command::new("./spawn_native_juno.sh")
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .expect("Juno spawn script failed");
-        println!("Spawned juno with id {}", process.id());
-        process
     }
 
     pub fn create_rpc_client() -> JsonRpcClient<HttpTransport> {
@@ -64,47 +81,83 @@ impl JunoManager {
         ))
     }
 
+    pub fn spawn_process_unchecked(&mut self) {
+        let script_name = match self.branch {
+            JunoBranch::Base => "./spawn_base_juno.sh",
+            JunoBranch::Native => "./spawn_native_juno.sh",
+        };
+        let process = Command::new(script_name)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("Juno spawn script failed");
+        println!("Spawned {} juno with id {}", self.branch, process.id());
+        self.process = Some(process);
+    }
+
     pub async fn ensure_usable(&mut self) -> Result<(), ManagerError> {
+        let ping_result = self.rpc_client.block_number().await;
+
+        if let Ok(block_number) = ping_result {
+            let juno_type = if self.process.is_some() {
+                "Internal"
+            } else {
+                "External"
+            };
+            println!("{juno_type} juno already contactable with block number: {block_number}");
+            return Ok(());
+        }
+
+        println!("ensure_usable found no contactable juno");
+
+        if self.process.is_none() {
+            self.spawn_process_unchecked();
+        }
+
         let time_limit_seconds = 30;
-        for _ in 0..time_limit_seconds * 10 {
+        print!("Waiting for juno: ");
+        for time in 0..time_limit_seconds * 10 {
             async_std::task::sleep(Duration::from_millis(100)).await;
-            match self.process.try_wait() {
-                Ok(None) => {
-                    // juno still running
-                    let result = self.rpc_client.block_number().await;
-                    // TODO branch on error kind
-                    // For now if the block number request fails, we assume juno is just not ready yet
-                    if let Ok(block_number) = result {
-                        println!("Current block number: {block_number}");
-                        return Ok(());
-                    }
+            if time % 10 == 0 {
+                print!("{}s ", time / 10);
+            }
+            let ping_result = self.rpc_client.block_number().await;
+            match ping_result {
+                Ok(block_number) => {
+                    println!(
+                        "\nJuno contactable after {}ms with block number: {block_number}",
+                        time * 100
+                    );
+                    return Ok(());
                 }
-                Ok(Some(status)) => {
-                    // juno shut down
-                    println!("Juno exited with status {status}. Retrying");
-                    self.process = Self::spawn_process_unchecked();
-                }
-                Err(e) => {
-                    return Err(ManagerError::InternalError(format!(
-                        "error checking whether juno is still running: {e}"
-                    )));
-                }
+                Err(e) => match e {
+                    ProviderError::StarknetError(_) => todo!("Starknet error"),
+                    ProviderError::RateLimited => todo!("Rate limit"),
+                    ProviderError::ArrayLengthMismatch => todo!("Array length mismatch"),
+                    ProviderError::Other(_) => continue,
+                },
             }
         }
-        Err(ManagerError::InternalError(
-            "Failed to set up juno in 30 seconds".to_string(),
-        ))
+        // We were using print! to write the time to a single line, so an empty println makes sure that
+        // whatever is printed next has its own line
+        println!("");
+        Err(ManagerError::InternalError(format!(
+            "Failed to set up juno in {time_limit_seconds} seconds",
+        )))
     }
 
     pub async fn get_block_with_txs(
-        &self,
+        &mut self,
         block_id: BlockId,
-    ) -> Result<MaybePendingBlockWithTxs, ProviderError> {
-        self.rpc_client.get_block_with_txs(block_id).await
+    ) -> Result<MaybePendingBlockWithTxs, ManagerError> {
+        self.ensure_usable().await?;
+        self.rpc_client.get_block_with_txs(block_id).await.map_err(|e| e.into())
     }
 
+    // TODO replace
     pub async fn is_running(&mut self) -> Result<bool, ManagerError> {
-        match self.process.try_wait() {
+        match self.process.as_mut().unwrap().try_wait() {
             Ok(Some(_exit_status)) => Ok(false),
             Ok(None) => Ok(true),
             Err(err) => Err(ManagerError::InternalError(format!(
