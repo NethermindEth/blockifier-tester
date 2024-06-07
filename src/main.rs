@@ -1,12 +1,12 @@
 mod juno_manager;
-mod simulate_transaction;
-mod trace_block;
-mod trace_transaction;
+mod transaction_simulator;
+mod block_tracer;
+mod transaction_tracer;
 
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
-use simulate_transaction::{simulate_main, TransactionSimulator};
-use trace_block::{block_main, BlockTracer};
-use trace_transaction::{transaction_hash_main, TraceResult};
+use transaction_simulator::{simulate_main, TransactionSimulator};
+use block_tracer::{block_main, BlockTracer};
+use transaction_tracer::{transaction_hash_main, TraceResult};
 
 #[tokio::main]
 async fn main() {

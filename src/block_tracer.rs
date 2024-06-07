@@ -7,7 +7,7 @@ use starknet::{
 
 use crate::{
     juno_manager::{JunoBranch, JunoManager, ManagerError},
-    trace_transaction::TraceResult,
+    transaction_tracer::TraceResult,
 };
 
 #[derive(Debug)]
