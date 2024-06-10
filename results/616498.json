@@ -1,0 +1,42 @@
+{
+"Block number": 616498,
+"Transactions": [
+{
+"Hash": "504362972987680198664576385895069510367686813989677730248030264691168992354",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "3420235500330007890626762413719479569642782082328157602914136053901993299565",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "3173233984341847573843722313949887568366937342341445082387995862352301730305",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "893272327133139599025501732137317387351879642865647489596613080125330479395",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "2536890250097170777404625065164697586237850598966968685930337847685937794249",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "1718534000648115408814546578251741306203641936559504381117388305178539260825",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "2147590552016759388134028127418762907757301119051238956875082980632718574790",
+"Expected result": "Success",
+"Simulated result": "Reverted: Transaction execution has failed:
+0: Error in the called contract (contract address: 0x06c21ac4b1570f8119db01388a8cfc623de6ab8fe329dccae72a468c41c62a81, class hash: 0x058d97f7d76e78f44905cc30cb65b91ea49a4b908a76703c54197bca90f81773, selector: 0x015d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad):
+Error at pc=0:81:
+Cairo traceback (most recent call last):
+Unknown location (pc=0:731)
+Unknown location (pc=0:677)
+Unknown location (pc=0:291)
+Unknown location (pc=0:314)
+
+1: Error in the called contract (contract address: 0x05319f36b15c6321a02746681158ba0614feecfbcf3cae67d3c167d408e26a64, class hash: 0x0776b45486ecc7f014f7e840e6176007701dd107f76b29b242ca6a9d2a8e10b9, selector: 0x01896bcc195b7543d3f7145b0214a57857f52ee169b5f3d48ab2b9ad5bd747f5):
+Native execution error: Invalid signature
+"}]}

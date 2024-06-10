@@ -1,0 +1,66 @@
+{
+"Block number": 612787,
+"Transactions": [
+{
+"Hash": "2956463644718529097732960186895283445398232288430276902027691026707562128498",
+"Expected result": "Success",
+"Simulated result": "Reverted: Transaction execution has failed:
+0: Error in the called contract (contract address: 0x06c21ac4b1570f8119db01388a8cfc623de6ab8fe329dccae72a468c41c62a81, class hash: 0x058d97f7d76e78f44905cc30cb65b91ea49a4b908a76703c54197bca90f81773, selector: 0x015d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad):
+Error at pc=0:81:
+Cairo traceback (most recent call last):
+Unknown location (pc=0:731)
+Unknown location (pc=0:677)
+Unknown location (pc=0:291)
+Unknown location (pc=0:314)
+
+1: Error in the called contract (contract address: 0x05319f36b15c6321a02746681158ba0614feecfbcf3cae67d3c167d408e26a64, class hash: 0x0776b45486ecc7f014f7e840e6176007701dd107f76b29b242ca6a9d2a8e10b9, selector: 0x017f7f411909d8583d0f93315f4bddf40e19419b906e30ec6211ab4df97928f4):
+Native execution error: Invalid signature
+"},
+{
+"Hash": "27758233351563794956927654740067092402459199340711798218280989226046368022",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "833729481544290622614373803719740913970956340513422612376890031911990667920",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "2542452897109525935714835719807361105306514277252688451571523971514076853830",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "196850212441563601814337608792582898000664228699200804491204093248111742318",
+"Expected result": "Reverted: Error in the called contract (0x034c7cf97c10f71753e4079496db51de15dc61c3996b1d1088626c144eb0cfcc):
+Error at pc=0:15647:
+Got an exception while executing a hint.
+Cairo traceback (most recent call last):
+Unknown location (pc=0:233)
+Unknown location (pc=0:5191)
+Unknown location (pc=0:11307)
+Unknown location (pc=0:15665)
+Unknown location (pc=0:15665)
+
+Error in the called contract (0x0038925b0bcf4dce081042ca26a96300d9e181b910328db54a6c89e5451503f5):
+Error at pc=0:40753:
+Got an exception while executing a hint: Execution failed. Failure reason: 0x753235365f737562204f766572666c6f77 ('u256_sub Overflow').
+Cairo traceback (most recent call last):
+Unknown location (pc=0:6148)
+Unknown location (pc=0:19242)
+Unknown location (pc=0:34108)
+
+Error in the called contract (0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d):
+Execution failed. Failure reason: 0x753235365f737562204f766572666c6f77 ('u256_sub Overflow').
+",
+"Simulated result": "Success"},
+{
+"Hash": "1903619747095238740761006230782873864574764280654996990874365191345812538487",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "732354486676398371793664618497034464619076364700452231688876752006253939092",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "2503383913644300593349581686257072979877965704313052389877379563444129270833",
+"Expected result": "Success",
+"Simulated result": "Success"}]}
