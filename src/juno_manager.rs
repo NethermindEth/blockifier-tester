@@ -1,13 +1,18 @@
 use std::{
     fmt::Display,
+    fs::{File, OpenOptions},
     process::{self, Command, Stdio},
-    time::Duration,
+    time::{Duration, SystemTime},
 };
 
 use starknet::{
     core::types::{BlockId, MaybePendingBlockWithTxs},
     providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider, ProviderError, Url},
 };
+
+const BASE_JUNO_PATH: &str = "/home/dom/nethermind/nubia/juno/base/build/juno";
+const NATIVE_JUNO_PATH: &str = "/home/dom/nethermind/nubia/juno/native/build/juno";
+const JUNO_DATABASE_PATH: &str = "/home/dom/nethermind/nubia/juno/database";
 
 #[derive(Clone, Copy, Debug)]
 #[repr(i8)]
@@ -82,16 +87,41 @@ impl JunoManager {
     }
 
     pub fn spawn_process_unchecked(&mut self) {
-        let script_name = match self.branch {
-            JunoBranch::Base => "./spawn_base_juno.sh",
-            JunoBranch::Native => "./spawn_native_juno.sh",
+        // let script_name = match self.branch {
+        //     JunoBranch::Base => "./spawn_base_juno.sh",
+        //     JunoBranch::Native => "./spawn_native_juno.sh",
+        // };
+        // let process = Command::new(script_name)
+        //     .stdin(Stdio::null())
+        //     .stdout(Stdio::piped())
+        //     .stderr(Stdio::piped())
+        //     .spawn()
+        //     .expect("Juno spawn script failed");
+        // println!("Spawned {} juno with id {}", self.branch, process.id());
+        // self.process = Some(process);
+        let juno_out_file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .append(true)
+            .open("./juno_out.txt")
+            .unwrap();
+        let juno_err_file = juno_out_file.try_clone().unwrap();
+        let process = match self.branch {
+            JunoBranch::Base => Command::new(BASE_JUNO_PATH)
+                .args(["--http", "--db-path", JUNO_DATABASE_PATH])
+                .stdin(Stdio::null())
+                .stdout(juno_out_file)
+                .stderr(juno_err_file)
+                .spawn()
+                .expect("Failed to spawn base juno"),
+            JunoBranch::Native => Command::new(NATIVE_JUNO_PATH)
+                .args(["--http", "--disable-sync", "--db-path", JUNO_DATABASE_PATH])
+                .stdin(Stdio::null())
+                .stdout(juno_out_file)
+                .stderr(juno_err_file)
+                .spawn()
+                .expect("Failed to spawn native juno"),
         };
-        let process = Command::new(script_name)
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .expect("Juno spawn script failed");
         println!("Spawned {} juno with id {}", self.branch, process.id());
         self.process = Some(process);
     }
@@ -111,13 +141,24 @@ impl JunoManager {
 
         println!("ensure_usable found no contactable juno");
 
-        if self.process.is_none() {
-            self.spawn_process_unchecked();
-        }
-
+        
         let time_limit_seconds = 30;
         print!("Waiting for juno: ");
         for time in 0..time_limit_seconds * 10 {
+            if let Some(process) = self.process.as_mut() {
+                let exit_code = process.try_wait();
+                match exit_code {
+                    Ok(Some(_)) => {
+                        println!("Spawning new process as previous one ended");
+                        self.spawn_process_unchecked()
+                    },
+                    Ok(None) => {},
+                    Err(err) => return Err(ManagerError::InternalError(format!("{err}"))),
+                }
+            } else {
+                println!("Spawning fresh process as none was present or responding");
+                self.spawn_process_unchecked();
+            }
             async_std::task::sleep(Duration::from_millis(100)).await;
             if time % 10 == 0 {
                 print!("{}s ", time / 10);
@@ -132,7 +173,7 @@ impl JunoManager {
                     return Ok(());
                 }
                 Err(e) => match e {
-                    ProviderError::StarknetError(_) => todo!("Starknet error"),
+                    ProviderError::StarknetError(_) => todo!("Starknet error {e:?}"),
                     ProviderError::RateLimited => todo!("Rate limit"),
                     ProviderError::ArrayLengthMismatch => todo!("Array length mismatch"),
                     ProviderError::Other(_) => continue,
@@ -147,12 +188,57 @@ impl JunoManager {
         )))
     }
 
+    pub async fn ensure_dead(&mut self) -> Result<(), ManagerError> {
+        let start_time = SystemTime::now();
+        println!("Ensuring juno is dead");
+        if let Some(process) = self.process.as_mut() {
+            let id = process.id().to_string();
+            println!("Spawning kill -s INT {id}");
+            let mut kill = Command::new("kill")
+                .args(["-s", "INT", &id])
+                .spawn()
+                .expect("Failed to spawn kill process");
+            kill.wait().expect("Failed to send sigint");
+            self.process = None;
+            println!("Sent sigint to child");
+        }
+        while start_time.elapsed().unwrap().as_secs() < 30 {
+            let ping_result = self.rpc_client.block_number().await;
+            match ping_result {
+                Ok(_) => {
+                    async_std::task::sleep(Duration::from_millis(100)).await;
+                }
+                Err(err) => {
+                    println!("Received error (as expected) when killing juno: {err}");
+                    return Ok(());
+                }
+            }
+        }
+        Err(ManagerError::InternalError(
+            "Juno still contactable after 30 seconds".to_string(),
+        ))
+    }
+
+    pub async fn get_block_transaction_count(
+        &mut self,
+        block_id: BlockId,
+    ) -> Result<u64, ManagerError> {
+        self.ensure_usable().await?;
+        Ok(self
+            .rpc_client
+            .get_block_transaction_count(block_id)
+            .await?)
+    }
+
     pub async fn get_block_with_txs(
         &mut self,
         block_id: BlockId,
     ) -> Result<MaybePendingBlockWithTxs, ManagerError> {
         self.ensure_usable().await?;
-        self.rpc_client.get_block_with_txs(block_id).await.map_err(|e| e.into())
+        self.rpc_client
+            .get_block_with_txs(block_id)
+            .await
+            .map_err(|e| e.into())
     }
 
     // TODO replace

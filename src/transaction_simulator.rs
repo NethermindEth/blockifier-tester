@@ -34,6 +34,11 @@ pub trait TransactionSimulator {
         block_id: BlockId,
         transactions: &[TransactionToSimulate],
     ) -> Result<Vec<SimulatedTransaction>, ManagerError>;
+    async fn optimistic_repeat_simulate_until_success(
+        &mut self,
+        block_id: BlockId,
+        transaction: &[TransactionToSimulate],
+    ) -> Result<Vec<SimulatedTransaction>, ManagerError>;
     async fn pessimistic_repeat_simulate_until_success(
         &mut self,
         block_id: BlockId,
@@ -48,9 +53,11 @@ impl TransactionSimulator for JunoManager {
     ) -> Result<TransactionResult, ManagerError> {
         println!("Getting transaction receipt for {}", tx_hash);
         self.ensure_usable().await?;
-        let result = self.rpc_client
+        let result = self
+            .rpc_client
             .get_transaction_receipt(tx_hash)
-            .await?.into();
+            .await?
+            .into();
         Ok(result)
     }
 
@@ -61,9 +68,7 @@ impl TransactionSimulator for JunoManager {
         let mut result = vec![];
         for transaction in block.transactions() {
             let tx_hash = get_block_transaction_hash(transaction);
-            let expected_result = self
-                .get_expected_transaction_result(tx_hash)
-                .await?;
+            let expected_result = self.get_expected_transaction_result(tx_hash).await?;
             result.push(TransactionToSimulate {
                 tx: block_transaction_to_broadcasted_transaction(transaction)?,
                 hash: tx_hash,
@@ -85,10 +90,7 @@ impl TransactionSimulator for JunoManager {
         println!("Getting transactions to simulate");
         let transactions = self.get_transactions_to_simulate(&block).await?;
         let simulation_results = self
-            .pessimistic_repeat_simulate_until_success(
-                BlockId::Number(block_number - 1),
-                &transactions,
-            )
+            .binary_repeat_simulate_until_success(BlockId::Number(block_number - 1), &transactions)
             .await?;
 
         let mut found_crash = false;
@@ -111,6 +113,32 @@ impl TransactionSimulator for JunoManager {
         }
 
         Ok(report)
+    }
+
+    // Try all transactions and count down until they all work
+    async fn optimistic_repeat_simulate_until_success(
+        &mut self,
+        block_id: BlockId,
+        transactions: &[TransactionToSimulate],
+    ) -> Result<Vec<SimulatedTransaction>, ManagerError> {
+        let broadcasted_transactions = transactions.iter().map(|tx| tx.tx.clone()).collect_vec();
+        for i in 0..transactions.len() {
+            let transactions_to_try = &broadcasted_transactions[0..transactions.len() - i];
+            println!("Trying {} tranactions", transactions_to_try.len());
+            let simulation_result = self
+                .rpc_client
+                .simulate_transactions(block_id, transactions_to_try, [])
+                .await;
+
+            if simulation_result.is_ok() {
+                return Ok(simulation_result?);
+            } else {
+                // Wait for current juno process to die so that a new one can be safely started
+                self.process.as_mut().expect("TODO option").wait().unwrap();
+                self.ensure_usable().await?;
+            }
+        }
+        Ok(vec![])
     }
 
     // Add one transaction at a time to the set that are tried
@@ -150,32 +178,34 @@ impl TransactionSimulator for JunoManager {
     ) -> Result<Vec<SimulatedTransaction>, ManagerError> {
         let broadcasted_transactions = transactions.iter().map(|tx| tx.tx.clone()).collect_vec();
         let mut successful_results = vec![];
-        let mut known_failure_length = transactions.len()+1;
-        let mut i = known_failure_length/2;
+        let mut known_failure_length = transactions.len() + 1;
+        let mut i = known_failure_length / 2;
         loop {
-            let transactions_to_try = &broadcasted_transactions[0..i + 1];
-            println!("Trying {} tranactions", transactions_to_try.len());
+            println!("Known failure length: {known_failure_length}");
+            println!("Known success length: {}", successful_results.len());
+            println!("Trying {} tranactions", i);
+            let transactions_to_try = &broadcasted_transactions[0..i];
             self.ensure_usable().await?;
             let simulation_result = self
                 .rpc_client
                 .simulate_transactions(block_id, transactions_to_try, [])
                 .await;
-    
+
             if simulation_result.is_ok() {
                 successful_results = simulation_result.unwrap();
-                if i+1 >= known_failure_length {
+                if i + 1 >= known_failure_length {
                     return Ok(successful_results);
                 } else {
-                    i = (i + known_failure_length)/2;
+                    i = (i + known_failure_length) / 2;
                 }
             } else {
                 // TODO branch on error
                 println!("Got error {:?}", simulation_result.unwrap_err());
-                if i-1 <= successful_results.len() {
-                    return Ok(successful_results)
+                if i - 1 <= successful_results.len() {
+                    return Ok(successful_results);
                 } else {
                     known_failure_length = i;
-                    i = (i + successful_results.len())/2;
+                    i = (i + successful_results.len()) / 2;
                 }
             }
         }
@@ -240,7 +270,14 @@ impl Display for SimulationReport {
     }
 }
 
-fn log_block_report(block_number: u64, report: Vec<SimulationReport>) {
+impl SimulationReport {
+    pub fn is_correct(&self) -> bool {
+        std::mem::discriminant(&self.expected_result)
+            == std::mem::discriminant(&self.simulated_result)
+    }
+}
+
+pub fn log_block_report(block_number: u64, report: Vec<SimulationReport>) {
     println!("Log report for block {block_number}");
     let text = report
         .iter()
@@ -248,7 +285,7 @@ fn log_block_report(block_number: u64, report: Vec<SimulationReport>) {
         .join(",\n");
     fs::write(
         Path::new(&format!("./results/{}.json", block_number)),
-        format!("{{\n\"Block number\": {block_number}\n\"Transactions\": [\n{text}]}}"),
+        format!("{{\n\"Block number\": {block_number},\n\"Transactions\": [\n{text}]}}"),
     )
     .expect("Failed to write block report");
 }
@@ -364,34 +401,6 @@ fn get_block_transaction_hash(transaction: &Transaction) -> FieldElement {
         },
     }
 }
-
-// // Try all transactions and count down until they all work
-// async fn optimistic_repeat_simulate_until_success(
-//     block_id: BlockId,
-//     transactions: &[TransactionToSimulate],
-// ) -> Vec<SimulatedTransaction> {
-//     let broadcasted_transactions = transactions
-//         .into_iter()
-//         .map(|tx| tx.tx.clone())
-//         .collect_vec();
-//     for i in 0..transactions.len() {
-//         let (juno_process, juno_rpc) = spawn_juno_checked().await;
-
-//         let transactions_to_try = &broadcasted_transactions[0..transactions.len() - i];
-//         println!("Trying {} tranactions", transactions_to_try.len());
-//         let simulation_result = juno_rpc
-//             .simulate_transactions(block_id, transactions_to_try, [])
-//             .await;
-
-//         if simulation_result.is_ok() {
-//             kill_juno(juno_process);
-//             return simulation_result.unwrap();
-//         } else {
-//             confirm_juno_killed(juno_process);
-//         }
-//     }
-//     vec![]
-// }
 
 fn get_simulated_transaction_result(transaction: &SimulatedTransaction) -> TransactionResult {
     match &transaction.transaction_trace {
