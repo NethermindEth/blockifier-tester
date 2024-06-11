@@ -1,10 +1,12 @@
 use std::{
     fmt::Display,
-    fs::{File, OpenOptions},
+    fs::OpenOptions,
     process::{self, Command, Stdio},
     time::{Duration, SystemTime},
 };
 
+use anyhow::Context;
+use log::{debug, warn};
 use starknet::{
     core::types::{BlockId, MaybePendingBlockWithTxs},
     providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider, ProviderError, Url},
@@ -75,7 +77,7 @@ impl JunoManager {
 
         juno_manager.ensure_usable().await?;
         if juno_manager.process.is_none() {
-            println!("JunoManager::new found existing juno instance");
+            warn!("JunoManager::new found existing juno instance");
         }
         Ok(juno_manager)
     }
@@ -101,9 +103,8 @@ impl JunoManager {
         // self.process = Some(process);
         let juno_out_file = OpenOptions::new()
             .create(true)
-            .write(true)
             .append(true)
-            .open("./juno_out.txt")
+            .open("./juno_out.log")
             .unwrap();
         let juno_err_file = juno_out_file.try_clone().unwrap();
         let process = match self.branch {
@@ -120,6 +121,7 @@ impl JunoManager {
                 .stdout(juno_out_file)
                 .stderr(juno_err_file)
                 .spawn()
+                .context(format!("path: {NATIVE_JUNO_PATH}"))
                 .expect("Failed to spawn native juno"),
         };
         println!("Spawned {} juno with id {}", self.branch, process.id());
@@ -135,13 +137,12 @@ impl JunoManager {
             } else {
                 "External"
             };
-            println!("{juno_type} juno already contactable with block number: {block_number}");
+            debug!("{juno_type} juno already contactable with block number: {block_number}");
             return Ok(());
         }
 
         println!("ensure_usable found no contactable juno");
 
-        
         let time_limit_seconds = 30;
         print!("Waiting for juno: ");
         for time in 0..time_limit_seconds * 10 {
@@ -151,8 +152,8 @@ impl JunoManager {
                     Ok(Some(_)) => {
                         println!("Spawning new process as previous one ended");
                         self.spawn_process_unchecked()
-                    },
-                    Ok(None) => {},
+                    }
+                    Ok(None) => {}
                     Err(err) => return Err(ManagerError::InternalError(format!("{err}"))),
                 }
             } else {
@@ -182,7 +183,7 @@ impl JunoManager {
         }
         // We were using print! to write the time to a single line, so an empty println makes sure that
         // whatever is printed next has its own line
-        println!("");
+        println!();
         Err(ManagerError::InternalError(format!(
             "Failed to set up juno in {time_limit_seconds} seconds",
         )))
@@ -201,22 +202,25 @@ impl JunoManager {
             kill.wait().expect("Failed to send sigint");
             self.process = None;
             println!("Sent sigint to child");
-        }
-        while start_time.elapsed().unwrap().as_secs() < 30 {
-            let ping_result = self.rpc_client.block_number().await;
-            match ping_result {
-                Ok(_) => {
-                    async_std::task::sleep(Duration::from_millis(100)).await;
-                }
-                Err(err) => {
-                    println!("Received error (as expected) when killing juno: {err}");
-                    return Ok(());
+            while start_time.elapsed().unwrap().as_secs() < 30 {
+                let ping_result = self.rpc_client.block_number().await;
+                match ping_result {
+                    Ok(_) => {
+                        async_std::task::sleep(Duration::from_millis(100)).await;
+                    }
+                    Err(err) => {
+                        println!("Received error (as expected) when killing juno: {err}");
+                        return Ok(());
+                    }
                 }
             }
+            Err(ManagerError::InternalError(
+                "Juno still contactable after 30 seconds".to_string(),
+            ))
+        } else {
+            warn!("Attempted to automatically kill and restart juno following an unstable action but no stored process was found. Either an external juno is being used, or ensure_dead has been run multiple times");
+            Ok(())
         }
-        Err(ManagerError::InternalError(
-            "Juno still contactable after 30 seconds".to_string(),
-        ))
     }
 
     pub async fn get_block_transaction_count(
@@ -239,17 +243,5 @@ impl JunoManager {
             .get_block_with_txs(block_id)
             .await
             .map_err(|e| e.into())
-    }
-
-    // TODO replace
-    pub async fn is_running(&mut self) -> Result<bool, ManagerError> {
-        match self.process.as_mut().unwrap().try_wait() {
-            Ok(Some(_exit_status)) => Ok(false),
-            Ok(None) => Ok(true),
-            Err(err) => Err(ManagerError::InternalError(format!(
-                "Failed to get is_running status for juno: '{}'",
-                err
-            ))),
-        }
     }
 }

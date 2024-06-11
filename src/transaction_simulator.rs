@@ -1,6 +1,5 @@
 use std::{fmt::Display, fs, path::Path};
 
-use futures::future::join_all;
 use itertools::Itertools;
 use starknet::{
     core::types::{
@@ -11,11 +10,17 @@ use starknet::{
         InvokeTransaction, MaybePendingBlockWithTxs, MaybePendingTransactionReceipt,
         SimulatedTransaction, Transaction, TransactionTrace,
     },
-    providers::{Provider, ProviderError},
+    providers::Provider,
 };
 
 use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
 
+#[allow(dead_code)]
+pub enum SimulationStrategy {
+    Binary,
+    Optimistic,
+    Pessimistic,
+}
 pub trait TransactionSimulator {
     async fn get_expected_transaction_result(
         &mut self,
@@ -28,6 +33,7 @@ pub trait TransactionSimulator {
     async fn simulate_block(
         &mut self,
         block_number: u64,
+        strategy: SimulationStrategy,
     ) -> Result<Vec<SimulationReport>, ManagerError>;
     async fn binary_repeat_simulate_until_success(
         &mut self,
@@ -81,6 +87,7 @@ impl TransactionSimulator for JunoManager {
     async fn simulate_block(
         &mut self,
         block_number: u64,
+        strategy: SimulationStrategy,
     ) -> Result<Vec<SimulationReport>, ManagerError> {
         println!("Getting block {block_number} with txns");
         let block = self
@@ -89,9 +96,29 @@ impl TransactionSimulator for JunoManager {
 
         println!("Getting transactions to simulate");
         let transactions = self.get_transactions_to_simulate(&block).await?;
-        let simulation_results = self
-            .binary_repeat_simulate_until_success(BlockId::Number(block_number - 1), &transactions)
-            .await?;
+        let simulation_results = match strategy {
+            SimulationStrategy::Binary => {
+                self.binary_repeat_simulate_until_success(
+                    BlockId::Number(block_number - 1),
+                    &transactions,
+                )
+                .await
+            }
+            SimulationStrategy::Optimistic => {
+                self.optimistic_repeat_simulate_until_success(
+                    BlockId::Number(block_number - 1),
+                    &transactions,
+                )
+                .await
+            }
+            SimulationStrategy::Pessimistic => {
+                self.pessimistic_repeat_simulate_until_success(
+                    BlockId::Number(block_number - 1),
+                    &transactions,
+                )
+                .await
+            }
+        }?;
 
         let mut found_crash = false;
         let mut report = vec![];
@@ -125,6 +152,7 @@ impl TransactionSimulator for JunoManager {
         for i in 0..transactions.len() {
             let transactions_to_try = &broadcasted_transactions[0..transactions.len() - i];
             println!("Trying {} tranactions", transactions_to_try.len());
+            self.ensure_usable().await?;
             let simulation_result = self
                 .rpc_client
                 .simulate_transactions(block_id, transactions_to_try, [])
@@ -133,9 +161,7 @@ impl TransactionSimulator for JunoManager {
             if simulation_result.is_ok() {
                 return Ok(simulation_result?);
             } else {
-                // Wait for current juno process to die so that a new one can be safely started
-                self.process.as_mut().expect("TODO option").wait().unwrap();
-                self.ensure_usable().await?;
+                self.ensure_dead().await?;
             }
         }
         Ok(vec![])
@@ -153,6 +179,7 @@ impl TransactionSimulator for JunoManager {
         for i in 0..transactions.len() {
             let transactions_to_try = &broadcasted_transactions[0..i + 1];
             println!("Trying {} tranactions", transactions_to_try.len());
+            self.ensure_usable().await?;
             let simulation_result = self
                 .rpc_client
                 .simulate_transactions(block_id, transactions_to_try, [])
@@ -162,9 +189,7 @@ impl TransactionSimulator for JunoManager {
                 results = simulation_result.unwrap();
             } else {
                 // Wait for current juno process to die so that a new one can be safely started
-                self.process.as_mut().expect("TODO option").wait().unwrap();
-                self.spawn_process_unchecked();
-                self.ensure_usable().await?;
+                self.ensure_dead().await?;
                 return Ok(results);
             }
         }
@@ -201,6 +226,7 @@ impl TransactionSimulator for JunoManager {
             } else {
                 // TODO branch on error
                 println!("Got error {:?}", simulation_result.unwrap_err());
+                self.ensure_dead().await?;
                 if i - 1 <= successful_results.len() {
                     return Ok(successful_results);
                 } else {
@@ -416,15 +442,20 @@ fn get_simulated_transaction_result(transaction: &SimulatedTransaction) -> Trans
     }
 }
 
+#[allow(dead_code)]
 pub async fn simulate_main() -> Result<(), ManagerError> {
     let block_number = 610026;
     let mut juno_manager = JunoManager::new(JunoBranch::Native).await?;
-    let block_report = juno_manager.simulate_block(block_number).await?;
+    let block_report = juno_manager
+        .simulate_block(block_number, SimulationStrategy::Optimistic)
+        .await?;
     log_block_report(block_number, block_report);
     println!("//Done {block_number}");
 
     for block_number in 645000..645100 {
-        let block_report = juno_manager.simulate_block(block_number).await?;
+        let block_report = juno_manager
+            .simulate_block(block_number, SimulationStrategy::Binary)
+            .await?;
         log_block_report(block_number, block_report);
         println!("//Done {block_number}");
     }
