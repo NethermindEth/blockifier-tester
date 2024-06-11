@@ -22,25 +22,23 @@ pub async fn get_sorted_blocks_with_tx_count(
         Err(err) => println!("Got err {err}"),
     }
     // If no cache could be loaded, treat it as being empty
-    let mut cache_data = cache_data.unwrap_or_default();
+    let mut block_counts = cache_data.unwrap_or_default();
     // Sort the cache by block index to allow efficient searching
-    cache_data.sort_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
+    block_counts.sort_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
 
-    let mut result = vec![];
     let mut juno_manager = JunoManager::new(JunoBranch::Native)
         .await
         .expect("Failed to start native juno");
 
     // For each block, use its cached result if present, and if not then ask juno and add it to the cache data
     for block_num in block_start..block_end {
-        match cache_data.binary_search_by(|(x, _)| x.cmp(&block_num)) {
-            Ok(idx) => result.push(cache_data[idx]),
+        match block_counts.binary_search_by(|(x, _)| x.cmp(&block_num)) {
+            Ok(_) => (),
             Err(idx) => {
                 let tx_count = juno_manager
                     .get_block_transaction_count(BlockId::Number(block_num))
                     .await?;
-                result.push((block_num, tx_count));
-                cache_data.insert(idx, (block_num, tx_count));
+                block_counts.insert(idx, (block_num, tx_count));
             }
         }
     }
@@ -49,7 +47,7 @@ pub async fn get_sorted_blocks_with_tx_count(
     juno_manager.ensure_dead().await?;
 
     // Write the data back to the cache, including any new results found from juno
-    if let Err(err) = write_block_tx_counts_cache(cache_path, &result).await {
+    if let Err(err) = write_block_tx_counts_cache(cache_path, &block_counts).await {
         warn!(
             "Failed to write block_tx_counts to cache: '{}': '{}'",
             cache_path.to_str().expect("failed to unwrap cache_path"),
@@ -58,8 +56,8 @@ pub async fn get_sorted_blocks_with_tx_count(
     }
 
     // Reorder the results by transaction count, so that we run smaller blocks first
-    result.sort_by(|lhs, rhs| lhs.1.cmp(&rhs.1));
-    Ok(result)
+    block_counts.sort_by(|lhs, rhs| lhs.1.cmp(&rhs.1));
+    Ok(block_counts)
 }
 
 fn read_block_tx_counts_cache(path: &Path) -> Result<Vec<(u64, u64)>, anyhow::Error> {

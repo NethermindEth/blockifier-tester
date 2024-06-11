@@ -89,18 +89,6 @@ impl JunoManager {
     }
 
     pub fn spawn_process_unchecked(&mut self) {
-        // let script_name = match self.branch {
-        //     JunoBranch::Base => "./spawn_base_juno.sh",
-        //     JunoBranch::Native => "./spawn_native_juno.sh",
-        // };
-        // let process = Command::new(script_name)
-        //     .stdin(Stdio::null())
-        //     .stdout(Stdio::piped())
-        //     .stderr(Stdio::piped())
-        //     .spawn()
-        //     .expect("Juno spawn script failed");
-        // println!("Spawned {} juno with id {}", self.branch, process.id());
-        // self.process = Some(process);
         let juno_out_file = OpenOptions::new()
             .create(true)
             .append(true)
