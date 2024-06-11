@@ -1,13 +1,13 @@
-use std::{fmt::Display, io::Read};
+use std::fmt::Display;
 
 use starknet::{
     core::types::{FieldElement, StarknetError},
     providers::{Provider, ProviderError},
 };
 
-use crate::juno_manager::{JunoManager, ManagerError};
+use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TraceResult {
     Success,
     OtherError(String),
@@ -57,8 +57,6 @@ pub struct TraceTransactionReport {
     transaction: FieldElement, // Hash of transaction.
     post_response: Result<starknet::core::types::TransactionTrace, ProviderError>,
     result: TraceResult,
-    juno_did_crash: bool, // TODO return code?
-    juno_output: Option<String>,
 }
 
 trait TransactionTracer {
@@ -73,59 +71,38 @@ impl TransactionTracer for JunoManager {
         &mut self,
         transaction_hash: &str,
     ) -> Result<TraceTransactionReport, ManagerError> {
+        println!("Tracing transaction {transaction_hash}");
         self.ensure_usable().await?;
         let transaction = FieldElement::from_hex_be(transaction_hash)
             .map_err(|e| ManagerError::InternalError(format!("{}", e)))?;
         let trace_result = self.rpc_client.trace_transaction(transaction).await;
 
-        // let result_type: TransactionResult;
-        let result_type: TraceResult;
-        match &trace_result {
-            Ok(_) => {
-                result_type = TraceResult::Success;
-                println!("ok");
-            }
+        let result_type = match &trace_result {
+            Ok(_) => TraceResult::Success,
             Err(err) => {
-                result_type = TraceResult::from(err);
-                println!("err: '{:?}' : type: '{}'", err, result_type);
+                println!("err: '{:?}''", err);
+                TraceResult::from(err)
             }
         };
+        println!("{result_type}");
 
-        let expect_juno_crash: bool = matches!(result_type, TraceResult::Crash { error: _ });
-        let juno_did_crash = self.is_running().await?;
-        let out_lines: Option<String> = if expect_juno_crash {
-            println!("Expect juno to crash.");
-            // TODO implement timeout
-            let out = self
-                .process
-                .stdout
-                .as_mut()
-                .expect("failed to get stdout from juno process");
-            let mut lines = String::new();
-            let _todo = out.read_to_string(&mut lines);
-            Some(lines)
-        } else {
-            None
-        };
+        self.ensure_dead().await?;
 
         Ok(TraceTransactionReport {
             transaction,
-            juno_did_crash,
-            juno_output: out_lines,
             result: result_type,
             post_response: trace_result,
         })
     }
 }
 
+#[allow(dead_code)]
 pub async fn transaction_hash_main() -> Result<(), ManagerError> {
     // let hash = "0x6faeed8967da5d3c0853b8cf4b40b55661a0f949678d5509254b643d133b769"; // DNE
     let hash = "0x07e3ace3b1c3f76b83b734b7a2ea990fb2823e931fb2ecef5d2677887aed9082"; // Crashes on native
-    let mut juno_manager = JunoManager::new().await?;
+    let mut juno_manager = JunoManager::new(JunoBranch::Native).await?;
     let trace_report = juno_manager.trace_transaction(hash).await?;
     println!("transaction: {:?}", trace_report.transaction);
-    println!("juno: {:?}", trace_report.juno_output);
-    println!("juno crashed? {}", trace_report.juno_did_crash);
     println!("result: {}", trace_report.result);
     match trace_report.post_response {
         Ok(item) => {

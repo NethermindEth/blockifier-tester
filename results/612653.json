@@ -1,0 +1,46 @@
+{
+"Block number": 612653,
+"Transactions": [
+{
+"Hash": "2099651119232741441322024323279192245353007729625004303694170608730256656121",
+"Expected result": "Success",
+"Simulated result": "Reverted: Transaction execution has failed:
+0: Error in the called contract (contract address: 0x06c21ac4b1570f8119db01388a8cfc623de6ab8fe329dccae72a468c41c62a81, class hash: 0x058d97f7d76e78f44905cc30cb65b91ea49a4b908a76703c54197bca90f81773, selector: 0x015d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad):
+Error at pc=0:81:
+Cairo traceback (most recent call last):
+Unknown location (pc=0:731)
+Unknown location (pc=0:677)
+Unknown location (pc=0:291)
+Unknown location (pc=0:314)
+
+1: Error in the called contract (contract address: 0x05319f36b15c6321a02746681158ba0614feecfbcf3cae67d3c167d408e26a64, class hash: 0x0776b45486ecc7f014f7e840e6176007701dd107f76b29b242ca6a9d2a8e10b9, selector: 0x03ee026203995f0595bc70415daa5363820f0382fe6cc36481a337b8160e492f):
+Native execution error: Invalid signature
+"},
+{
+"Hash": "2869777126093285434771715449128936864578011396782873384343927984796759058591",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "2773767809409635611820466878327198285907794705439849763305398893151833777389",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "3231892621725973646517767673384447593511874666671004824723891733075263992646",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "2000329593682008424514411957597709826219648910381482357225811242962137025023",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "246878103496558157258684817741889759707196304742338207408518065238291909830",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "2070068779250777869651478538961683193218287215831823947489497858497499495480",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "3174109278563237194202046882671488449316442505436354161185476573161159990163",
+"Expected result": "Success",
+"Simulated result": "Success"}]}
