@@ -1,6 +1,7 @@
 use std::{
     fmt::Display,
     fs::OpenOptions,
+    path::Path,
     process::{self, Command, Stdio},
     time::{Duration, SystemTime},
 };
@@ -11,10 +12,6 @@ use starknet::{
     core::types::{BlockId, MaybePendingBlockWithTxs},
     providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider, ProviderError, Url},
 };
-
-const BASE_JUNO_PATH: &str = "/home/dom/nethermind/nubia/juno/base/build/juno";
-const NATIVE_JUNO_PATH: &str = "/home/dom/nethermind/nubia/juno/native/build/juno";
-const JUNO_DATABASE_PATH: &str = "/home/dom/nethermind/nubia/juno/database";
 
 #[derive(Clone, Copy, Debug)]
 #[repr(i8)]
@@ -40,6 +37,9 @@ pub struct JunoManager {
     pub branch: JunoBranch,
     pub process: Option<process::Child>,
     pub rpc_client: JsonRpcClient<HttpTransport>,
+    juno_path: String,
+    juno_native_path: String,
+    juno_database_path: String,
 }
 
 impl Drop for JunoManager {
@@ -67,12 +67,33 @@ impl From<ProviderError> for ManagerError {
     }
 }
 
+#[derive(serde::Deserialize, Clone)]
+pub struct Config {
+    juno_path: String,
+    juno_native_path: String,
+    juno_database_path: String,
+}
+impl Config {
+    fn from_path(path: &Path) -> Result<Self, anyhow::Error> {
+        let config_str = std::fs::read_to_string(path)
+            .with_context(|| format!("Reading config path: {path:?}"))?;
+        Ok(toml::from_str::<Config>(config_str.as_str())?)
+    }
+}
+
 impl JunoManager {
     pub async fn new(branch: JunoBranch) -> Result<Self, ManagerError> {
+        let config = Config::from_path(Path::new("./config.toml")).map_err(|e| {
+            ManagerError::InternalError(format!("Failed to create config: '{e:?}'"))
+        })?;
+
         let mut juno_manager = JunoManager {
             branch,
             process: None,
             rpc_client: Self::create_rpc_client(),
+            juno_path: config.juno_path,
+            juno_native_path: config.juno_native_path,
+            juno_database_path: config.juno_database_path,
         };
 
         juno_manager.ensure_usable().await?;
@@ -96,20 +117,20 @@ impl JunoManager {
             .unwrap();
         let juno_err_file = juno_out_file.try_clone().unwrap();
         let process = match self.branch {
-            JunoBranch::Base => Command::new(BASE_JUNO_PATH)
-                .args(["--http", "--db-path", JUNO_DATABASE_PATH])
+            JunoBranch::Base => Command::new(&self.juno_path)
+                .args(["--http", "--db-path", &self.juno_database_path])
                 .stdin(Stdio::null())
                 .stdout(juno_out_file)
                 .stderr(juno_err_file)
                 .spawn()
                 .expect("Failed to spawn base juno"),
-            JunoBranch::Native => Command::new(NATIVE_JUNO_PATH)
-                .args(["--http", "--disable-sync", "--db-path", JUNO_DATABASE_PATH])
+            JunoBranch::Native => Command::new(&self.juno_native_path)
+                .args(["--http", "--disable-sync", "--db-path", &self.juno_database_path])
                 .stdin(Stdio::null())
                 .stdout(juno_out_file)
                 .stderr(juno_err_file)
                 .spawn()
-                .context(format!("path: {NATIVE_JUNO_PATH}"))
+                .context(format!("path: {}", &self.juno_native_path))
                 .expect("Failed to spawn native juno"),
         };
         println!("Spawned {} juno with id {}", self.branch, process.id());
