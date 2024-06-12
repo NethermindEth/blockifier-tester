@@ -49,7 +49,7 @@ pub async fn get_sorted_blocks_with_tx_count(
     juno_manager.ensure_dead().await?;
 
     // Write the data back to the cache, including any new results found from juno
-    if let Err(err) = write_block_tx_counts_cache(cache_path, &result).await {
+    if let Err(err) = write_block_tx_counts_cache(cache_path, &cache_data).await {
         warn!(
             "Failed to write block_tx_counts to cache: '{}': '{}'",
             cache_path.to_str().expect("failed to unwrap cache_path"),
