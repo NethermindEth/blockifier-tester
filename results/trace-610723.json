@@ -1,0 +1,96 @@
+{
+  "block_number": 610723,
+  "comparison": {
+    "BothSucceeded": {
+      "transaction_traces": [
+        {
+          "Both": {
+            "transaction_hash": "461456468465219215739097652039060519841686792270891864654986676275007448364",
+            "body": {
+              "Invoke": {
+                "NativeFailed": [
+                  "Transaction execution has failed:",
+                  "0: Error in the called contract (contract address: 0x04d1815453874b0b0ddebff592485f151b9886dee32afd404846c318f54fb161, class hash: 0x01a736d6ed154502257f02b1ccdf4d9d1089f80811cd6acad48e6b6a9d1f2003, selector: 0x015d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad):",
+                  "Native execution error: argent/multicall-failed\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000Native execution error: Invalid signature",
+                  ""
+                ]
+              }
+            }
+          }
+        },
+        {
+          "Both": {
+            "transaction_hash": "1301103215411548985699379281555748801434367657809580114521335095565120188788",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same"
+                }
+              }
+            }
+          }
+        },
+        {
+          "Both": {
+            "transaction_hash": "1931813050187135198179073086697718647021006932620652504308429472177642681352",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same"
+                }
+              }
+            }
+          }
+        },
+        {
+          "Both": {
+            "transaction_hash": "3384045527967775953127607719372535367270150686971241201910282671111367542014",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same"
+                }
+              }
+            }
+          }
+        },
+        {
+          "Both": {
+            "transaction_hash": "1573803805261389081286558239770082415418360211934448725210153306548566083898",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same"
+                }
+              }
+            }
+          }
+        },
+        {
+          "Both": {
+            "transaction_hash": "2126382956286872022401978842994426220925589499144917764238143807197838135767",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same"
+                }
+              }
+            }
+          }
+        },
+        {
+          "Both": {
+            "transaction_hash": "2851516354111527360047622087026014130097281938896199010716225490694569501290",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

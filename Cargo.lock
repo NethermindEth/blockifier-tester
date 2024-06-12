@@ -1351,6 +1351,7 @@ dependencies = [
  "futures",
  "itertools 0.13.0",
  "log",
+ "num-bigint",
  "regex",
  "serde",
  "serde_json",

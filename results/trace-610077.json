@@ -5,22 +5,56 @@
       "transaction_traces": [
         {
           "Both": {
-            "transaction_hash": "1116273914467506009539447501344195746942695607624986837251315279933131703"
+            "transaction_hash": "1116273914467506009539447501344195746942695607624986837251315279933131703",
+            "body": {
+              "Invoke": {
+                "NativeFailed": [
+                  "Transaction execution has failed:",
+                  "0: Error in the called contract (contract address: 0x066fd7dc78b45d7eb7dd3f6ab15f8b5413f0acf1dc0632813f6ac2b9dffc252b, class hash: 0x01a736d6ed154502257f02b1ccdf4d9d1089f80811cd6acad48e6b6a9d1f2003, selector: 0x015d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad):",
+                  "Native execution error: argent/multicall-failed\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001Native execution error: Invalid Signature",
+                  ""
+                ]
+              }
+            }
           }
         },
         {
           "Both": {
-            "transaction_hash": "3510667971616830125982859623625406842892648181471642314274197534494612067155"
+            "transaction_hash": "3510667971616830125982859623625406842892648181471642314274197534494612067155",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same"
+                }
+              }
+            }
           }
         },
         {
           "Both": {
-            "transaction_hash": "3613324170101840456462839829301512244456122442340145914757098466850525909391"
+            "transaction_hash": "3613324170101840456462839829301512244456122442340145914757098466850525909391",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same"
+                }
+              }
+            }
           }
         },
         {
           "Both": {
-            "transaction_hash": "3578084658386605360763983456904930986995187891713542930249668752307698775647"
+            "transaction_hash": "3578084658386605360763983456904930986995187891713542930249668752307698775647",
+            "body": {
+              "Invoke": {
+                "NativeFailed": [
+                  "Transaction execution has failed:",
+                  "0: Error in the called contract (contract address: 0x05d3b1dc487afd3d919160a1abccf95c0d03747555b5ae9ce2e3824a5c3167ea, class hash: 0x029927c8af6bccf3f6fda035981e765a7bdbf18a2dc0d630494f8758aa908e2b, selector: 0x015d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad):",
+                  "Native execution error: argent/multicall-failed\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001Native execution error: Native execution error: u256_mul Overflow",
+                  ""
+                ]
+              }
+            }
           }
         }
       ]

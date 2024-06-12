@@ -8,12 +8,12 @@ mod transaction_tracer;
 use block_tracer::{BlockTracer, TraceBlockReport};
 use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
-use itertools::{EitherOrBoth, Itertools};
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
-use trace_comparison::generate_comparison;
+use log::info;
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
-use std::{fs, path::Path};
+use std::path::Path;
+use trace_comparison::generate_comparison;
 use transaction_simulator::{log_block_report, SimulationStrategy, TransactionSimulator};
 use transaction_tracer::TraceResult;
 
@@ -55,8 +55,8 @@ async fn main() {
         .init();
     // let start = 610026;
     // let end = 645300;
-    let start = 610077;
-    let end = 610078;
+    let start = 612517;
+    let end = 612518;
     let blocks_with_tx_count = get_sorted_blocks_with_tx_count(start, end)
         .await
         .unwrap()
@@ -64,7 +64,7 @@ async fn main() {
         .filter(|(block_number, _)| should_run_block(block_number));
 
     for (block_number, tx_count) in blocks_with_tx_count {
-        println!("Tracing block {block_number} with Native. It has {tx_count} transactions");
+        info!("Tracing block {block_number} with Native. It has {tx_count} transactions");
 
         let native_result = try_native_block_trace(block_number).await;
         let should_simulate = native_result
@@ -73,8 +73,8 @@ async fn main() {
             .unwrap_or(true);
 
         if should_simulate {
-            println!("Failed to trace block with Native, got {native_result:?}");
-            println!("Simulating block {block_number} with Native. It has {tx_count} transactions");
+            info!("Failed to trace block with Native, got {native_result:?}");
+            info!("Simulating block {block_number} with Native. It has {tx_count} transactions");
             let mut juno_manager = JunoManager::new(JunoBranch::Native).await.unwrap();
             let result = juno_manager
                 .simulate_block(block_number, SimulationStrategy::Binary)
@@ -90,7 +90,7 @@ async fn main() {
         } else {
             let native_report = native_result.unwrap();
             println!("{}", native_report.result);
-            println!("Tracing block {block_number} with Base. It has {tx_count} transactions");
+            info!("Tracing block {block_number} with Base. It has {tx_count} transactions");
             let base_result = try_base_block_trace(block_number).await;
             match base_result {
                 Ok(base_report) => {
