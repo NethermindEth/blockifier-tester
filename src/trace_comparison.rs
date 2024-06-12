@@ -1,6 +1,10 @@
 use itertools::{EitherOrBoth, Itertools};
+use num_bigint::BigUint;
 use serde::Serialize;
-use starknet::core::types::{BlockId, FieldElement, TransactionTraceWithHash};
+use starknet::core::types::{
+    BlockId, ExecuteInvocation, FieldElement, FunctionInvocation, TransactionTrace,
+    TransactionTraceWithHash,
+};
 
 use crate::block_tracer::TraceBlockReport;
 
@@ -26,10 +30,57 @@ enum BlockTraceComparison {
 
 #[derive(Serialize)]
 enum TransactionTraceComparison {
-    BaseOnly { transaction_hash: FieldElement },
-    Both { transaction_hash: FieldElement },
+    BaseOnly {
+        transaction_hash: String,
+    },
+    Both {
+        transaction_hash: String,
+        body: TransactionTraceComparisonBody,
+    },
     Error(String),
-    NativeOnly { transaction_hash: FieldElement },
+    NativeOnly {
+        transaction_hash: String,
+    },
+}
+
+#[derive(Serialize)]
+enum TransactionTraceComparisonBody {
+    Mismatch { base: String, native: String },
+    Invoke(InvokeComparison),
+    DeployAccount,
+    L1Handler,
+    Declare,
+}
+
+#[derive(Serialize)]
+enum InvokeComparison {
+    BaseFailed(String),
+    BothFailed {
+        base_reason: String,
+        native_reason: String,
+    },
+    BothSucceeded {
+        results: CallResultComparison,
+        inner_calls: Vec<InnerCallComparison>,
+    },
+    NativeFailed(Vec<String>),
+}
+
+#[derive(Serialize)]
+enum CallResultComparison {
+    Same,
+    Different { base: String, native: String },
+}
+
+#[derive(Serialize)]
+enum InnerCallComparison {
+    Same,
+    Different {
+        base: String,
+        native: String,
+    },
+    BaseOnly,
+    NativeOnly,
 }
 
 pub fn generate_comparison(
@@ -68,22 +119,142 @@ fn compare_traces(
 ) -> Vec<TransactionTraceComparison> {
     base_traces
         .into_iter()
-        .zip_longest(native_traces.into_iter())
+        .zip_longest(native_traces)
         .map(|traces| match traces {
             EitherOrBoth::Both(base_trace, native_trace) => {
                 if base_trace.transaction_hash != native_trace.transaction_hash {
-                    return TransactionTraceComparison::Error(format!("Mismatched transaction hashes: base = {}, native = {}", base_trace.transaction_hash, native_trace.transaction_hash))
+                    return TransactionTraceComparison::Error(format!(
+                        "Mismatched transaction hashes: base = {}, native = {}",
+                        hash_to_hex(base_trace.transaction_hash),
+                        hash_to_hex(native_trace.transaction_hash)
+                    ));
                 }
                 TransactionTraceComparison::Both {
-                    transaction_hash: base_trace.transaction_hash
+                    transaction_hash: hash_to_hex(base_trace.transaction_hash),
+                    body: generate_trace_comparison_body(
+                        base_trace.trace_root,
+                        native_trace.trace_root,
+                    ),
                 }
-            },
+            }
             EitherOrBoth::Left(base_trace) => TransactionTraceComparison::BaseOnly {
-                transaction_hash: base_trace.transaction_hash,
+                transaction_hash: hash_to_hex(base_trace.transaction_hash),
             },
             EitherOrBoth::Right(native_trace) => TransactionTraceComparison::NativeOnly {
-                transaction_hash: native_trace.transaction_hash,
+                transaction_hash: hash_to_hex(native_trace.transaction_hash),
             },
         })
         .collect_vec()
+}
+
+fn generate_trace_comparison_body(
+    base_trace: TransactionTrace,
+    native_trace: TransactionTrace,
+) -> TransactionTraceComparisonBody {
+    match (&base_trace, &native_trace) {
+        (TransactionTrace::Invoke(base_trace), TransactionTrace::Invoke(native_trace)) => {
+            TransactionTraceComparisonBody::Invoke(
+                match (
+                    &base_trace.execute_invocation,
+                    &native_trace.execute_invocation,
+                ) {
+                    (ExecuteInvocation::Success(base), ExecuteInvocation::Success(native)) => {
+                        // TODO get which function was called from juno
+                        InvokeComparison::BothSucceeded {
+                            results: compare_results(&base.result, &native.result),
+                            inner_calls: compare_inner_calls(&base.calls, &native.calls),
+                        }
+                    }
+                    (ExecuteInvocation::Success(_), ExecuteInvocation::Reverted(native)) => {
+                        InvokeComparison::NativeFailed(
+                            native
+                                .revert_reason
+                                .split('\n')
+                                .map(|line| line.to_string())
+                                .collect_vec(),
+                        )
+                    }
+                    (ExecuteInvocation::Reverted(base), ExecuteInvocation::Success(_)) => {
+                        InvokeComparison::BaseFailed(base.revert_reason.clone())
+                    }
+                    (ExecuteInvocation::Reverted(base), ExecuteInvocation::Reverted(native)) => {
+                        InvokeComparison::BothFailed {
+                            base_reason: base.revert_reason.clone(),
+                            native_reason: native.revert_reason.clone(),
+                        }
+                    }
+                },
+            )
+        }
+        (TransactionTrace::DeployAccount(_), TransactionTrace::DeployAccount(_)) => {
+            TransactionTraceComparisonBody::DeployAccount
+        }
+        (TransactionTrace::L1Handler(_), TransactionTrace::L1Handler(_)) => {
+            TransactionTraceComparisonBody::L1Handler
+        }
+        (TransactionTrace::Declare(_), TransactionTrace::Declare(_)) => {
+            TransactionTraceComparisonBody::Declare
+        }
+        _ => TransactionTraceComparisonBody::Mismatch {
+            base: get_trace_kind(&base_trace),
+            native: get_trace_kind(&native_trace),
+        },
+    }
+}
+
+fn compare_inner_calls(
+    base_calls: &[FunctionInvocation],
+    native_calls: &[FunctionInvocation],
+) -> Vec<InnerCallComparison> {
+    base_calls
+        .iter()
+        .zip_longest(native_calls.iter())
+        .map(|calls| match calls {
+            EitherOrBoth::Both(base_call, native_call) => {
+                if base_call.result == native_call.result {
+                    // TODO deep check?
+                    InnerCallComparison::Same
+                } else {
+                    InnerCallComparison::Different {
+                        base: result_felts_to_string(&base_call.result),
+                        native: result_felts_to_string(&native_call.result),
+                    }
+                }
+            }
+            EitherOrBoth::Left(_) => InnerCallComparison::BaseOnly,
+            EitherOrBoth::Right(_) => InnerCallComparison::NativeOnly,
+        })
+        .collect_vec()
+}
+
+fn compare_results(
+    base_result: &Vec<FieldElement>,
+    native_result: &Vec<FieldElement>,
+) -> CallResultComparison {
+    if base_result == native_result {
+        CallResultComparison::Same
+    } else {
+        CallResultComparison::Different {
+            base: result_felts_to_string(base_result),
+            native: result_felts_to_string(native_result),
+        }
+    }
+}
+
+fn get_trace_kind(trace: &TransactionTrace) -> String {
+    match trace {
+        TransactionTrace::Invoke(_) => "Invoke",
+        TransactionTrace::DeployAccount(_) => "DeployAccount",
+        TransactionTrace::L1Handler(_) => "L1Handler",
+        TransactionTrace::Declare(_) => "Declare",
+    }
+    .to_string()
+}
+
+fn hash_to_hex(h: FieldElement) -> String {
+    BigUint::from_bytes_be(&h.to_bytes_be()).to_str_radix(16)
+}
+
+fn result_felts_to_string(results: &[FieldElement]) -> String {
+    results.iter().map(|element| element.to_string()).join(", ")
 }

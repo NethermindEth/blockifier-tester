@@ -1,7 +1,7 @@
 use std::{fs::OpenOptions, path::Path};
 
 use anyhow::Context;
-use log::warn;
+use log::{debug, warn};
 use starknet::core::types::BlockId;
 
 use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
@@ -59,6 +59,7 @@ pub async fn get_sorted_blocks_with_tx_count(
 
     // Reorder the results by transaction count, so that we run smaller blocks first
     result.sort_by(|lhs, rhs| lhs.1.cmp(&rhs.1));
+    debug!("Got blocks with transaction counts: {:?}", result);
     Ok(result)
 }
 
