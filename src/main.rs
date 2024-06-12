@@ -7,6 +7,7 @@ mod transaction_tracer;
 use block_tracer::{BlockTracer, TraceBlockReport};
 use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
+use itertools::Itertools;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
 use std::io::Write;
 use std::{fs, path::Path};
@@ -89,23 +90,7 @@ async fn main() {
             match base_result {
                 Ok(base_report) => {
                     println!("{}", base_report.result);
-                    fs::write(
-                        Path::new(&format!("./results/trace-{}.json", block_number)),
-                        format!(
-                            "{{\n
-                            \"Block number\": {block_number},\n
-                            \"Base success\": \"{}\",\n
-                            \"Native success\": \"{}\",\n
-                            \"Base trace\": \"{:?}\",\n
-                            \"Native trace\": \"{:?}\",\n
-                        }}",
-                            base_report.result,
-                            native_report.result,
-                            base_report.post_response,
-                            native_report.post_response,
-                        ),
-                    )
-                    .expect("Failed to write block report");
+                    log_trace_comparison(block_number, native_report, base_report);
                 }
                 Err(err) => {
                     println!("{err:?}");
@@ -113,4 +98,59 @@ async fn main() {
             }
         }
     }
+}
+
+fn log_trace_comparison(
+    block_number: u64,
+    native_report: TraceBlockReport,
+    base_report: TraceBlockReport,
+) {
+    let block_number_str = format!("\"Block number\": {block_number},\n");
+    let overall_result_str = format!(
+        "
+        \"Base success\": \"{}\",\n
+        \"Native success\": \"{}\",\n
+    ",
+        base_report.result, native_report.result
+    );
+
+    let trace_comparison = match (base_report.post_response, native_report.post_response) {
+        (Ok(base_traces), Ok(native_traces)) => {
+            base_traces.iter().zip_longest(other)
+            format!(
+                "
+
+                "
+            )
+        },
+        (Ok(_), Err(native_error)) => format!(
+            "
+            \"Base error\": \"None\",\n
+            \"Native error\": \"{native_error:?}\",\n
+            "
+        ),
+        (Err(base_error), Ok(_)) => format!(
+            "
+            \"Base error\": \"{base_error:?}\",\n
+            \"Native error\": \"None\",\n
+            "
+        ),
+        (Err(base_error), Err(native_error)) => format!(
+            "
+            \"Base error\": \"{base_error:?}\",\n
+            \"Native error\": \"{native_error:?}\",\n
+            "
+        ),
+    };
+
+    fs::write(
+        Path::new(&format!("./results/trace-{}.json", block_number)),
+        format!(
+            "{{\n
+            {block_number_str}
+            {overall_result_str}
+            {trace_comparison}
+        }}"),
+    )
+    .expect("Failed to write block report");
 }
