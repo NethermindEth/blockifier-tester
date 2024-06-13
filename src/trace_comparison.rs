@@ -73,14 +73,22 @@ enum CallResultComparison {
 }
 
 #[derive(Serialize)]
-enum InnerCallComparison {
+enum InnerCallComparisonInfo {
     Same,
     Different {
+        inner_calls: Vec<InnerCallComparison>,
         base: String,
         native: String,
     },
     BaseOnly,
     NativeOnly,
+}
+
+#[derive(Serialize)]
+struct InnerCallComparison {
+    contract: FieldElement,
+    selector: FieldElement,
+    info: InnerCallComparisonInfo,
 }
 
 pub fn generate_comparison(
@@ -213,16 +221,33 @@ fn compare_inner_calls(
             EitherOrBoth::Both(base_call, native_call) => {
                 if base_call.result == native_call.result {
                     // TODO deep check?
-                    InnerCallComparison::Same
+                    InnerCallComparison {
+                        info: InnerCallComparisonInfo::Same,
+                        contract: base_call.contract_address,
+                        selector: base_call.entry_point_selector,
+                    }
                 } else {
-                    InnerCallComparison::Different {
-                        base: result_felts_to_string(&base_call.result),
-                        native: result_felts_to_string(&native_call.result),
+                    InnerCallComparison {
+                        contract: base_call.contract_address,
+                        selector: base_call.entry_point_selector,
+                        info: InnerCallComparisonInfo::Different {
+                            base: result_felts_to_string(&base_call.result),
+                            native: result_felts_to_string(&native_call.result),
+                            inner_calls: compare_inner_calls(&base_call.calls, &native_call.calls),
+                        },
                     }
                 }
             }
-            EitherOrBoth::Left(_) => InnerCallComparison::BaseOnly,
-            EitherOrBoth::Right(_) => InnerCallComparison::NativeOnly,
+            EitherOrBoth::Left(base_call) => InnerCallComparison {
+                contract: base_call.contract_address,
+                selector: base_call.entry_point_selector,
+                info: InnerCallComparisonInfo::BaseOnly,
+            },
+            EitherOrBoth::Right(native_call) => InnerCallComparison {
+                contract: native_call.contract_address,
+                selector: native_call.entry_point_selector,
+                info: InnerCallComparisonInfo::NativeOnly,
+            },
         })
         .collect_vec()
 }

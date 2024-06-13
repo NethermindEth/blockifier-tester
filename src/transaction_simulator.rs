@@ -298,6 +298,8 @@ impl Display for SimulationReport {
 
 impl SimulationReport {
     pub fn is_correct(&self) -> bool {
+      println!("asdf hash: '{}': expected_result: '{}' vs simulated_result: '{}': '{}'", self.tx_hash, self.expected_result, self.simulated_result,         std::mem::discriminant(&self.expected_result)
+            == std::mem::discriminant(&self.simulated_result));
         std::mem::discriminant(&self.expected_result)
             == std::mem::discriminant(&self.simulated_result)
     }
