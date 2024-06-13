@@ -53,10 +53,23 @@ async fn main() {
             )
         })
         .init();
-    // let start = 610026;
-    // let end = 645300;
-    let start = 612517;
-    let end = 612518;
+
+        // let result = block_tracer::block_main().await;
+        // println!("result: {:?}", result);
+
+        // return ();
+
+
+        // let native_result = try_native_block_trace(612575).await;
+        // match &native_result {
+        //     Ok(result) => println!("asdfzxcv: '{:?}'", result.result),
+        //     Err(_) => panic!("unexp"),
+        // };
+
+        // return ();
+
+    let start = 612575;
+    let end = 612576;
     let blocks_with_tx_count = get_sorted_blocks_with_tx_count(start, end)
         .await
         .unwrap()
@@ -83,7 +96,7 @@ async fn main() {
             // Note that this doesn't compare the reasons for failure or the result on a success
             let successes = result.iter().filter(|result| result.is_correct()).count();
             println!(
-                "Completed block {block_number} with {successes}/{} successses",
+                "Completed block {block_number} with {successes}/{} successes",
                 result.len()
             );
             log_block_report(block_number, result);
