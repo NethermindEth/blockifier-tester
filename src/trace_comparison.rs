@@ -3,8 +3,12 @@ use num_bigint::BigUint;
 use serde::Serialize;
 use starknet::core::types::{
     BlockId, ExecuteInvocation, FieldElement, FunctionInvocation, TransactionTrace,
-    TransactionTraceWithHash,
+    TransactionTraceWithHash
 };
+use serde_with::{serde_as, DeserializeAs};
+use starknet::core::serde::unsigned_field_element::UfeHex;
+// use super::{serde_impls::NumAsHex, *};
+// use starknet::core::types::serde_impls;
 
 use crate::block_tracer::TraceBlockReport;
 
@@ -86,9 +90,17 @@ enum InnerCallComparisonInfo {
 
 #[derive(Serialize)]
 struct InnerCallComparison {
+    #[serde(serialize_with = "hex_serialize")]
     contract: FieldElement,
+    #[serde(serialize_with = "hex_serialize")]
     selector: FieldElement,
     info: InnerCallComparisonInfo,
+}
+
+fn hex_serialize<S>(val : &FieldElement, serializer : S) -> Result<S::Ok, S::Error>
+where S : serde::Serializer,
+{
+  serializer.serialize_str(&format!("0x{}", hash_to_hex(val)))
 }
 
 pub fn generate_comparison(
@@ -133,12 +145,12 @@ fn compare_traces(
                 if base_trace.transaction_hash != native_trace.transaction_hash {
                     return TransactionTraceComparison::Error(format!(
                         "Mismatched transaction hashes: base = {}, native = {}",
-                        hash_to_hex(base_trace.transaction_hash),
-                        hash_to_hex(native_trace.transaction_hash)
+                        hash_to_hex(&base_trace.transaction_hash),
+                        hash_to_hex(&native_trace.transaction_hash)
                     ));
                 }
                 TransactionTraceComparison::Both {
-                    transaction_hash: hash_to_hex(base_trace.transaction_hash),
+                    transaction_hash: hash_to_hex(&base_trace.transaction_hash),
                     body: generate_trace_comparison_body(
                         base_trace.trace_root,
                         native_trace.trace_root,
@@ -146,10 +158,10 @@ fn compare_traces(
                 }
             }
             EitherOrBoth::Left(base_trace) => TransactionTraceComparison::BaseOnly {
-                transaction_hash: hash_to_hex(base_trace.transaction_hash),
+                transaction_hash: hash_to_hex(&base_trace.transaction_hash),
             },
             EitherOrBoth::Right(native_trace) => TransactionTraceComparison::NativeOnly {
-                transaction_hash: hash_to_hex(native_trace.transaction_hash),
+                transaction_hash: hash_to_hex(&native_trace.transaction_hash),
             },
         })
         .collect_vec()
@@ -276,7 +288,7 @@ fn get_trace_kind(trace: &TransactionTrace) -> String {
     .to_string()
 }
 
-fn hash_to_hex(h: FieldElement) -> String {
+fn hash_to_hex(h: &FieldElement) -> String {
     BigUint::from_bytes_be(&h.to_bytes_be()).to_str_radix(16)
 }
 
