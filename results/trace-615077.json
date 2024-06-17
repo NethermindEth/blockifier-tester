@@ -71,12 +71,7 @@
             "body": {
               "Invoke": {
                 "BothSucceeded": {
-                  "results": {
-                    "Different": {
-                      "base": "3, 1, 1, 1, 1, 6, 60635031339045824173, 0, 20473792, 0, 1623464801866226, 0",
-                      "native": "3, 1, 1, 1, 1, 6, 60635031339045824173, 0, 20437529, 0, 23070536550099118, 0"
-                    }
-                  },
+                  "results": "Same",
                   "inner_calls": [
                     {
                       "contract": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
@@ -91,61 +86,7 @@
                     {
                       "contract": "0x2ffce9d48390d497f7dfafa9dfd22025d9c285135bcc26c955aea8741f081d2",
                       "selector": "0xc73f681176fc7b3f9693986fd7b14581e8d540519e27400e88b8713932be01",
-                      "info": {
-                        "Different": {
-                          "inner_calls": [
-                            {
-                              "contract": "0x38925b0bcf4dce081042ca26a96300d9e181b910328db54a6c89e5451503f5",
-                              "selector": "0x19c9a63333505f3e5d2251880a03d91b8a36dcb33d299e191f43f51064f7068",
-                              "info": "Same"
-                            },
-                            {
-                              "contract": "0x38925b0bcf4dce081042ca26a96300d9e181b910328db54a6c89e5451503f5",
-                              "selector": "0x1632cb5adbb57e0cc75fd7c6b5ed6ef6185a685016b737cc97593aa5072cc36",
-                              "info": {
-                                "Different": {
-                                  "inner_calls": [],
-                                  "base": "0, 0, 10353858592, 0, 0, 0, 0, 0",
-                                  "native": "0, 0, 0, 0, 0, 0, 0, 0"
-                                }
-                              }
-                            },
-                            {
-                              "contract": "0x38925b0bcf4dce081042ca26a96300d9e181b910328db54a6c89e5451503f5",
-                              "selector": "0x1632cb5adbb57e0cc75fd7c6b5ed6ef6185a685016b737cc97593aa5072cc36",
-                              "info": {
-                                "Different": {
-                                  "inner_calls": [],
-                                  "base": "31235036070887088114520, 0, 194258204, 0, 0, 0, 0, 0",
-                                  "native": "0, 0, 0, 0, 0, 0, 0, 0"
-                                }
-                              }
-                            },
-                            {
-                              "contract": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
-                              "selector": "0x2e4263afad30923c891518314c3c95dbe830a16874e8abc5777a9a20b54c76e",
-                              "info": "Same"
-                            },
-                            {
-                              "contract": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
-                              "selector": "0x41b033f4a31df8067c24d1e9b550a2ce75fd4a29e1147af9752174f0e6cb20",
-                              "info": "Same"
-                            },
-                            {
-                              "contract": "0x53c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
-                              "selector": "0x2e4263afad30923c891518314c3c95dbe830a16874e8abc5777a9a20b54c76e",
-                              "info": "Same"
-                            },
-                            {
-                              "contract": "0x53c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
-                              "selector": "0x41b033f4a31df8067c24d1e9b550a2ce75fd4a29e1147af9752174f0e6cb20",
-                              "info": "Same"
-                            }
-                          ],
-                          "base": "60635031339045824173, 0, 20473792, 0, 1623464801866226, 0",
-                          "native": "60635031339045824173, 0, 20437529, 0, 23070536550099118, 0"
-                        }
-                      }
+                      "info": "Same"
                     }
                   ]
                 }

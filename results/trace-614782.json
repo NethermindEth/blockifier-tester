@@ -8,12 +8,10 @@
             "transaction_hash": "33731e9d02e2c043839fb981fa9e564f6e9c981ba1e06de7b0e49654be2f93a",
             "body": {
               "Invoke": {
-                "NativeFailed": [
-                  "Transaction execution has failed:",
-                  "0: Error in the called contract (contract address: 0x0565ae68505dc12bd5f653b8abf13066176035867bd3077d6846f5f3a375ec3b, class hash: 0x01a736d6ed154502257f02b1ccdf4d9d1089f80811cd6acad48e6b6a9d1f2003, selector: 0x015d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad):",
-                  "Native execution error: argent/multicall-failed\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001Native execution error: Invalid Signature",
-                  ""
-                ]
+                "BothFailed": {
+                  "base_reason": "Transaction execution has failed:\n0: Error in the called contract (contract address: 0x0565ae68505dc12bd5f653b8abf13066176035867bd3077d6846f5f3a375ec3b, class hash: 0x01a736d6ed154502257f02b1ccdf4d9d1089f80811cd6acad48e6b6a9d1f2003, selector: 0x015d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad):\nNative execution error: argent/multicall-failed\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001Native execution error: Invalid Signature\n",
+                  "native_reason": "Transaction execution has failed:\n0: Error in the called contract (contract address: 0x0565ae68505dc12bd5f653b8abf13066176035867bd3077d6846f5f3a375ec3b, class hash: 0x01a736d6ed154502257f02b1ccdf4d9d1089f80811cd6acad48e6b6a9d1f2003, selector: 0x015d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad):\nNative execution error: argent/multicall-failed\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001Native execution error: Invalid Signature\n"
+                }
               }
             }
           }

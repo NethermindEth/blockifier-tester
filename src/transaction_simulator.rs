@@ -312,7 +312,7 @@ pub fn log_block_report(block_number: u64, report: Vec<SimulationReport>) {
         .map(|simulation_report| format!("{}", simulation_report))
         .join(",\n");
     fs::write(
-        Path::new(&format!("./results/{}.json", block_number)),
+        Path::new(&format!("./results/block-{}.json", block_number)),
         format!("{{\n\"Block number\": {block_number},\n\"Transactions\": [\n{text}]}}"),
     )
     .expect("Failed to write block report");
