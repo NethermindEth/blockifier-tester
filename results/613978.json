@@ -1,0 +1,42 @@
+{
+"Block number": 613978,
+"Transactions": [
+{
+"Hash": "2210716897889565528569261983921632414859368508705467607778312263762069676559",
+"Expected result": "Success",
+"Simulated result": "Reverted: Transaction execution has failed:
+0: Error in the called contract (contract address: 0x06c21ac4b1570f8119db01388a8cfc623de6ab8fe329dccae72a468c41c62a81, class hash: 0x058d97f7d76e78f44905cc30cb65b91ea49a4b908a76703c54197bca90f81773, selector: 0x015d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad):
+Error at pc=0:81:
+Cairo traceback (most recent call last):
+Unknown location (pc=0:731)
+Unknown location (pc=0:677)
+Unknown location (pc=0:291)
+Unknown location (pc=0:314)
+
+1: Error in the called contract (contract address: 0x05319f36b15c6321a02746681158ba0614feecfbcf3cae67d3c167d408e26a64, class hash: 0x0776b45486ecc7f014f7e840e6176007701dd107f76b29b242ca6a9d2a8e10b9, selector: 0x01896bcc195b7543d3f7145b0214a57857f52ee169b5f3d48ab2b9ad5bd747f5):
+Native execution error: Invalid signature
+"},
+{
+"Hash": "2715171608021537139900450938548583271720595342382904611792891999124863825826",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "1689090782081448345847699261335659975124299445423260954170392872875650382900",
+"Expected result": "Success",
+"Simulated result": "Crash"},
+{
+"Hash": "2505609071750434352966085006181580494458500700586162066902738074584364157376",
+"Expected result": "Reverted: Insufficient fee token balance. Fee: Fee(4528970792199458), balance: low/high StarkFelt("0x000000000000000000000000000000000000000000000000000009184e72b2da")/StarkFelt("0x0000000000000000000000000000000000000000000000000000000000000000").",
+"Simulated result": "Unreached"},
+{
+"Hash": "2130702562998882853988439013907683296328341733351364855589675137531808843449",
+"Expected result": "Success",
+"Simulated result": "Unreached"},
+{
+"Hash": "716516768030238737013989701241526159326260628908683594130008522343004993507",
+"Expected result": "Success",
+"Simulated result": "Unreached"},
+{
+"Hash": "249770000936264905848472171807282313675220156972773816152045315865633962328",
+"Expected result": "Success",
+"Simulated result": "Unreached"}]}
