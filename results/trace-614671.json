@@ -1,0 +1,311 @@
+{
+  "block_number": 614671,
+  "comparison": {
+    "BothSucceeded": {
+      "transaction_traces": [
+        {
+          "Both": {
+            "transaction_hash": "57dd10f26dfc02d8b277734587bd4281b02ec744aecd111c11219af43c38b89",
+            "body": {
+              "Invoke": {
+                "NativeFailed": [
+                  "Transaction execution has failed:",
+                  "0: Error in the called contract (contract address: 0x021ef6d8605f9575b4f8870dbc857ae6e8afbc86d383c30f1ac62f8dbaead78c, class hash: 0x029927c8af6bccf3f6fda035981e765a7bdbf18a2dc0d630494f8758aa908e2b, selector: 0x015d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad):",
+                  "Native execution error: argent/multicall-failed\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001Native execution error: Invalid Signature",
+                  ""
+                ]
+              }
+            }
+          }
+        },
+        {
+          "Both": {
+            "transaction_hash": "3bb0a0e1a86b8e5a2f695085790af0611dca233fc054c9a214adc7259cfcf1b",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same",
+                  "inner_calls": [
+                    {
+                      "contract": "0x53c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
+                      "selector": "0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c",
+                      "info": "Same"
+                    },
+                    {
+                      "contract": "0x7a6f98c03379b9513ca84cca1373ff452a7462a3b61598f0af5bb27ad7f76d1",
+                      "selector": "0x2c0f7bf2d6cf5304c29171bf493feb222fef84bdaf17805a6574b0c2e8bcc87",
+                      "info": "Same"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "Both": {
+            "transaction_hash": "7c21fc4bda42adf5f102a5c65de17abbd74350fe1cba17648442978af06b7d4",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": {
+                    "Different": {
+                      "base": "1, 10, 4800702331713358, 0, 1, 20360167, 0, 1, 0, 0, 11, 0",
+                      "native": "1, 10, 0, 0, 0, 11, 0, 1, 0, 0, 11, 0"
+                    }
+                  },
+                  "inner_calls": [
+                    {
+                      "contract": "0x38925b0bcf4dce081042ca26a96300d9e181b910328db54a6c89e5451503f5",
+                      "selector": "0x39b9c84d6a72745116ecdbd7f122af6d51a7183b6e764d621583713bcceb8cd",
+                      "info": {
+                        "Different": {
+                          "inner_calls": [
+                            {
+                              "contract": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                              "selector": "0x2e4263afad30923c891518314c3c95dbe830a16874e8abc5777a9a20b54c76e",
+                              "info": {
+                                "Different": {
+                                  "inner_calls": [],
+                                  "base": "118800490883752241427, 0",
+                                  "native": "344509208241, 0"
+                                }
+                              }
+                            },
+                            {
+                              "contract": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                              "selector": "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+                              "info": "Same"
+                            },
+                            {
+                              "contract": "0x53c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
+                              "selector": "0x2e4263afad30923c891518314c3c95dbe830a16874e8abc5777a9a20b54c76e",
+                              "info": "BaseOnly"
+                            },
+                            {
+                              "contract": "0x53c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
+                              "selector": "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+                              "info": "BaseOnly"
+                            }
+                          ],
+                          "base": "4800702331713358, 0, 1, 20360167, 0, 1, 0, 0, 11, 0",
+                          "native": "0, 0, 0, 11, 0, 1, 0, 0, 11, 0"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "Both": {
+            "transaction_hash": "8be07294be2e0535d720bd0039da70945a5486a92e9617dd7c7bfa8ed48c2a",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same",
+                  "inner_calls": [
+                    {
+                      "contract": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                      "selector": "0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c",
+                      "info": "Same"
+                    },
+                    {
+                      "contract": "0xf6f4cf62e3c010e0ac2451cc7807b5eec19a40b0faacd00cca3914280fdf5a",
+                      "selector": "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29",
+                      "info": "Same"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "Both": {
+            "transaction_hash": "32fe0870215c7d375d5afc38607a0bf26b5e3e81da2f66d7d0f506bcf322624",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same",
+                  "inner_calls": [
+                    {
+                      "contract": "0x68f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8",
+                      "selector": "0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c",
+                      "info": "Same"
+                    },
+                    {
+                      "contract": "0x4270219d365d6b017231b52e92b3fb5d7c8378b05e9abc97724537a80e93b0f",
+                      "selector": "0x1171593aa5bdadda4d6b0efde6cc94ee7649c3163d5efeb19da6c16d63a2a63",
+                      "info": "Same"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "Both": {
+            "transaction_hash": "3d9f159376a509a47f2d2c66cf6e6c4e338900677fbf55b4c78b561fb2b537e",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same",
+                  "inner_calls": [
+                    {
+                      "contract": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                      "selector": "0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c",
+                      "info": "Same"
+                    },
+                    {
+                      "contract": "0x4270219d365d6b017231b52e92b3fb5d7c8378b05e9abc97724537a80e93b0f",
+                      "selector": "0x1171593aa5bdadda4d6b0efde6cc94ee7649c3163d5efeb19da6c16d63a2a63",
+                      "info": "Same"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "Both": {
+            "transaction_hash": "7cbbe33fb274c27f00c175fbf3abc10083371796f9527b83e88dddde85f02b",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same",
+                  "inner_calls": [
+                    {
+                      "contract": "0x23c72abdf49dffc85ae3ede714f2168ad384cc67d08524732acea90df325",
+                      "selector": "0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c",
+                      "info": "Same"
+                    },
+                    {
+                      "contract": "0x7a6f98c03379b9513ca84cca1373ff452a7462a3b61598f0af5bb27ad7f76d1",
+                      "selector": "0x147fd8f7d12de6da66feedc6d64a11bd371e5471ee1018f11f9072ede67a0fa",
+                      "info": "Same"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "Both": {
+            "transaction_hash": "5e4ff27b92bc759342f78538d47f8dc38a78ce6ae84cbc33102483d94cac8a0",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same",
+                  "inner_calls": [
+                    {
+                      "contract": "0x3c10537fa0073b2dd5120242697dbf76d6173eb9f384d3bf3d284d53388a0b0",
+                      "selector": "0x2d1af4265f4530c75b41282ed3b71617d3d435e96fe13b08848482173692f4f",
+                      "info": "Same"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "Both": {
+            "transaction_hash": "2e5a752e9c59cc3dd756d2b0f834e216da44c619c9feb3dc0d1e96bae477283",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same",
+                  "inner_calls": [
+                    {
+                      "contract": "0xda114221cb83fa859dbdb4c44beeaa0bb37c7537ad5ae66fe5e0efd20e6eb3",
+                      "selector": "0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c",
+                      "info": "Same"
+                    },
+                    {
+                      "contract": "0x4270219d365d6b017231b52e92b3fb5d7c8378b05e9abc97724537a80e93b0f",
+                      "selector": "0x1171593aa5bdadda4d6b0efde6cc94ee7649c3163d5efeb19da6c16d63a2a63",
+                      "info": "Same"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "Both": {
+            "transaction_hash": "279b5ee41d6f3cf796829871c4e8ad28b762328f2a2ba4e75bb126062541b9c",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same",
+                  "inner_calls": [
+                    {
+                      "contract": "0x5eb02e164f78fd91b9be6a0b9b3aa02c936db485bd760730f65711533c70a26",
+                      "selector": "0xb758361d5e84380ef1e632f89d8e76a8677dbc3f4b93a4f9d75d2a6048f312",
+                      "info": "Same"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "Both": {
+            "transaction_hash": "2a3e60fe988cb3ceac676293eac130bd260d6a20fcd40b30ac15ae8fc23da3b",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same",
+                  "inner_calls": [
+                    {
+                      "contract": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                      "selector": "0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c",
+                      "info": "Same"
+                    },
+                    {
+                      "contract": "0x4619e9ce4109590219c5263787050726be63382148538f3f936c22aa87d2fc2",
+                      "selector": "0xc73f681176fc7b3f9693986fd7b14581e8d540519e27400e88b8713932be01",
+                      "info": "Same"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "Both": {
+            "transaction_hash": "33c93888db626d1af296456f76a4c9a1f1124c852ae7dba25ff2986bb209113",
+            "body": {
+              "Invoke": {
+                "BothSucceeded": {
+                  "results": "Same",
+                  "inner_calls": [
+                    {
+                      "contract": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                      "selector": "0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c",
+                      "info": "Same"
+                    },
+                    {
+                      "contract": "0x4270219d365d6b017231b52e92b3fb5d7c8378b05e9abc97724537a80e93b0f",
+                      "selector": "0x1171593aa5bdadda4d6b0efde6cc94ee7649c3163d5efeb19da6c16d63a2a63",
+                      "info": "Same"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
