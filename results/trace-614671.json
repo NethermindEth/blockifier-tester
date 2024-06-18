@@ -8,10 +8,12 @@
             "transaction_hash": "57dd10f26dfc02d8b277734587bd4281b02ec744aecd111c11219af43c38b89",
             "body": {
               "Invoke": {
-                "BothFailed": {
-                  "base_reason": "Transaction execution has failed:\n0: Error in the called contract (contract address: 0x021ef6d8605f9575b4f8870dbc857ae6e8afbc86d383c30f1ac62f8dbaead78c, class hash: 0x029927c8af6bccf3f6fda035981e765a7bdbf18a2dc0d630494f8758aa908e2b, selector: 0x015d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad):\nNative execution error: argent/multicall-failed\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001Native execution error: Invalid Signature\n",
-                  "native_reason": "Transaction execution has failed:\n0: Error in the called contract (contract address: 0x021ef6d8605f9575b4f8870dbc857ae6e8afbc86d383c30f1ac62f8dbaead78c, class hash: 0x029927c8af6bccf3f6fda035981e765a7bdbf18a2dc0d630494f8758aa908e2b, selector: 0x015d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad):\nNative execution error: argent/multicall-failed\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001Native execution error: Invalid Signature\n"
-                }
+                "NativeFailed": [
+                  "Transaction execution has failed:",
+                  "0: Error in the called contract (contract address: 0x021ef6d8605f9575b4f8870dbc857ae6e8afbc86d383c30f1ac62f8dbaead78c, class hash: 0x029927c8af6bccf3f6fda035981e765a7bdbf18a2dc0d630494f8758aa908e2b, selector: 0x015d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad):",
+                  "Native execution error: argent/multicall-failed\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001Native execution error: Invalid Signature",
+                  ""
+                ]
               }
             }
           }
@@ -46,12 +48,50 @@
             "body": {
               "Invoke": {
                 "BothSucceeded": {
-                  "results": "Same",
+                  "results": {
+                    "Different": {
+                      "base": "1, 10, 4800702331713358, 0, 1, 20360167, 0, 1, 0, 0, 11, 0",
+                      "native": "1, 10, 0, 0, 0, 11, 0, 1, 0, 0, 11, 0"
+                    }
+                  },
                   "inner_calls": [
                     {
                       "contract": "0x38925b0bcf4dce081042ca26a96300d9e181b910328db54a6c89e5451503f5",
                       "selector": "0x39b9c84d6a72745116ecdbd7f122af6d51a7183b6e764d621583713bcceb8cd",
-                      "info": "Same"
+                      "info": {
+                        "Different": {
+                          "inner_calls": [
+                            {
+                              "contract": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                              "selector": "0x2e4263afad30923c891518314c3c95dbe830a16874e8abc5777a9a20b54c76e",
+                              "info": {
+                                "Different": {
+                                  "inner_calls": [],
+                                  "base": "118800490883752241427, 0",
+                                  "native": "344509208241, 0"
+                                }
+                              }
+                            },
+                            {
+                              "contract": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                              "selector": "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+                              "info": "Same"
+                            },
+                            {
+                              "contract": "0x53c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
+                              "selector": "0x2e4263afad30923c891518314c3c95dbe830a16874e8abc5777a9a20b54c76e",
+                              "info": "BaseOnly"
+                            },
+                            {
+                              "contract": "0x53c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
+                              "selector": "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+                              "info": "BaseOnly"
+                            }
+                          ],
+                          "base": "4800702331713358, 0, 1, 20360167, 0, 1, 0, 0, 11, 0",
+                          "native": "0, 0, 0, 11, 0, 1, 0, 0, 11, 0"
+                        }
+                      }
                     }
                   ]
                 }
