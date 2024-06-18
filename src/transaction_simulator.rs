@@ -1,6 +1,10 @@
-use std::{fmt::Display, fs, path::Path};
+use std::{
+    fmt::Display,
+    fs::OpenOptions,
+};
 
 use itertools::Itertools;
+use serde::Serialize;
 use starknet::{
     core::types::{
         BlockId, BroadcastedDeployAccountTransaction, BroadcastedDeployAccountTransactionV1,
@@ -13,7 +17,10 @@ use starknet::{
     providers::Provider,
 };
 
-use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
+use crate::{
+    juno_manager::{JunoBranch, JunoManager, ManagerError},
+    trace_comparison::hex_serialize,
+};
 
 #[allow(dead_code)]
 pub enum SimulationStrategy {
@@ -151,7 +158,7 @@ impl TransactionSimulator for JunoManager {
         let broadcasted_transactions = transactions.iter().map(|tx| tx.tx.clone()).collect_vec();
         for i in 0..transactions.len() {
             let transactions_to_try = &broadcasted_transactions[0..transactions.len() - i];
-            println!("Trying {} tranactions", transactions_to_try.len());
+            println!("Trying {} transactions", transactions_to_try.len());
             self.ensure_usable().await?;
             let simulation_result = self
                 .rpc_client
@@ -178,7 +185,7 @@ impl TransactionSimulator for JunoManager {
         let broadcasted_transactions = transactions.iter().map(|tx| tx.tx.clone()).collect_vec();
         for i in 0..transactions.len() {
             let transactions_to_try = &broadcasted_transactions[0..i + 1];
-            println!("Trying {} tranactions", transactions_to_try.len());
+            println!("Trying {} transactions", transactions_to_try.len());
             self.ensure_usable().await?;
             let simulation_result = self
                 .rpc_client
@@ -208,7 +215,7 @@ impl TransactionSimulator for JunoManager {
         loop {
             println!("Known failure length: {known_failure_length}");
             println!("Known success length: {}", successful_results.len());
-            println!("Trying {} tranactions", i);
+            println!("Trying {} transactions", i);
             let transactions_to_try = &broadcasted_transactions[0..i];
             self.ensure_usable().await?;
             let simulation_result = self
@@ -238,7 +245,7 @@ impl TransactionSimulator for JunoManager {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum TransactionResult {
     Success,
     Revert { reason: String },
@@ -279,8 +286,9 @@ impl From<MaybePendingTransactionReceipt> for TransactionResult {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct SimulationReport {
+    #[serde(serialize_with = "hex_serialize")]
     tx_hash: FieldElement,
     expected_result: TransactionResult,
     simulated_result: TransactionResult,
@@ -298,8 +306,6 @@ impl Display for SimulationReport {
 
 impl SimulationReport {
     pub fn is_correct(&self) -> bool {
-      println!("asdf hash: '{}': expected_result: '{}' vs simulated_result: '{}': '{}'", self.tx_hash, self.expected_result, self.simulated_result,         std::mem::discriminant(&self.expected_result)
-            == std::mem::discriminant(&self.simulated_result));
         std::mem::discriminant(&self.expected_result)
             == std::mem::discriminant(&self.simulated_result)
     }
@@ -307,15 +313,15 @@ impl SimulationReport {
 
 pub fn log_block_report(block_number: u64, report: Vec<SimulationReport>) {
     println!("Log report for block {block_number}");
-    let text = report
-        .iter()
-        .map(|simulation_report| format!("{}", simulation_report))
-        .join(",\n");
-    fs::write(
-        Path::new(&format!("./results/block-{}.json", block_number)),
-        format!("{{\n\"Block number\": {block_number},\n\"Transactions\": [\n{text}]}}"),
-    )
-    .expect("Failed to write block report");
+    let block_file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&format!("./results/block-{}.json", block_number))
+        .expect("Failed to open log file");
+
+    serde_json::to_writer_pretty(block_file, &report)
+        .expect(&format!("failed to write block: {block_number}"));
 }
 
 pub struct TransactionToSimulate {
