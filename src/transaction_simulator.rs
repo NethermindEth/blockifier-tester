@@ -317,11 +317,11 @@ pub fn log_block_report(block_number: u64, report: Vec<SimulationReport>) {
         .create(true)
         .write(true)
         .truncate(true)
-        .open(&format!("./results/block-{}.json", block_number))
+        .open(format!("./results/block-{}.json", block_number))
         .expect("Failed to open log file");
 
     serde_json::to_writer_pretty(block_file, &report)
-        .expect(&format!("failed to write block: {block_number}"));
+        .unwrap_or_else(|_| panic!("failed to write block: {block_number}"));
 }
 
 pub struct TransactionToSimulate {
