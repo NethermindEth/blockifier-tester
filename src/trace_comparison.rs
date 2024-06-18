@@ -3,10 +3,8 @@ use num_bigint::BigUint;
 use serde::Serialize;
 use starknet::core::types::{
     BlockId, ExecuteInvocation, FieldElement, FunctionInvocation, TransactionTrace,
-    TransactionTraceWithHash
+    TransactionTraceWithHash,
 };
-use serde_with::{serde_as, DeserializeAs};
-use starknet::core::serde::unsigned_field_element::UfeHex;
 // use super::{serde_impls::NumAsHex, *};
 // use starknet::core::types::serde_impls;
 
@@ -97,10 +95,11 @@ struct InnerCallComparison {
     info: InnerCallComparisonInfo,
 }
 
-fn hex_serialize<S>(val : &FieldElement, serializer : S) -> Result<S::Ok, S::Error>
-where S : serde::Serializer,
+pub fn hex_serialize<S>(val: &FieldElement, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
 {
-  serializer.serialize_str(&format!("0x{}", hash_to_hex(val)))
+    serializer.serialize_str(&format!("0x{}", hash_to_hex(val)))
 }
 
 pub fn generate_comparison(
