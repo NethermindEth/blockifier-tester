@@ -5,7 +5,7 @@
       "transaction_traces": [
         {
           "Both": {
-            "transaction_hash": "1116273914467506009539447501344195746942695607624986837251315279933131703",
+            "transaction_hash": "a1bce693e0ea4594081dc523bc3b9553a0cd960cd8786aaee0ea693ecbb7",
             "body": {
               "Invoke": {
                 "NativeFailed": [
@@ -20,11 +20,18 @@
         },
         {
           "Both": {
-            "transaction_hash": "3510667971616830125982859623625406842892648181471642314274197534494612067155",
+            "transaction_hash": "7c2f7b8555b53e33092e5757bc81df78f2ccee347a0a812d400f23b99851353",
             "body": {
               "Invoke": {
                 "BothSucceeded": {
-                  "results": "Same"
+                  "results": "Same",
+                  "inner_calls": [
+                    {
+                      "contract": "0x4c0a5193d58f74fbace4b74dcf65481e734ed1714121bdc571da345540efa05",
+                      "selector": "0x275dc81fcd5c700205ff6dc320e9d54ed3f0ace21177d591d6d5d259ee1d7c2",
+                      "info": "Same"
+                    }
+                  ]
                 }
               }
             }
@@ -32,11 +39,23 @@
         },
         {
           "Both": {
-            "transaction_hash": "3613324170101840456462839829301512244456122442340145914757098466850525909391",
+            "transaction_hash": "7fd11aa5c97e4652340269a33b046932f3b1bbdd952cf857f19f3f9d2b3918f",
             "body": {
               "Invoke": {
                 "BothSucceeded": {
-                  "results": "Same"
+                  "results": "Same",
+                  "inner_calls": [
+                    {
+                      "contract": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                      "selector": "0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c",
+                      "info": "Same"
+                    },
+                    {
+                      "contract": "0x6720b763aac6608ceba3f9069bebb0f990cd96b26071b3fa2a2109940f90db2",
+                      "selector": "0x3276861cf5e05d6daf8f352cabb47df623eb10c383ab742fcc7abea94d5c5cc",
+                      "info": "Same"
+                    }
+                  ]
                 }
               }
             }
@@ -44,7 +63,7 @@
         },
         {
           "Both": {
-            "transaction_hash": "3578084658386605360763983456904930986995187891713542930249668752307698775647",
+            "transaction_hash": "7e91fc839c618ed2386bf660fee1c2ab872d9d9b2295e7f02b123c6969fb65f",
             "body": {
               "Invoke": {
                 "NativeFailed": [

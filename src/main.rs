@@ -9,7 +9,7 @@ use block_tracer::{BlockTracer, TraceBlockReport};
 use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
-use log::info;
+use log::{info, warn};
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
 use std::path::Path;
@@ -53,10 +53,25 @@ async fn main() {
             )
         })
         .init();
+
+    // let result = block_tracer::block_main().await;
+    // println!("result: {:?}", result);
+
+    // return ();
+
+    // let native_result = try_native_block_trace(612575).await;
+    // match &native_result {
+    //     Ok(result) => println!("asdfzxcv: '{:?}'", result.result),
+    //     Err(_) => panic!("unexp"),
+    // };
+
+    // return ();
+
+    // let start = 612575;
+    // let end = 612576;
     // let start = 610026;
-    // let end = 645300;
-    let start = 612517;
-    let end = 612518;
+    let start = 613389;
+    let end = 645300;
     let blocks_with_tx_count = get_sorted_blocks_with_tx_count(start, end)
         .await
         .unwrap()
@@ -83,7 +98,7 @@ async fn main() {
             // Note that this doesn't compare the reasons for failure or the result on a success
             let successes = result.iter().filter(|result| result.is_correct()).count();
             println!(
-                "Completed block {block_number} with {successes}/{} successses",
+                "Completed block {block_number} with {successes}/{} successes",
                 result.len()
             );
             log_block_report(block_number, result);
@@ -99,9 +114,22 @@ async fn main() {
                 }
                 Err(err) => {
                     println!("{err:?}");
+                    log_err(block_number, err);
                 }
             }
         }
+    }
+}
+
+fn log_err(block_number: u64, err: ManagerError) {
+    let mut log_file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(format!("./results/err-{block_number}.json"))
+        .expect("Failed to open log file");
+    if let Err(write_err) = write!(log_file, "{err:?}") {
+        warn!("Failed to write err with error: '{write_err}'");
     }
 }
 

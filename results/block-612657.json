@@ -1,0 +1,54 @@
+{
+"Block number": 612657,
+"Transactions": [
+{
+"Hash": "2443587029139803135622812966703645773728467663223806271233172844310582573965",
+"Expected result": "Success",
+"Simulated result": "Reverted: Transaction execution has failed:
+0: Error in the called contract (contract address: 0x06c21ac4b1570f8119db01388a8cfc623de6ab8fe329dccae72a468c41c62a81, class hash: 0x058d97f7d76e78f44905cc30cb65b91ea49a4b908a76703c54197bca90f81773, selector: 0x015d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad):
+Error at pc=0:81:
+Cairo traceback (most recent call last):
+Unknown location (pc=0:731)
+Unknown location (pc=0:677)
+Unknown location (pc=0:291)
+Unknown location (pc=0:314)
+
+1: Error in the called contract (contract address: 0x05319f36b15c6321a02746681158ba0614feecfbcf3cae67d3c167d408e26a64, class hash: 0x0776b45486ecc7f014f7e840e6176007701dd107f76b29b242ca6a9d2a8e10b9, selector: 0x03ee026203995f0595bc70415daa5363820f0382fe6cc36481a337b8160e492f):
+Native execution error: Invalid signature
+"},
+{
+"Hash": "898373477805291948136158234113321244011113974973734336012741562936849576973",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "1228456467983012121212489981003959345281636067534261197695102094594218181066",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "2914623254707153933611359159061469388569385323430097256889777857360721296740",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "703038509532392333101179365201854560360854032795542757173290207256145233675",
+"Expected result": "Success",
+"Simulated result": "Success"},
+{
+"Hash": "3042002137931629612748442165295819933520416072745398192290240582146726138784",
+"Expected result": "Success",
+"Simulated result": "Crash"},
+{
+"Hash": "838639651424396480855410303179405082344571075994411838968842680414246046267",
+"Expected result": "Success",
+"Simulated result": "Unreached"},
+{
+"Hash": "2114883627925147887226545465351312793359286150511982474944622348013308785868",
+"Expected result": "Success",
+"Simulated result": "Unreached"},
+{
+"Hash": "839995531943452406918503650555742538978855610292354173174540401981741423695",
+"Expected result": "Success",
+"Simulated result": "Unreached"},
+{
+"Hash": "3362652393752759295408400228305222099967352225981727882944856665700236018424",
+"Expected result": "Success",
+"Simulated result": "Unreached"}]}
