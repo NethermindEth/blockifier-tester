@@ -8,6 +8,8 @@ mod transaction_tracer;
 use block_tracer::{BlockTracer, TraceBlockReport};
 use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
+use clap::{arg, command, value_parser, Command};
+use core::panic;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
 use log::{info, warn};
 use std::fs::OpenOptions;
@@ -39,8 +41,41 @@ async fn try_base_block_trace(block_number: u64) -> Result<TraceBlockReport, Man
     juno_manager.trace_block(block_number).await
 }
 
-#[tokio::main]
-async fn main() {
+// Creates a file in ./results/err-{`block_number`}.json with the failure reason
+fn log_trace_crash(block_number: u64, err: ManagerError) {
+    let mut log_file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(format!("./results/err-{block_number}.json"))
+        .expect("Failed to open log file");
+    if let Err(write_err) = write!(log_file, "{err:?}") {
+        warn!("Failed to write err with error: '{write_err}'");
+    }
+}
+
+// Creates a file in ./results/trace-{`block_number`}.json with the a full trace comparison between
+// base blockifier and native blockifier results
+fn log_trace_comparison(
+    block_number: u64,
+    native_report: TraceBlockReport,
+    base_report: TraceBlockReport,
+) {
+    let comparison = generate_comparison(base_report, native_report);
+
+    let log_file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(format!("./results/trace-{block_number}.json"))
+        .expect("Failed to open log file");
+
+    let mut writer = BufWriter::new(log_file);
+    serde_json::to_writer_pretty(&mut writer, &comparison).unwrap();
+    writer.flush().unwrap();
+}
+
+fn setup_env_logger() {
     // run with RUST_LOG=juno_compare_traces to log everything
     env_logger::builder()
         .format(|buf, record| {
@@ -53,26 +88,10 @@ async fn main() {
             )
         })
         .init();
+}
 
-    // let result = block_tracer::block_main().await;
-    // println!("result: {:?}", result);
-
-    // return ();
-
-    // let native_result = try_native_block_trace(612575).await;
-    // match &native_result {
-    //     Ok(result) => println!("asdfzxcv: '{:?}'", result.result),
-    //     Err(_) => panic!("unexp"),
-    // };
-
-    // return ();
-
-    // let start = 612575;
-    // let end = 612576;
-    // let start = 610026;
-    let start = 613389;
-    let end = 645300;
-    let blocks_with_tx_count = get_sorted_blocks_with_tx_count(start, end)
+async fn execute_traces(start_block: u64, end_block: u64) {
+    let blocks_with_tx_count = get_sorted_blocks_with_tx_count(start_block, end_block)
         .await
         .unwrap()
         .into_iter()
@@ -114,40 +133,51 @@ async fn main() {
                 }
                 Err(err) => {
                     println!("{err:?}");
-                    log_err(block_number, err);
+                    log_trace_crash(block_number, err);
                 }
             }
         }
     }
 }
 
-fn log_err(block_number: u64, err: ManagerError) {
-    let mut log_file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(format!("./results/err-{block_number}.json"))
-        .expect("Failed to open log file");
-    if let Err(write_err) = write!(log_file, "{err:?}") {
-        warn!("Failed to write err with error: '{write_err}'");
+#[tokio::main]
+async fn main() {
+    setup_env_logger();
+
+    let cli = command!()
+        .subcommand(
+            Command::new("block")
+                .about("traces a single block")
+                .arg(arg!(<block_num> "block number to trace").value_parser(value_parser!(u64))),
+        )
+        .subcommand(
+            Command::new("range")
+                .about("traces a block range")
+                .arg(
+                    arg!(<first_block_num> "inclusive initial block number")
+                        .value_parser(value_parser!(u64)),
+                )
+                .arg(
+                    arg!(<last_block_num> "exclusive last block number")
+                        .value_parser(value_parser!(u64)),
+                ),
+        )
+        .get_matches();
+
+    match cli.subcommand() {
+        Some(("block", args)) => {
+            let block_num = args.get_one::<u64>("block_num").unwrap().to_owned();
+            execute_traces(block_num, block_num + 1).await;
+        }
+        Some(("range", args)) => {
+            let first_block_num = args.get_one::<u64>("first_block_num").unwrap().to_owned();
+            let last_block_num = args.get_one::<u64>("last_block_num").unwrap().to_owned();
+            if last_block_num <= first_block_num {
+                panic!("first_block_num must be higher than last_block_num");
+            }
+            execute_traces(first_block_num, last_block_num).await;
+        }
+        Some((cmd, _)) => panic!("Unknown {cmd} "),
+        None => panic!("Expecting either `block` or `range` sub-commands"),
     }
-}
-
-fn log_trace_comparison(
-    block_number: u64,
-    native_report: TraceBlockReport,
-    base_report: TraceBlockReport,
-) {
-    let comparison = generate_comparison(base_report, native_report);
-
-    let log_file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(format!("./results/trace-{block_number}.json"))
-        .expect("Failed to open log file");
-
-    let mut writer = BufWriter::new(log_file);
-    serde_json::to_writer_pretty(&mut writer, &comparison).unwrap();
-    writer.flush().unwrap();
 }
