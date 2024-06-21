@@ -10,16 +10,17 @@ The tool is a work in progress and is primarily used only during this stage to r
 
 Native Juno : Juno instance running with Native Blockifier
 
-Base Juno   : Juno instance (used to distinguish between a "normal" Juno instance and Native Juno)
+Base Juno : Juno instance (used to distinguish between a "normal" Juno instance and Native Juno)
 
 ## What it does
 
-The tool takes a block range (currently hard coded in main.rs). Note that for now, blocks are sorted in ascending order of how many transactions they have in order to avoid having to run many long RPC calls before we can get any results.
+The tool takes a block range (see [Usage](#usage)). Note that for now, blocks are sorted in ascending order of how many transactions they have in order to avoid having to run many long RPC calls before we can get any results.
 
 For each block it will:
-Attempt to trace the block with Native Juno. If the trace had no failures* then the block will be traced with Base Juno and a comparison between the two results will be dumped in `./results/trace-<block_number>`. Otherwise, the block transactions will be simulated and a report will be dumped in `./results/block-<block_number>`. Currently, the block is simulated using a binary search to find which transaction crashes Juno.
+Attempt to trace the block with Native Juno. If the trace had no failures\* then the block will be traced with Base Juno and a comparison between the two results will be dumped in `./results/trace-<block_number>`. Otherwise, the block transactions will be simulated and a report will be dumped in `./results/block-<block_number>`. Currently, the block is simulated using a binary search to find which transaction crashes Juno.
 
-*A failure in this case is defined as _any_ of the following:
+\*A failure in this case is defined as _any_ of the following:
+
 1. Juno crashing
 2. The block is not found (this likely means your Juno database did not have the block)
 
@@ -39,7 +40,7 @@ Finally, Juno must be in sync and have Starknet latest blockchain history. To ac
 
 ### Config
 
-In the `config.toml` located at the project root set the following variables*:
+In the `config.toml` located at the project root set the following variables\*:
 
 ```toml
 juno_path = "<path to base Juno executable>"
@@ -50,6 +51,7 @@ juno_database_path = "<path to Juno's database>" # correlates to `--db-path` arg
 It is recommended that you use absolute paths and avoid `$HOME` and `~`
 
 Example `config.toml`:
+
 ```toml
 juno_path = "/home/pwhite/repos/juno/build/juno"
 juno_native_path = "/home/pwhite/repos/native_juno/build/juno"
@@ -58,18 +60,23 @@ juno_database_path = "/home/pwhite/snapshots/juno_mainnet"
 
 ### Usage
 
-Once setup is complete, build the project with:
+Once setup is complete, build the project with `cargo build`. The tool presents two commands:
 
-```
-cargo build
+- _**block** `<block_num>`_ which traces and perform comparisons between base and native juno over a single block and
+- _**range** `<start_block>` `<end_block>`_ which does the same but over a range of blocks from inclusive `<start_block>` to exclusive `<end_block>`.
+
+Execute them with:
+
+```bash
+cd target/debug # or whatever compilation profile you've used
+juno_compare_traces block 610508
 ```
 
-and/or directly run it with
+or
 
+```bash
+juno_compare_traces range 610508 611000
 ```
-cargo run
-```
-
 
 ## Troubleshooting
 
