@@ -12,8 +12,9 @@ use clap::{arg, command, value_parser, Command};
 use core::panic;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
 use log::{info, warn};
-use std::fs::OpenOptions;
-use std::io::{BufWriter, Write};
+use tokio::fs::OpenOptions;
+use tokio::io::{BufWriter, AsyncWriteExt};
+use std::io::Write;
 use std::path::Path;
 use trace_comparison::generate_comparison;
 use transaction_simulator::{log_block_report, SimulationStrategy, TransactionSimulator};
@@ -42,37 +43,42 @@ async fn try_base_block_trace(block_number: u64) -> Result<TraceBlockReport, Man
 }
 
 // Creates a file in ./results/err-{`block_number`}.json with the failure reason
-fn log_trace_crash(block_number: u64, err: ManagerError) {
+async fn log_trace_crash(block_number: u64, err: ManagerError) {
     let mut log_file = OpenOptions::new()
         .create(true)
         .write(true)
         .truncate(true)
         .open(format!("./results/err-{block_number}.json"))
+        .await
         .expect("Failed to open log file");
-    if let Err(write_err) = write!(log_file, "{err:?}") {
+    if let Err(write_err) = log_file.write_all(format!("{err:?}").as_bytes()).await {
         warn!("Failed to write err with error: '{write_err}'");
     }
 }
 
 // Creates a file in ./results/trace-{`block_number`}.json with the a full trace comparison between
 // base blockifier and native blockifier results
-fn log_trace_comparison(
+async fn log_trace_comparison(
     block_number: u64,
     native_report: TraceBlockReport,
     base_report: TraceBlockReport,
 ) {
     let comparison = generate_comparison(base_report, native_report);
 
+    let mut buffer = Vec::new();
+    serde_json::to_writer_pretty(&mut buffer, &comparison).unwrap();
+
     let log_file = OpenOptions::new()
         .create(true)
         .write(true)
         .truncate(true)
         .open(format!("./results/trace-{block_number}.json"))
+        .await
         .expect("Failed to open log file");
 
     let mut writer = BufWriter::new(log_file);
-    serde_json::to_writer_pretty(&mut writer, &comparison).unwrap();
-    writer.flush().unwrap();
+    writer.write_all(&buffer).await.unwrap();
+    writer.flush().await.unwrap();
 }
 
 fn setup_env_logger() {
@@ -129,11 +135,11 @@ async fn execute_traces(start_block: u64, end_block: u64) {
             match base_result {
                 Ok(base_report) => {
                     info!("{}", base_report.result);
-                    log_trace_comparison(block_number, native_report, base_report);
+                    log_trace_comparison(block_number, native_report, base_report).await;
                 }
                 Err(err) => {
                     warn!("{err:?}");
-                    log_trace_crash(block_number, err);
+                    log_trace_crash(block_number, err).await;
                 }
             }
         }
