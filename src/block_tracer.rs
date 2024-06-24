@@ -1,4 +1,4 @@
-use log::debug;
+use log::{info, debug};
 use starknet::{
     core::types::{BlockId, TransactionTraceWithHash},
     providers::{Provider, ProviderError},
@@ -52,8 +52,8 @@ pub async fn block_main() -> Result<(), ManagerError> {
     let mut juno_manager = JunoManager::new(JunoBranch::Native).await?;
     let trace_report = juno_manager.trace_block(block_number).await?;
 
-    println!("//Done {block_number}");
-    println!("{trace_report:?}");
+    info!("//Done {block_number}");
+    info!("{trace_report:?}");
 
     Ok(())
 }

@@ -116,23 +116,23 @@ async fn execute_traces(start_block: u64, end_block: u64) {
                 .unwrap();
             // Note that this doesn't compare the reasons for failure or the result on a success
             let successes = result.iter().filter(|result| result.is_correct()).count();
-            println!(
+            info!(
                 "Completed block {block_number} with {successes}/{} successes",
                 result.len()
             );
             log_block_report(block_number, result);
         } else {
             let native_report = native_result.unwrap();
-            println!("{}", native_report.result);
+            info!("{}", native_report.result);
             info!("Tracing block {block_number} with Base. It has {tx_count} transactions");
             let base_result = try_base_block_trace(block_number).await;
             match base_result {
                 Ok(base_report) => {
-                    println!("{}", base_report.result);
+                    info!("{}", base_report.result);
                     log_trace_comparison(block_number, native_report, base_report);
                 }
                 Err(err) => {
-                    println!("{err:?}");
+                    warn!("{err:?}");
                     log_trace_crash(block_number, err);
                 }
             }

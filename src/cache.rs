@@ -1,7 +1,7 @@
 use std::{fs::OpenOptions, path::Path};
 
 use anyhow::Context;
-use log::{debug, warn};
+use log::{debug, warn, info};
 use starknet::core::types::BlockId;
 
 use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
@@ -18,8 +18,8 @@ pub async fn get_sorted_blocks_with_tx_count(
     // First load the entire cache
     let cache_data = read_block_tx_counts_cache(cache_path);
     match &cache_data {
-        Ok(data) => println!("Got cache with {} elements", data.len()),
-        Err(err) => println!("Got err {err}"),
+        Ok(data) => info!("Got cache with {} elements", data.len()),
+        Err(err) => warn!("Got err {err}"),
     }
     // If no cache could be loaded, treat it as being empty
     let mut cache_data = cache_data.unwrap_or_default();

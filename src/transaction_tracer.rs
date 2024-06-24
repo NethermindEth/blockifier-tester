@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use log::{info, warn};
+
 use starknet::{
     core::types::{FieldElement, StarknetError},
     providers::{Provider, ProviderError},
@@ -71,7 +73,7 @@ impl TransactionTracer for JunoManager {
         &mut self,
         transaction_hash: &str,
     ) -> Result<TraceTransactionReport, ManagerError> {
-        println!("Tracing transaction {transaction_hash}");
+        info!("Tracing transaction {transaction_hash}");
         self.ensure_usable().await?;
         let transaction = FieldElement::from_hex_be(transaction_hash)
             .map_err(|e| ManagerError::InternalError(format!("{}", e)))?;
@@ -80,11 +82,11 @@ impl TransactionTracer for JunoManager {
         let result_type = match &trace_result {
             Ok(_) => TraceResult::Success,
             Err(err) => {
-                println!("err: '{:?}''", err);
+                warn!("err: '{:?}''", err);
                 TraceResult::from(err)
             }
         };
-        println!("{result_type}");
+        info!("{result_type}");
 
         self.ensure_dead().await?;
 
@@ -102,18 +104,18 @@ pub async fn transaction_hash_main() -> Result<(), ManagerError> {
     let hash = "0x07e3ace3b1c3f76b83b734b7a2ea990fb2823e931fb2ecef5d2677887aed9082"; // Crashes on native
     let mut juno_manager = JunoManager::new(JunoBranch::Native).await?;
     let trace_report = juno_manager.trace_transaction(hash).await?;
-    println!("transaction: {:?}", trace_report.transaction);
-    println!("result: {}", trace_report.result);
+    info!("transaction: {:?}", trace_report.transaction);
+    info!("result: {}", trace_report.result);
     match trace_report.post_response {
         Ok(item) => {
-            println!("item: {:?}", item);
+            info!("item: {:?}", item);
         }
         Err(err) => {
-            println!("error: {}", err);
+            warn!("error: {}", err);
         }
     };
 
-    println!("//Done {hash}");
+    info!("//Done {hash}");
 
     Ok(())
 }
