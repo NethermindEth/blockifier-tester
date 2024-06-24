@@ -67,7 +67,7 @@ juno_database_path = "/home/pwhite/snapshots/juno_mainnet"
 
 To mantain all results in the same repo and use github as a synced db we used Git LFS. It is used to keep track of all files in the `./results/` directory. Follow install instructions [here](https://git-lfs.com/).
 
-### Usage
+## Usage
 
 Once setup is complete, build the project with `cargo build`. The tool presents two commands:
 
