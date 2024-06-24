@@ -3,6 +3,8 @@ use std::{
     fs::OpenOptions,
 };
 
+use log::{info, warn};
+
 use itertools::Itertools;
 use serde::Serialize;
 use starknet::{
@@ -64,7 +66,7 @@ impl TransactionSimulator for JunoManager {
         &mut self,
         tx_hash: FieldElement,
     ) -> Result<TransactionResult, ManagerError> {
-        println!("Getting transaction receipt for {}", tx_hash);
+        info!("Getting transaction receipt for {}", tx_hash);
         self.ensure_usable().await?;
         let result = self
             .rpc_client
@@ -96,12 +98,12 @@ impl TransactionSimulator for JunoManager {
         block_number: u64,
         strategy: SimulationStrategy,
     ) -> Result<Vec<SimulationReport>, ManagerError> {
-        println!("Getting block {block_number} with txns");
+        info!("Getting block {block_number} with txns");
         let block = self
             .get_block_with_txs(BlockId::Number(block_number))
             .await?;
 
-        println!("Getting transactions to simulate");
+        info!("Getting transactions to simulate");
         let transactions = self.get_transactions_to_simulate(&block).await?;
         let simulation_results = match strategy {
             SimulationStrategy::Binary => {
@@ -158,7 +160,7 @@ impl TransactionSimulator for JunoManager {
         let broadcasted_transactions = transactions.iter().map(|tx| tx.tx.clone()).collect_vec();
         for i in 0..transactions.len() {
             let transactions_to_try = &broadcasted_transactions[0..transactions.len() - i];
-            println!("Trying {} transactions", transactions_to_try.len());
+            info!("Trying {} transactions", transactions_to_try.len());
             self.ensure_usable().await?;
             let simulation_result = self
                 .rpc_client
@@ -185,7 +187,7 @@ impl TransactionSimulator for JunoManager {
         let broadcasted_transactions = transactions.iter().map(|tx| tx.tx.clone()).collect_vec();
         for i in 0..transactions.len() {
             let transactions_to_try = &broadcasted_transactions[0..i + 1];
-            println!("Trying {} transactions", transactions_to_try.len());
+            info!("Trying {} transactions", transactions_to_try.len());
             self.ensure_usable().await?;
             let simulation_result = self
                 .rpc_client
@@ -213,9 +215,9 @@ impl TransactionSimulator for JunoManager {
         let mut known_failure_length = transactions.len() + 1;
         let mut i = known_failure_length / 2;
         loop {
-            println!("Known failure length: {known_failure_length}");
-            println!("Known success length: {}", successful_results.len());
-            println!("Trying {} transactions", i);
+            info!("Known failure length: {known_failure_length}");
+            info!("Known success length: {}", successful_results.len());
+            info!("Trying {} transactions", i);
             let transactions_to_try = &broadcasted_transactions[0..i];
             self.ensure_usable().await?;
             let simulation_result = self
@@ -232,7 +234,7 @@ impl TransactionSimulator for JunoManager {
                 }
             } else {
                 // TODO branch on error
-                println!("Got error {:?}", simulation_result.unwrap_err());
+                warn!("Got error {:?}", simulation_result.unwrap_err());
                 self.ensure_dead().await?;
                 if i - 1 <= successful_results.len() {
                     return Ok(successful_results);
@@ -312,7 +314,7 @@ impl SimulationReport {
 }
 
 pub fn log_block_report(block_number: u64, report: Vec<SimulationReport>) {
-    println!("Log report for block {block_number}");
+    info!("Log report for block {block_number}");
     let block_file = OpenOptions::new()
         .create(true)
         .write(true)
@@ -458,14 +460,14 @@ pub async fn simulate_main() -> Result<(), ManagerError> {
         .simulate_block(block_number, SimulationStrategy::Optimistic)
         .await?;
     log_block_report(block_number, block_report);
-    println!("//Done {block_number}");
+    info!("//Done {block_number}");
 
     for block_number in 645000..645100 {
         let block_report = juno_manager
             .simulate_block(block_number, SimulationStrategy::Binary)
             .await?;
         log_block_report(block_number, block_report);
-        println!("//Done {block_number}");
+        info!("//Done {block_number}");
     }
     Ok(())
 }
