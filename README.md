@@ -1,4 +1,4 @@
-## Purpose
+# Blockifier Tester
 
 This is a tool created for testing the [Blockifier integrated with Cairo Native](https://github.com/NethermindEth/blockifier).
 
@@ -8,18 +8,19 @@ The tool is a work in progress and is primarily used only during this stage to r
 
 ## Terminology
 
-Native Juno : Juno instance running with Native Blockifier
+Native Juno : Juno instance running with [Native Blockifier](https://github.com/NethermindEth/blockifier) a.k.a. executing Cairo transactions natively, by compiling them with [Cairo Native](https://github.com/lambdaclass/cairo_native).
 
-Base Juno : Juno instance (used to distinguish between a "normal" Juno instance and Native Juno)
+Base Juno : Juno instance running using the "normal" [Blockifier](https://github.com/starkware-libs/blockifier) a.k.a. executing Cairo transactions with the VM.
 
 ## What it does
 
-The tool takes a block range (see [Usage](#usage)). Note that for now, blocks are sorted in ascending order of how many transactions they have in order to avoid having to run many long RPC calls before we can get any results.
-
+The tool takes either a single block or a block range\* (see [Usage](#usage)).
 For each block it will:
-Attempt to trace the block with Native Juno. If the trace had no failures\* then the block will be traced with Base Juno and a comparison between the two results will be dumped in `./results/trace-<block_number>`. Otherwise, the block transactions will be simulated and a report will be dumped in `./results/block-<block_number>`. Currently, the block is simulated using a binary search to find which transaction crashes Juno.
+Attempt to trace the block with Native Juno. If the trace had no failures\*\* then the block will be traced with Base Juno and a comparison between the two results will be dumped in `./results/trace-<block_number>`. Otherwise, the block transactions will be simulated and a report will be dumped in `./results/block-<block_number>`. Currently, the block is simulated using a binary search to find which transaction crashes Juno. Results are tracked using [Git LFS](#git_lfs)
 
-\*A failure in this case is defined as _any_ of the following:
+\*blocks are sorted in ascending order of how many transactions they have to avoid having to run many long RPC calls before we can get any results.
+
+\*\*A failure in this case is defined as _any_ of the following:
 
 1. Juno crashing
 2. The block is not found (this likely means your Juno database did not have the block)
@@ -57,6 +58,10 @@ juno_path = "/home/pwhite/repos/juno/build/juno"
 juno_native_path = "/home/pwhite/repos/native_juno/build/juno"
 juno_database_path = "/home/pwhite/snapshots/juno_mainnet"
 ```
+
+### Git LFS
+
+To mantain all results in the same repo and use github as a synced db we used Git LFS. It is used to keep track of all files in the `./results/` directory. Follow install instructions [here](https://git-lfs.com/).
 
 ### Usage
 
