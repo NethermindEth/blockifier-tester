@@ -67,8 +67,8 @@ To mantain all results in the same repo and use github as a synced db we used Gi
 
 Once setup is complete, build the project with `cargo build`. The tool presents two commands:
 
-- _**block** `<block_num>`_ which traces and perform comparisons between base and native juno over a single block and
-- _**range** `<start_block>` `<end_block>`_ which does the same but over a range of blocks from inclusive `<start_block>` to exclusive `<end_block>`.
+- _**block** `<block_num>`_ which traces and perform comparisons between base and native juno over a single block.
+- _**range** `<start_block>` `<end_block>`_ which does the same but over a range of blocks from inclusive `<start_block>` to exclusive `<end_block>`. Note that _(currently)_ blocks are sorted in ascending order by their amount of transactions.
 
 Execute them with:
 
