@@ -18,12 +18,12 @@ The tool takes either a single block or a block range\* (see [Usage](#usage)).
 For each block it will:
 Attempt to trace the block with Native Juno. If the trace had no failures\*\* then the block will be traced with Base Juno and a comparison between the two results will be dumped in `./results/trace-<block_number>`. Otherwise, the block transactions will be simulated and a report will be dumped in `./results/block-<block_number>`. Currently, the block is simulated using a binary search to find which transaction crashes Juno. Results are tracked using [Git LFS](#git_lfs)
 
-\*blocks are sorted in ascending order of how many transactions they have to avoid having to run many long RPC calls before we can get any results.
+> \*Blocks are sorted in ascending order of how many transactions they have to avoid having to run many long RPC calls before we can get any results.
 
-\*\*A failure in this case is defined as _any_ of the following:
-
-1. Juno crashing
-2. The block is not found (this likely means your Juno database did not have the block)
+> \*\*A failure in this case is defined as _any_ of the following:
+>
+> 1. Juno crashing
+> 2. The block is not found (this likely means your Juno database did not have the block)
 
 ## Setup
 
