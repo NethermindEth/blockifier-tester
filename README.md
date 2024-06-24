@@ -16,7 +16,7 @@ Base Juno : Juno instance running using the "normal" [Blockifier](https://github
 
 The tool takes either a single block or a block range\* (see [Usage](#usage)).
 For each block it will:
-Attempt to trace the block with Native Juno. If the trace had no failures\*\* then the block will be traced with Base Juno and a comparison between the two results will be dumped in `./results/trace-<block_number>`. Otherwise, the block transactions will be simulated and a report will be dumped in `./results/block-<block_number>`. Currently, the block is simulated using a binary search to find which transaction crashes Juno. Results are tracked using [Git LFS](#git_lfs)
+Attempt to trace the block with Native Juno. If the trace had no failures\*\* then the block will be traced with Base Juno and a comparison between the two results will be dumped in `./results/trace-<block_number>`. Otherwise, the block transactions will be simulated and a report will be dumped in `./results/block-<block_number>`. Currently, the block is simulated using a binary search to find which transaction crashes Juno. Results are tracked using [Git LFS](#git-lfs)
 
 > \*Blocks are sorted in ascending order of how many transactions they have to avoid having to run many long RPC calls before we can get any results.
 
@@ -31,7 +31,7 @@ Attempt to trace the block with Native Juno. If the trace had no failures\*\* th
 
 To get your base version of Juno you need to first clone the [repo](https://github.com/NethermindEth/juno) and build it via `make juno`. Be sure to install all needed dependencies first, which are specified in the that same repository.
 
-Then, to obtain the native version, clone the project again, _switch to `native2.6.3-blockifier` branch_ and recompile. If you haven't compile Cairo Native before you may face many compilation issues. We suggest you clone [Cairo Native](https://github.com/lambdaclass/cairo_native) and compile it separately first _(be sure to be using the same version as `native2.6.3-blockifier`)_. Finally, after both projects are compiled, make sure you have Cairo Native runtime library in your environment:
+Then, to obtain the native version, clone the project again, _switch to `native2.6.3-blockifier` branch_ and recompile. If you haven't compile Cairo Native before you may face many compilation issues. We suggest you clone [Cairo Native](https://github.com/lambdaclass/cairo_native) and compile it separately first _(be sure to be using the same version as `native2.6.3-blockifier`)_. After both projects are compiled, make sure you have Cairo Native runtime library in your environment which is essential for running AOT Compiled Cairo.
 
 ```
 export CAIRO_NATIVE_RUNTIME_LIBRARY=/<absolute_path_to>/cairo_native/target/release/libcairo_native_runtime.a
