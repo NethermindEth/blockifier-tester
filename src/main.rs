@@ -4,6 +4,7 @@ mod juno_manager;
 mod trace_comparison;
 mod transaction_simulator;
 mod transaction_tracer;
+mod filters;
 
 use block_tracer::{BlockTracer, TraceBlockReport};
 use cache::get_sorted_blocks_with_tx_count;
@@ -143,6 +144,7 @@ async fn execute_traces(start_block: u64, end_block: u64) {
 #[tokio::main]
 async fn main() {
     setup_env_logger();
+    filters::dump();
 
     let cli = command!()
         .subcommand(

@@ -1,6 +1,6 @@
 use itertools::{EitherOrBoth, Itertools};
 use num_bigint::BigUint;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use starknet::core::types::{
     BlockId, ExecuteInvocation, FieldElement, FunctionInvocation, TransactionTrace,
     TransactionTraceWithHash,
@@ -11,14 +11,14 @@ use starknet::core::types::{
 use crate::block_tracer::TraceBlockReport;
 
 // TODO more distinct naming
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct BlockTraceResult {
-    block_number: u64,
-    comparison: BlockTraceComparison,
+    pub block_number: u64,
+    pub comparison: BlockTraceComparison,
 }
 
-#[derive(Serialize)]
-enum BlockTraceComparison {
+#[derive(Serialize, Deserialize)]
+pub enum BlockTraceComparison {
     BothSucceeded {
         transaction_traces: Vec<TransactionTraceComparison>,
     },
@@ -30,8 +30,8 @@ enum BlockTraceComparison {
     },
 }
 
-#[derive(Serialize)]
-enum TransactionTraceComparison {
+#[derive(Serialize, Deserialize)]
+pub enum TransactionTraceComparison {
     BaseOnly {
         transaction_hash: String,
     },
@@ -45,8 +45,8 @@ enum TransactionTraceComparison {
     },
 }
 
-#[derive(Serialize)]
-enum TransactionTraceComparisonBody {
+#[derive(Serialize, Deserialize)]
+pub enum TransactionTraceComparisonBody {
     Mismatch { base: String, native: String },
     Invoke(InvokeComparison),
     DeployAccount,
@@ -54,8 +54,8 @@ enum TransactionTraceComparisonBody {
     Declare,
 }
 
-#[derive(Serialize)]
-enum InvokeComparison {
+#[derive(Serialize, Deserialize)]
+pub enum InvokeComparison {
     BaseFailed(String),
     BothFailed {
         base_reason: String,
@@ -68,14 +68,14 @@ enum InvokeComparison {
     NativeFailed(Vec<String>),
 }
 
-#[derive(Serialize)]
-enum CallResultComparison {
+#[derive(Serialize, Deserialize)]
+pub enum CallResultComparison {
     Same,
     Different { base: String, native: String },
 }
 
-#[derive(Serialize)]
-enum InnerCallComparisonInfo {
+#[derive(Serialize, Deserialize)]
+pub enum InnerCallComparisonInfo {
     Same,
     Different {
         inner_calls: Vec<InnerCallComparison>,
@@ -86,13 +86,13 @@ enum InnerCallComparisonInfo {
     NativeOnly,
 }
 
-#[derive(Serialize)]
-struct InnerCallComparison {
+#[derive(Serialize, Deserialize)]
+pub struct InnerCallComparison {
     #[serde(serialize_with = "hex_serialize")]
-    contract: FieldElement,
+    pub contract: FieldElement,
     #[serde(serialize_with = "hex_serialize")]
-    selector: FieldElement,
-    info: InnerCallComparisonInfo,
+    pub selector: FieldElement,
+    pub info: InnerCallComparisonInfo,
 }
 
 pub fn hex_serialize<S>(val: &FieldElement, serializer: S) -> Result<S::Ok, S::Error>
