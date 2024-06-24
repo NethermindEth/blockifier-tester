@@ -31,7 +31,7 @@ Attempt to trace the block with Native Juno. If the trace had no failures\*\* th
 
 To get your base version of Juno you need to first clone the [repo](https://github.com/NethermindEth/juno) and build it via `make juno`. Be sure to install all needed dependencies first, which are specified in the that same repository.
 
-Then, to obtain the native version, clone the project again, _switch to `native2.6.3-blockifier` branch_ and recompile. If you haven't compile Cairo Native before you may face many compilation issues. We suggest you clone [Cairo Native](https://github.com/lambdaclass/cairo_native) and compile it separately first _(be sure to be using the same version as `native2.6.3-blockifier`)_. After both projects are compiled, make sure you have Cairo Native runtime library in your environment which is essential for running AOT Compiled Cairo.
+Then, to obtain the native version, clone the project again, _switch to `native2.6.3-blockifier` branch_ and recompile. If you haven't compiled Cairo Native before you may face many compilation issues. We suggest you clone [Cairo Native](https://github.com/lambdaclass/cairo_native) and compile it separately first _(be sure to be using the same version as `native2.6.3-blockifier`)_. After both projects are compiled, make sure you have Cairo Native runtime library in your environment which is essential for running Ahead of Time Compiled Cairo.
 
 ```
 export CAIRO_NATIVE_RUNTIME_LIBRARY=/<absolute_path_to>/cairo_native/target/release/libcairo_native_runtime.a
@@ -89,5 +89,6 @@ juno_compare_traces range 610508 611000
 
 ## Troubleshooting
 
-Problem: A block fails on Juno Native when I don't expect it to.
-Suggestion: Check `juno_out.log` to see what the actual failure was. If the failure was that the block was not found, check `juno_database_path` in your `Config.toml` and make sure it's pointing to a database path that has that block.
+_Problem_: A block fails on Juno Native when I don't expect it to.
+
+_Suggestion_: Check `juno_out.log` to see what the actual failure was. If the failure was that the block was not found, check `juno_database_path` in your `Config.toml` and make sure it's pointing to a database path that has that block.
