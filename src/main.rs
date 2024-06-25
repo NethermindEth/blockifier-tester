@@ -8,7 +8,7 @@ mod transaction_tracer;
 use block_tracer::{BlockTracer, TraceBlockReport};
 use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
-use clap::{arg, command, value_parser, Command};
+use clap::{arg, command, value_parser, ArgAction, Command};
 use core::panic;
 use general_trace_comparison::generate_block_comparison;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
@@ -19,18 +19,6 @@ use tokio::fs::OpenOptions;
 use tokio::io::{AsyncWriteExt, BufWriter};
 use transaction_simulator::{log_block_report, SimulationStrategy, TransactionSimulator};
 use transaction_tracer::TraceResult;
-
-const RERUNNING_AFTER_FIXES: bool = true;
-
-fn should_run_block(block_number: &u64) -> bool {
-    RERUNNING_AFTER_FIXES
-        || (!Path::new(&format!("./results/{block_number}.json")).exists()
-            && !Path::new(&format!("./results/trace-{block_number}.json")).exists()
-            && ![
-                610508_u64, 610541_u64, 612572_u64, 612787_u64, 613138_u64, 613978_u64,
-            ]
-            .contains(block_number))
-}
 
 async fn try_native_block_trace(block_number: u64) -> Result<TraceBlockReport, ManagerError> {
     let mut juno_manager = JunoManager::new(JunoBranch::Native).await?;
@@ -96,14 +84,22 @@ fn setup_env_logger() {
         .init();
 }
 
-async fn execute_traces(start_block: u64, end_block: u64) {
+fn results_exist_for_block(block: u64) -> bool {
+    Path::new(&format!("results/trace-{}.json", block)).exists()
+        || Path::new(&format!("results/block-{}.json", block)).exists()
+}
+
+async fn execute_traces(start_block: u64, end_block: u64, should_run_known: bool) {
     let blocks_with_tx_count = get_sorted_blocks_with_tx_count(start_block, end_block)
         .await
-        .unwrap()
-        .into_iter()
-        .filter(|(block_number, _)| should_run_block(block_number));
+        .unwrap();
 
     for (block_number, tx_count) in blocks_with_tx_count {
+        if !should_run_known && results_exist_for_block(block_number) {
+            info!("Skipping block {block_number} because results exist (use --run-known to run anyways)");
+            continue;
+        }
+
         info!("Tracing block {block_number} with Native. It has {tx_count} transactions");
 
         let native_result = try_native_block_trace(block_number).await;
@@ -150,11 +146,17 @@ async fn execute_traces(start_block: u64, end_block: u64) {
 async fn main() {
     setup_env_logger();
 
+    let run_known_flag =
+                  arg!(<run_known> "Forces action even if an output file (block- or trace-) already exists for block")
+                    .long("run-known")
+                    .action(ArgAction::SetTrue)
+                    .required(false);
     let cli = command!()
         .subcommand(
             Command::new("block")
                 .about("traces a single block")
-                .arg(arg!(<block_num> "block number to trace").value_parser(value_parser!(u64))),
+                .arg(arg!(<block_num> "block number to trace").value_parser(value_parser!(u64)))
+                .arg(run_known_flag.clone()),
         )
         .subcommand(
             Command::new("range")
@@ -166,14 +168,16 @@ async fn main() {
                 .arg(
                     arg!(<last_block_num> "exclusive last block number")
                         .value_parser(value_parser!(u64)),
-                ),
+                )
+                .arg(run_known_flag),
         )
         .get_matches();
 
     match cli.subcommand() {
         Some(("block", args)) => {
+            let should_run_known = args.get_one::<bool>("run_known").unwrap().to_owned();
             let block_num = args.get_one::<u64>("block_num").unwrap().to_owned();
-            execute_traces(block_num, block_num + 1).await;
+            execute_traces(block_num, block_num + 1, should_run_known).await;
         }
         Some(("range", args)) => {
             let first_block_num = args.get_one::<u64>("first_block_num").unwrap().to_owned();
@@ -181,7 +185,8 @@ async fn main() {
             if last_block_num <= first_block_num {
                 panic!("first_block_num must be higher than last_block_num");
             }
-            execute_traces(first_block_num, last_block_num).await;
+            let should_run_known = args.get_one::<bool>("run_known").unwrap().to_owned();
+            execute_traces(first_block_num, last_block_num, should_run_known).await;
         }
         Some((cmd, _)) => panic!("Unknown {cmd} "),
         None => panic!("Expecting either `block` or `range` sub-commands"),
