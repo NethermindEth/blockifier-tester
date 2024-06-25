@@ -1,7 +1,7 @@
 use std::{fs::OpenOptions, path::Path};
 
 use anyhow::Context;
-use log::{debug, warn, info};
+use log::{debug, info, warn};
 use starknet::core::types::BlockId;
 
 use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
@@ -76,7 +76,7 @@ pub async fn write_block_tx_counts_cache(
     path: &Path,
     counts: &Vec<(u64, u64)>,
 ) -> Result<(), anyhow::Error> {
-    std::fs::create_dir_all(path.parent().unwrap_or(path))?;
+    tokio::fs::create_dir_all(path.parent().unwrap_or(path)).await?;
     let cache_file = OpenOptions::new()
         .create(true)
         .truncate(true)

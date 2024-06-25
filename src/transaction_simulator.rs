@@ -1,7 +1,4 @@
-use std::{
-    fmt::Display,
-    fs::OpenOptions,
-};
+use std::{fmt::Display, fs::OpenOptions};
 
 use log::{info, warn};
 

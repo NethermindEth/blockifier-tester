@@ -1,4 +1,4 @@
-use log::{info, debug};
+use log::{debug, info};
 use starknet::{
     core::types::{BlockId, TransactionTraceWithHash},
     providers::{Provider, ProviderError},
