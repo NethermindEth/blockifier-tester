@@ -1,14 +1,11 @@
+use crate::block_tracer::TraceBlockReport;
 use itertools::{EitherOrBoth, Itertools};
 use num_bigint::BigUint;
 use serde::Serialize;
 use starknet::core::types::{
-    BlockId, ExecuteInvocation, FieldElement, FunctionInvocation, TransactionTrace,
-    TransactionTraceWithHash,
+    BlockId, ExecuteInvocation, FieldElement, FunctionInvocation, OrderedEvent, OrderedMessage,
+    TransactionTrace, TransactionTraceWithHash,
 };
-// use super::{serde_impls::NumAsHex, *};
-// use starknet::core::types::serde_impls;
-
-use crate::block_tracer::TraceBlockReport;
 
 // TODO more distinct naming
 #[derive(Serialize)]
@@ -64,8 +61,28 @@ enum InvokeComparison {
     BothSucceeded {
         results: CallResultComparison,
         inner_calls: Vec<InnerCallComparison>,
+        events: Vec<EventComparison>,
+        messages: Vec<MessagesComparison>,
     },
     NativeFailed(Vec<String>),
+}
+
+#[derive(Serialize)]
+enum EventComparison {
+    Same,
+    Different {
+        base: OrderedEvent,
+        native: OrderedEvent,
+    },
+}
+
+#[derive(Serialize)]
+enum MessagesComparison {
+    Same,
+    Different {
+        base: OrderedMessage,
+        native: OrderedMessage,
+    },
 }
 
 #[derive(Serialize)]
@@ -182,6 +199,8 @@ fn generate_trace_comparison_body(
                         InvokeComparison::BothSucceeded {
                             results: compare_results(&base.result, &native.result),
                             inner_calls: compare_inner_calls(&base.calls, &native.calls),
+                            events: compare_events(&base.events, &native.events),
+                            messages: compare_messages(&base.messages, &native.messages),
                         }
                     }
                     (ExecuteInvocation::Success(_), ExecuteInvocation::Reverted(native)) => {
@@ -275,6 +294,42 @@ fn compare_results(
             native: result_felts_to_string(native_result),
         }
     }
+}
+
+fn compare_messages(
+    base_messages: &Vec<OrderedMessage>,
+    native_messages: &Vec<OrderedMessage>,
+) -> Vec<MessagesComparison> {
+    let mut result = Vec::new();
+    for (base_message, native_message) in base_messages.iter().zip(native_messages.iter()) {
+        result.push(if base_message == native_message {
+            MessagesComparison::Same
+        } else {
+            MessagesComparison::Different {
+                base: base_message.clone(),
+                native: native_message.clone(),
+            }
+        })
+    }
+    result
+}
+
+fn compare_events(
+    base_event: &Vec<OrderedEvent>,
+    native_event: &Vec<OrderedEvent>,
+) -> Vec<EventComparison> {
+    let mut result = Vec::new();
+    for (base_event, native_event) in base_event.iter().zip(native_event.iter()) {
+        result.push(if base_event == native_event {
+            EventComparison::Same
+        } else {
+            EventComparison::Different {
+                base: base_event.clone(),
+                native: native_event.clone(),
+            }
+        })
+    }
+    result
 }
 
 fn get_trace_kind(trace: &TransactionTrace) -> String {
