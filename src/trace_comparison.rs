@@ -3,8 +3,9 @@ use itertools::{EitherOrBoth, Itertools};
 use num_bigint::BigUint;
 use serde::Serialize;
 use starknet::core::types::{
-    BlockId, ExecuteInvocation, FieldElement, FunctionInvocation, OrderedEvent, OrderedMessage,
-    TransactionTrace, TransactionTraceWithHash,
+    BlockId, ContractStorageDiffItem, DeclaredClassItem, DeployedContractItem, ExecuteInvocation,
+    FieldElement, FunctionInvocation, NonceUpdate, OrderedEvent, OrderedMessage, ReplacedClassItem,
+    StateDiff, TransactionTrace, TransactionTraceWithHash,
 };
 
 // TODO more distinct naming
@@ -45,51 +46,113 @@ enum TransactionTraceComparison {
 #[derive(Serialize)]
 enum TransactionTraceComparisonBody {
     Mismatch { base: String, native: String },
-    Invoke(InvokeComparison),
+    Invoke(InvokeTxTraceComparison),
     DeployAccount,
     L1Handler,
     Declare,
 }
 
 #[derive(Serialize)]
-enum InvokeComparison {
-    BaseFailed(String),
+struct InvokeTxTraceComparison {
+    pub execute_invocation: ExecuteInvocationComparison,
+    pub validate_invocation: ValidateInvocationComparison,
+    pub fee_transfer_invocation: FeeTransferInvocationComparison,
+    pub state_diff: StateDiffComparisonType,
+}
+
+type ValidateInvocationComparison = BothOptional<FunctionInvocation, FunctionInvocationComparison>;
+type FeeTransferInvocationComparison =
+    BothOptional<FunctionInvocation, FunctionInvocationComparison>;
+type StateDiffComparisonType = BothOptional<StateDiff, StateDiffComparison>;
+
+#[derive(Serialize)]
+pub enum BothOptional<T, D> {
+    BaseOnly(T),
+    NativeOnly(T),
+    Both(D),
+    NoneBoth,
+}
+
+#[derive(Serialize)]
+enum ExecuteInvocationComparison {
+    BaseFailed {
+        reason: String,
+        native: FunctionInvocation,
+    },
     BothFailed {
         base_reason: String,
         native_reason: String,
     },
-    BothSucceeded {
-        results: CallResultComparison,
-        inner_calls: Vec<InnerCallComparison>,
-        events: Vec<EventComparison>,
-        messages: Vec<MessagesComparison>,
-    },
-    NativeFailed(Vec<String>),
-}
-
-#[derive(Serialize)]
-enum EventComparison {
-    Same,
-    Different {
-        base: OrderedEvent,
-        native: OrderedEvent,
+    BothSucceeded(FunctionInvocationComparison),
+    NativeFailed {
+        reason: String,
+        base: FunctionInvocation,
     },
 }
 
 #[derive(Serialize)]
-enum MessagesComparison {
-    Same,
-    Different {
-        base: OrderedMessage,
-        native: OrderedMessage,
-    },
+struct FunctionInvocationComparison {
+    pub events: Vec<EventComparison>,
+    pub messages: Vec<MessagesComparison>,
+    pub call_result: CallResultComparison,
+    pub inner_calls: Vec<InnerCallComparison>,
 }
 
 #[derive(Serialize)]
-enum CallResultComparison {
-    Same,
-    Different { base: String, native: String },
+pub struct StateDiffComparison {
+    pub storage_diffs: Vec<StorageDiffComparison>,
+    pub deprecated_declared_classes: Vec<DeprecatedDeclaredClassComparison>,
+    pub declared_classes: Vec<DeclaredClassComparison>,
+    pub deployed_contracts: Vec<DeployedContractComparison>,
+    pub replaced_classes: Vec<ReplacedClassComparison>,
+    pub nonces: Vec<NonceUpdateComparison>,
 }
+
+type StorageDiffComparison = CompareResult<ContractStorageDiffItem>;
+type DeprecatedDeclaredClassComparison = CompareResult<FieldElement>;
+type DeclaredClassComparison = CompareResult<DeclaredClassItem>;
+type DeployedContractComparison = CompareResult<DeployedContractItem>;
+type ReplacedClassComparison = CompareResult<ReplacedClassItem>;
+type NonceUpdateComparison = CompareResult<NonceUpdate>;
+type EventComparison = CompareResult<OrderedEvent>;
+type MessagesComparison = CompareResult<OrderedMessage>;
+
+#[derive(Serialize)]
+pub enum CompareResult<T>
+where
+    T: PartialEq,
+{
+    Same,
+    Different { base: T, native: T },
+    LeftOnly(T),
+    RightOnly(T),
+}
+
+impl<T> CompareResult<T>
+where
+    T: PartialEq,
+{
+    pub fn new(base: T, native: T) -> Self {
+        if base == native {
+            Self::Same
+        } else {
+            Self::Different { base, native }
+        }
+    }
+
+    pub fn new_from_vec(base: Vec<T>, native: Vec<T>) -> Vec<Self> {
+        base.into_iter()
+            .zip_longest(native)
+            .map(|item| match item {
+                EitherOrBoth::Both(base, native) => Self::new(base, native),
+                EitherOrBoth::Left(base) => Self::LeftOnly(base),
+                EitherOrBoth::Right(native) => Self::RightOnly(native),
+            })
+            .collect()
+    }
+}
+
+type CallResultComparison = CompareResult<String>;
 
 #[derive(Serialize)]
 enum InnerCallComparisonInfo {
@@ -189,40 +252,21 @@ fn generate_trace_comparison_body(
 ) -> TransactionTraceComparisonBody {
     match (&base_trace, &native_trace) {
         (TransactionTrace::Invoke(base_trace), TransactionTrace::Invoke(native_trace)) => {
-            TransactionTraceComparisonBody::Invoke(
-                match (
+            TransactionTraceComparisonBody::Invoke(InvokeTxTraceComparison {
+                execute_invocation: compare_execute_invocation(
                     &base_trace.execute_invocation,
                     &native_trace.execute_invocation,
-                ) {
-                    (ExecuteInvocation::Success(base), ExecuteInvocation::Success(native)) => {
-                        // TODO get which function was called from juno
-                        InvokeComparison::BothSucceeded {
-                            results: compare_results(&base.result, &native.result),
-                            inner_calls: compare_inner_calls(&base.calls, &native.calls),
-                            events: compare_events(&base.events, &native.events),
-                            messages: compare_messages(&base.messages, &native.messages),
-                        }
-                    }
-                    (ExecuteInvocation::Success(_), ExecuteInvocation::Reverted(native)) => {
-                        InvokeComparison::NativeFailed(
-                            native
-                                .revert_reason
-                                .split('\n')
-                                .map(|line| line.to_string())
-                                .collect_vec(),
-                        )
-                    }
-                    (ExecuteInvocation::Reverted(base), ExecuteInvocation::Success(_)) => {
-                        InvokeComparison::BaseFailed(base.revert_reason.clone())
-                    }
-                    (ExecuteInvocation::Reverted(base), ExecuteInvocation::Reverted(native)) => {
-                        InvokeComparison::BothFailed {
-                            base_reason: base.revert_reason.clone(),
-                            native_reason: native.revert_reason.clone(),
-                        }
-                    }
-                },
-            )
+                ),
+                validate_invocation: compare_validate_invocation(
+                    &base_trace.validate_invocation,
+                    &native_trace.validate_invocation,
+                ),
+                fee_transfer_invocation: compare_fee_transfer_invocation(
+                    &base_trace.fee_transfer_invocation,
+                    &native_trace.fee_transfer_invocation,
+                ),
+                state_diff: compare_state_diff(&base_trace.state_diff, &native_trace.state_diff),
+            })
         }
         (TransactionTrace::DeployAccount(_), TransactionTrace::DeployAccount(_)) => {
             TransactionTraceComparisonBody::DeployAccount
@@ -237,6 +281,105 @@ fn generate_trace_comparison_body(
             base: get_trace_kind(&base_trace),
             native: get_trace_kind(&native_trace),
         },
+    }
+}
+
+fn compare_execute_invocation(
+    base: &ExecuteInvocation,
+    native: &ExecuteInvocation,
+) -> ExecuteInvocationComparison {
+    match (base, native) {
+        (ExecuteInvocation::Success(base), ExecuteInvocation::Success(native)) => {
+            ExecuteInvocationComparison::BothSucceeded(compare_function_invocation(base, native))
+        }
+        (ExecuteInvocation::Success(base), ExecuteInvocation::Reverted(native)) => {
+            ExecuteInvocationComparison::NativeFailed {
+                reason: native.revert_reason.clone(),
+                base: base.clone(),
+            }
+        }
+        (ExecuteInvocation::Reverted(base), ExecuteInvocation::Success(native)) => {
+            ExecuteInvocationComparison::BaseFailed {
+                reason: base.revert_reason.clone(),
+                native: native.clone(),
+            }
+        }
+        (ExecuteInvocation::Reverted(base), ExecuteInvocation::Reverted(native)) => {
+            ExecuteInvocationComparison::BothFailed {
+                base_reason: base.revert_reason.clone(),
+                native_reason: native.revert_reason.clone(),
+            }
+        }
+    }
+}
+
+fn compare_fee_transfer_invocation(
+    base: &Option<FunctionInvocation>,
+    native: &Option<FunctionInvocation>,
+) -> FeeTransferInvocationComparison {
+    match (base, native) {
+        (Some(base), Some(native)) => BothOptional::Both(compare_function_invocation(base, native)),
+        (Some(base), None) => BothOptional::BaseOnly(base.clone()),
+        (None, Some(native)) => BothOptional::NativeOnly(native.clone()),
+        (None, None) => BothOptional::NoneBoth,
+    }
+}
+
+fn compare_state_diff(
+    base: &Option<StateDiff>,
+    native: &Option<StateDiff>,
+) -> StateDiffComparisonType {
+    match (base, native) {
+        (Some(base), Some(native)) => BothOptional::Both(StateDiffComparison {
+            storage_diffs: CompareResult::new_from_vec(
+                base.storage_diffs.clone(),
+                native.storage_diffs.clone(),
+            ),
+            deprecated_declared_classes: CompareResult::new_from_vec(
+                base.deprecated_declared_classes.clone(),
+                native.deprecated_declared_classes.clone(),
+            ),
+            declared_classes: CompareResult::new_from_vec(
+                base.declared_classes.clone(),
+                native.declared_classes.clone(),
+            ),
+            deployed_contracts: CompareResult::new_from_vec(
+                base.deployed_contracts.clone(),
+                native.deployed_contracts.clone(),
+            ),
+            replaced_classes: CompareResult::new_from_vec(
+                base.replaced_classes.clone(),
+                native.replaced_classes.clone(),
+            ),
+            nonces: CompareResult::new_from_vec(base.nonces.clone(), native.nonces.clone()),
+        }),
+        (Some(base), None) => BothOptional::BaseOnly(base.clone()),
+        (None, Some(native)) => BothOptional::NativeOnly(native.clone()),
+        (None, None) => BothOptional::NoneBoth,
+    }
+}
+
+fn compare_function_invocation(
+    base: &FunctionInvocation,
+    native: &FunctionInvocation,
+) -> FunctionInvocationComparison {
+    FunctionInvocationComparison {
+        events: compare_events(&base.events, &native.events),
+        messages: compare_messages(&base.messages, &native.messages),
+        call_result: compare_results(&base.result, &native.result),
+        inner_calls: compare_inner_calls(&base.calls, &native.calls),
+    }
+}
+
+fn compare_validate_invocation(
+    base: &Option<FunctionInvocation>,
+    native: &Option<FunctionInvocation>,
+) -> ValidateInvocationComparison {
+    match (base, native) {
+        (Some(base), Some(native)) => BothOptional::Both(compare_function_invocation(base, native)),
+        (Some(base), None) => BothOptional::BaseOnly(base.clone()),
+        (None, Some(native)) => BothOptional::NativeOnly(native.clone()),
+        (None, None) => BothOptional::NoneBoth,
     }
 }
 
@@ -297,8 +440,8 @@ fn compare_results(
 }
 
 fn compare_messages(
-    base_messages: &Vec<OrderedMessage>,
-    native_messages: &Vec<OrderedMessage>,
+    base_messages: &[OrderedMessage],
+    native_messages: &[OrderedMessage],
 ) -> Vec<MessagesComparison> {
     let mut result = Vec::new();
     for (base_message, native_message) in base_messages.iter().zip(native_messages.iter()) {
@@ -315,8 +458,8 @@ fn compare_messages(
 }
 
 fn compare_events(
-    base_event: &Vec<OrderedEvent>,
-    native_event: &Vec<OrderedEvent>,
+    base_event: &[OrderedEvent],
+    native_event: &[OrderedEvent],
 ) -> Vec<EventComparison> {
     let mut result = Vec::new();
     for (base_event, native_event) in base_event.iter().zip(native_event.iter()) {

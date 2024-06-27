@@ -68,7 +68,7 @@ fn read_block_tx_counts_cache(path: &Path) -> Result<Vec<(u64, u64)>, anyhow::Er
         "Reading cache file: '{}'",
         path.to_str().expect("failed to unwrap path")
     ))?;
-    let reader = tokio::io::BufReader::new(cache_file);
+    let reader = std::io::BufReader::new(cache_file);
     Ok(serde_json::from_reader(reader)?)
 }
 
