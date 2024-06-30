@@ -7,7 +7,7 @@ use std::{
 };
 
 use anyhow::Context;
-use log::{debug, warn, info};
+use log::{debug, info, warn};
 use starknet::{
     core::types::{BlockId, MaybePendingBlockWithTxs},
     providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider, ProviderError, Url},
@@ -57,7 +57,9 @@ impl Drop for JunoManager {
 
 #[derive(Debug)]
 pub enum ManagerError {
+    #[allow(dead_code)]
     ProviderError(ProviderError),
+    #[allow(dead_code)]
     InternalError(String),
 }
 
@@ -125,7 +127,12 @@ impl JunoManager {
                 .spawn()
                 .expect("Failed to spawn base juno"),
             JunoBranch::Native => Command::new(&self.juno_native_path)
-                .args(["--http", "--disable-sync", "--db-path", &self.juno_database_path])
+                .args([
+                    "--http",
+                    "--disable-sync",
+                    "--db-path",
+                    &self.juno_database_path,
+                ])
                 .stdin(Stdio::null())
                 .stdout(juno_out_file)
                 .stderr(juno_err_file)
