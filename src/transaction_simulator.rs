@@ -12,7 +12,7 @@ use starknet::{
         BroadcastedInvokeTransactionV1, BroadcastedInvokeTransactionV3, BroadcastedTransaction,
         DeployAccountTransaction, ExecuteInvocation, ExecutionResult, FieldElement,
         InvokeTransaction, MaybePendingBlockWithTxs, MaybePendingTransactionReceipt,
-        SimulatedTransaction, SimulationFlag, Transaction, TransactionTrace,
+        SimulatedTransaction, Transaction, TransactionTrace,
     },
     providers::Provider,
 };
@@ -162,7 +162,7 @@ impl TransactionSimulator for JunoManager {
                 .simulate_transactions(
                     block_id,
                     transactions_to_try,
-                    [SimulationFlag::SkipValidate],
+                    [],
                 )
                 .await;
 
@@ -193,7 +193,7 @@ impl TransactionSimulator for JunoManager {
                 .simulate_transactions(
                     block_id,
                     transactions_to_try,
-                    [SimulationFlag::SkipValidate],
+                    [],
                 )
                 .await;
 
@@ -228,7 +228,7 @@ impl TransactionSimulator for JunoManager {
                 .simulate_transactions(
                     block_id,
                     transactions_to_try,
-                    [SimulationFlag::SkipValidate],
+                    [],
                 )
                 .await;
 
