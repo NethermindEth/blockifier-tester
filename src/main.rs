@@ -1,5 +1,6 @@
 mod block_tracer;
 mod cache;
+mod general_trace_comparison;
 mod juno_manager;
 mod trace_comparison;
 mod transaction_simulator;
