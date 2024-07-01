@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use itertools::{EitherOrBoth, Itertools};
 use num_bigint::BigUint;
 use serde::Serialize;

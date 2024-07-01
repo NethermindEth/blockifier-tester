@@ -1,79 +1,145 @@
-use std::iter::zip;
-
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
-use crate::block_tracer::TraceBlockReport;
+use crate::{block_tracer::TraceBlockReport, transaction_tracer::TraceResult};
 
-// Take two JSONs and compare each (key, value) recursively.
-// It will consume the two JSON as well.
-// Store the resutls in an output JSON.
+const SAME: &str = "Same";
+const EMPTY: &str = "Empty";
+const DIFFERENT: &str = "Different";
 
-pub fn generate_block_comparison(base_report: TraceBlockReport, native_report: TraceBlockReport) {}
-
-pub fn compare_jsons(json1: Value, json2: Value) -> Value {
-    let output = compare_json_values(json1, json2);
-    clean_json_value(output)
+#[derive(Serialize, Deserialize)]
+pub enum ComparisonResult {
+    Same,
+    Different {
+        base: Option<Value>,
+        native: Option<Value>,
+    },
 }
 
-fn compare_json_values(val1: Value, val2: Value) -> Value {
-    match (val1, val2) {
-        (Value::Object(obj1), Value::Object(obj2)) => compare_json_objects(obj1, obj2),
-        (Value::Array(arr1), Value::Array(arr2)) => compare_json_arrays(arr1, arr2),
-        (val1, val2) => {
-            if val1 == val2 {
-                build_same_result()
-            } else {
-                build_different_result(Some(val1), Some(val2))
-            }
+impl ComparisonResult {
+    pub fn new_same() -> Self {
+        ComparisonResult::Same
+    }
+
+    pub fn new_different(base: Value, native: Value) -> Self {
+        ComparisonResult::Different {
+            base: Some(base),
+            native: Some(native),
+        }
+    }
+
+    pub fn into_json(self) -> Value {
+        match self {
+            ComparisonResult::Same => json!(SAME),
+            ComparisonResult::Different { base, native } => json!({
+                "comparison": DIFFERENT,
+                "base": base.unwrap_or(Value::String(EMPTY.into())),
+                "native": native.unwrap_or(Value::String(EMPTY.into())),
+            }),
         }
     }
 }
 
-fn compare_json_objects(obj1: Map<String, Value>, mut obj2: Map<String, Value>) -> Value {
-    // Object to store the comparison results per key
-    let mut output_obj = Map::<String, Value>::new();
+impl From<ComparisonResult> for Value {
+    fn from(result: ComparisonResult) -> Self {
+        result.into_json()
+    }
+}
 
-    for (key1, val1) in obj1 {
-        match obj2.remove(&key1) {
-            Some(val2) => output_obj.insert(key1, compare_json_values(val1, val2)),
-            None => todo!("Compare an existing object with a non different one"),
+fn trace_block_result_to_json(result: TraceResult) -> Value {
+    match result {
+        TraceResult::Success => json!({
+            "outcome": "Success",
+        }),
+        TraceResult::OtherError(err) => json!({
+            "outcome": "OtherError",
+            "error": err,
+        }),
+        TraceResult::NotFound => json!({
+            "outcome": "NotFound",
+        }),
+        TraceResult::Crash { error } => json!({
+            "outcome": "Crash",
+            "error": error,
+        }),
+    }
+}
+
+fn trace_block_report_to_json(report: TraceBlockReport) -> Value {
+    json!({
+        "block_num": report.block_num,
+        "post_response": serde_json::value::to_value(report.post_response.unwrap_or_default()).unwrap(),
+        "result": trace_block_result_to_json(report.result),
+    })
+}
+
+// Take two JSONs and compare each (key, value) recursively.
+// It will consume the two JSON as well.
+// Store the resutls in an output JSON.
+pub fn generate_block_comparison(
+    base_report: TraceBlockReport,
+    native_report: TraceBlockReport,
+) -> Value {
+    compare_jsons(
+        trace_block_report_to_json(base_report),
+        trace_block_report_to_json(native_report),
+    )
+}
+
+pub fn compare_jsons(json_1: Value, json_2: Value) -> Value {
+    let output = compare_json_values(json_1, json_2);
+    clean_json_value(output)
+}
+
+fn compare_json_values(val_1: Value, val_2: Value) -> Value {
+    match (val_1, val_2) {
+        (Value::Object(obj_1), Value::Object(obj_2)) => compare_json_objects(obj_1, obj_2),
+        (Value::Array(arr_1), Value::Array(arr_2)) => compare_json_arrays(arr_1, arr_2),
+        (val_1, val_2) if val_1 == val_2 => ComparisonResult::Same.into(),
+        (val_1, val_2) => ComparisonResult::Different {
+            base: Some(val_1),
+            native: Some(val_2),
+        }
+        .into(),
+    }
+}
+
+fn compare_json_objects(obj_1: Map<String, Value>, mut obj_2: Map<String, Value>) -> Value {
+    // Object to store the comparison results per key
+    let mut output = Map::<String, Value>::new();
+
+    for (key_1, val_1) in obj_1 {
+        match obj_2.remove(&key_1) {
+            Some(val_2) => output.insert(key_1, compare_json_values(val_1, val_2)),
+            None => output.insert(key_1, build_different_result(Some(val_1), None)),
         };
     }
 
-    for (key2, val2) in obj2 {
-        output_obj.insert(key2, build_different_result(None, Some(val2)));
+    for (key_2, val_2) in obj_2 {
+        output.insert(key_2, build_different_result(None, Some(val_2)));
     }
 
-    Value::Object(output_obj)
+    Value::Object(output)
 }
 
-fn compare_json_arrays(arr1: Vec<Value>, arr2: Vec<Value>) -> Value {
-    if arr1.len() != arr2.len() {
-        return build_different_result(Some(Value::Array(arr1)), Some(Value::Array(arr2)));
+fn compare_json_arrays(arr_1: Vec<Value>, arr_2: Vec<Value>) -> Value {
+    if arr_1.len() != arr_2.len() {
+        return build_different_result(Some(Value::Array(arr_1)), Some(Value::Array(arr_2)));
     }
 
-    let mut output = Vec::<Value>::new();
-    for (v1, v2) in zip(arr1, arr2) {
-        output.push(compare_json_values(v1, v2));
-    }
+    let output: Vec<Value> = arr_1
+        .iter()
+        .cloned()
+        .zip(arr_2)
+        .map(|e| compare_json_values(e.0, e.1))
+        .collect();
 
     Value::Array(output)
 }
 
-// Creates a string "Same" signaling two JSON Values are the same
-fn build_same_result() -> Value {
-    return Value::String("Same".into());
-}
-
 // Creates an object signaling two values are different
-fn build_different_result(left: Option<Value>, right: Option<Value>) -> Value {
-    let left = left.unwrap_or(Value::String("Empty".into()));
-    let right = right.unwrap_or(Value::String("Empty".into()));
-    return json!({
-        "comparison": "Different",
-        "base": left,
-        "native": right,
-    });
+fn build_different_result(base: Option<Value>, native: Option<Value>) -> Value {
+    ComparisonResult::Different { base, native }.into()
 }
 
 fn clean_json_value(val: Value) -> Value {
@@ -92,26 +158,160 @@ fn clean_json_object(obj: Map<String, Value>) -> Value {
 
     let all_same = cleaned_obj
         .values()
-        .all(|el| matches!(el, Value::String(str) if str == "Same"));
+        .all(|el| matches!(el, Value::String(str) if str == SAME));
 
     if all_same {
-        build_same_result()
+        ComparisonResult::Same.into()
     } else {
         Value::Object(cleaned_obj)
     }
 }
 
 fn clean_json_array(arr: Vec<Value>) -> Value {
-    let cleaned_arr: Vec<Value> = arr.into_iter().map(|val| clean_json_value(val)).collect();
+    let cleaned_arr: Vec<Value> = arr.into_iter().map(clean_json_value).collect();
     let all_same = cleaned_arr.iter().all(value_is_same);
 
     if all_same {
-        build_same_result()
+        ComparisonResult::Same.into()
     } else {
         Value::Array(cleaned_arr)
     }
 }
 
 fn value_is_same(val: &Value) -> bool {
-    matches!(val, Value::String(str) if str == "Same")
+    matches!(val, Value::String(str) if str == SAME)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_all_same() {
+        let base = json!({
+            "key1": "value1",
+            "key2": "value2",
+            "key3": {
+                "key4": "value4",
+                "key5": "value5",
+            },
+            "key6": [
+                "value6",
+                "value7",
+                "value8",
+            ],
+        });
+
+        let native = json!({
+            "key1": "value1",
+            "key2": "value2",
+            "key3": {
+                "key4": "value4",
+                "key5": "value5",
+            },
+            "key6": [
+                "value6",
+                "value7",
+                "value8",
+            ],
+        });
+
+        let result = compare_jsons(base, native);
+
+        assert_eq!(result, Value::String(SAME.into()));
+    }
+
+    #[test]
+    fn test_some_different_1() {
+        let base = json!({
+            "key1": "value1",
+        });
+
+        let native = json!({
+            "key1": "value1-2",
+        });
+
+        let result = compare_jsons(base, native);
+
+        assert_eq!(
+            result,
+            json!({
+                "key1": {
+                    "comparison": DIFFERENT,
+                    "base": "value1",
+                    "native": "value1-2",
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn test_different_keys() {
+        let base = json!({
+            "key1": "value1",
+        });
+
+        let native = json!({
+            "key2": "value2",
+        });
+
+        let result = compare_jsons(base, native);
+
+        assert_eq!(
+            result,
+            json!({
+                "key1": {
+                    "comparison": DIFFERENT,
+                    "base": "value1",
+                    "native": EMPTY,
+                },
+                "key2": {
+                    "comparison": DIFFERENT,
+                    "base": EMPTY,
+                    "native": "value2",
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn test_different_array() {
+        let base = json!(["value1", "value2",]);
+
+        let native = json!(["value1", "value2-2",]);
+
+        let result = compare_jsons(base, native);
+
+        assert_eq!(
+            result,
+            json!([
+                "Same",
+                {
+                    "comparison": DIFFERENT,
+                    "base": "value2",
+                    "native": "value2-2",
+                }
+            ])
+        );
+    }
+
+    #[test]
+    fn test_different_array_length() {
+        let base = json!(["value1", "value2",]);
+
+        let native = json!(["value1", "value2", "value3",]);
+
+        let result = compare_jsons(base, native);
+
+        assert_eq!(
+            result,
+            json!(
+                {
+                    "comparison": DIFFERENT,
+                    "base": ["value1", "value2"],
+                    "native": ["value1", "value2", "value3"],
+                }
+            )
+        );
+    }
 }

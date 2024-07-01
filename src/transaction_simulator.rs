@@ -3,6 +3,7 @@ use std::{fmt::Display, fs::OpenOptions};
 use log::{info, warn};
 
 use itertools::Itertools;
+use num_bigint::BigUint;
 use serde::Serialize;
 use starknet::{
     core::types::{
@@ -11,15 +12,12 @@ use starknet::{
         BroadcastedInvokeTransactionV1, BroadcastedInvokeTransactionV3, BroadcastedTransaction,
         DeployAccountTransaction, ExecuteInvocation, ExecutionResult, FieldElement,
         InvokeTransaction, MaybePendingBlockWithTxs, MaybePendingTransactionReceipt,
-        SimulatedTransaction, Transaction, TransactionTrace,
+        SimulatedTransaction, SimulationFlag, Transaction, TransactionTrace,
     },
     providers::Provider,
 };
 
-use crate::{
-    juno_manager::{JunoBranch, JunoManager, ManagerError},
-    trace_comparison::hex_serialize,
-};
+use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
 
 #[allow(dead_code)]
 pub enum SimulationStrategy {
@@ -161,7 +159,11 @@ impl TransactionSimulator for JunoManager {
             self.ensure_usable().await?;
             let simulation_result = self
                 .rpc_client
-                .simulate_transactions(block_id, transactions_to_try, [])
+                .simulate_transactions(
+                    block_id,
+                    transactions_to_try,
+                    [SimulationFlag::SkipValidate],
+                )
                 .await;
 
             if simulation_result.is_ok() {
@@ -188,7 +190,11 @@ impl TransactionSimulator for JunoManager {
             self.ensure_usable().await?;
             let simulation_result = self
                 .rpc_client
-                .simulate_transactions(block_id, transactions_to_try, [])
+                .simulate_transactions(
+                    block_id,
+                    transactions_to_try,
+                    [SimulationFlag::SkipValidate],
+                )
                 .await;
 
             if simulation_result.is_ok() {
@@ -219,7 +225,11 @@ impl TransactionSimulator for JunoManager {
             self.ensure_usable().await?;
             let simulation_result = self
                 .rpc_client
-                .simulate_transactions(block_id, transactions_to_try, [])
+                .simulate_transactions(
+                    block_id,
+                    transactions_to_try,
+                    [SimulationFlag::SkipValidate],
+                )
                 .await;
 
             if simulation_result.is_ok() {
@@ -283,6 +293,17 @@ impl From<MaybePendingTransactionReceipt> for TransactionResult {
             },
         }
     }
+}
+
+pub fn hex_serialize<S>(val: &FieldElement, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_str(&format!("0x{}", hash_to_hex(val)))
+}
+
+fn hash_to_hex(h: &FieldElement) -> String {
+    BigUint::from_bytes_be(&h.to_bytes_be()).to_str_radix(16)
 }
 
 #[derive(Debug, Serialize)]

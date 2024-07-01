@@ -2,7 +2,6 @@ mod block_tracer;
 mod cache;
 mod general_trace_comparison;
 mod juno_manager;
-mod trace_comparison;
 mod transaction_simulator;
 mod transaction_tracer;
 
@@ -11,13 +10,13 @@ use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
 use clap::{arg, command, value_parser, Command};
 use core::panic;
+use general_trace_comparison::generate_block_comparison;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
 use log::{info, warn};
 use std::io::Write;
 use std::path::Path;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncWriteExt, BufWriter};
-use trace_comparison::generate_comparison;
 use transaction_simulator::{log_block_report, SimulationStrategy, TransactionSimulator};
 use transaction_tracer::TraceResult;
 
@@ -64,7 +63,7 @@ async fn log_trace_comparison(
     native_report: TraceBlockReport,
     base_report: TraceBlockReport,
 ) {
-    let comparison = generate_comparison(base_report, native_report);
+    let comparison = generate_block_comparison(base_report, native_report);
 
     let mut buffer = Vec::new();
     serde_json::to_writer_pretty(&mut buffer, &comparison).unwrap();
