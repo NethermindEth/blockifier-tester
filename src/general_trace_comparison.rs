@@ -2,9 +2,13 @@ use std::iter::zip;
 
 use serde_json::{json, Map, Value};
 
+use crate::block_tracer::TraceBlockReport;
+
 // Take two JSONs and compare each (key, value) recursively.
 // It will consume the two JSON as well.
 // Store the resutls in an output JSON.
+
+pub fn generate_block_comparison(base_report: TraceBlockReport, native_report: TraceBlockReport) {}
 
 pub fn compare_jsons(json1: Value, json2: Value) -> Value {
     let output = compare_json_values(json1, json2);
@@ -29,12 +33,7 @@ fn compare_json_objects(obj1: Map<String, Value>, mut obj2: Map<String, Value>) 
     // Object to store the comparison results per key
     let mut output_obj = Map::<String, Value>::new();
 
-    // obj1 and obj2 can *possibly* have a disjoint set of keys we compare first all the keys
-    // from obj1 with obj2 and viceversa
-    // let mut used_keys = HashSet::<String>::new();
-
     for (key1, val1) in obj1 {
-        // used_keys.insert(key1);
         match obj2.remove(&key1) {
             Some(val2) => output_obj.insert(key1, compare_json_values(val1, val2)),
             None => todo!("Compare an existing object with a non different one"),
