@@ -28,6 +28,14 @@ impl ComparisonResult {
         }
     }
 
+    pub fn new_different_base_only(base: Value) -> Self {
+        ComparisonResult::Different { base: Some(base), native: None }
+    }
+
+    pub fn new_different_native_only(native: Value) -> Self {
+        ComparisonResult::Different { base: None, native: Some(native) }
+    }
+
     pub fn into_json(self) -> Value {
         match self {
             ComparisonResult::Same => json!(SAME),
@@ -96,11 +104,7 @@ fn compare_json_values(val_1: Value, val_2: Value) -> Value {
         (Value::Object(obj_1), Value::Object(obj_2)) => compare_json_objects(obj_1, obj_2),
         (Value::Array(arr_1), Value::Array(arr_2)) => compare_json_arrays(arr_1, arr_2),
         (val_1, val_2) if val_1 == val_2 => ComparisonResult::Same.into(),
-        (val_1, val_2) => ComparisonResult::Different {
-            base: Some(val_1),
-            native: Some(val_2),
-        }
-        .into(),
+        (val_1, val_2) => ComparisonResult::new_different(val_1, val_2).into(),
     }
 }
 
@@ -111,12 +115,12 @@ fn compare_json_objects(obj_1: Map<String, Value>, mut obj_2: Map<String, Value>
     for (key_1, val_1) in obj_1 {
         match obj_2.remove(&key_1) {
             Some(val_2) => output.insert(key_1, compare_json_values(val_1, val_2)),
-            None => output.insert(key_1, build_different_result(Some(val_1), None)),
+            None => output.insert(key_1, ComparisonResult::new_different_base_only(val_1).into()),
         };
     }
 
     for (key_2, val_2) in obj_2 {
-        output.insert(key_2, build_different_result(None, Some(val_2)));
+        output.insert(key_2, ComparisonResult::new_different_native_only(val_2).into());
     }
 
     Value::Object(output)
@@ -124,22 +128,16 @@ fn compare_json_objects(obj_1: Map<String, Value>, mut obj_2: Map<String, Value>
 
 fn compare_json_arrays(arr_1: Vec<Value>, arr_2: Vec<Value>) -> Value {
     if arr_1.len() != arr_2.len() {
-        return build_different_result(Some(Value::Array(arr_1)), Some(Value::Array(arr_2)));
+        return ComparisonResult::new_different(Value::Array(arr_1), Value::Array(arr_2)).into();
     }
 
     let output: Vec<Value> = arr_1
-        .iter()
-        .cloned()
+        .into_iter()
         .zip(arr_2)
         .map(|e| compare_json_values(e.0, e.1))
         .collect();
 
     Value::Array(output)
-}
-
-// Creates an object signaling two values are different
-fn build_different_result(base: Option<Value>, native: Option<Value>) -> Value {
-    ComparisonResult::Different { base, native }.into()
 }
 
 fn clean_json_value(val: Value) -> Value {
