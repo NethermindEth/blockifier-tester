@@ -159,11 +159,7 @@ impl TransactionSimulator for JunoManager {
             self.ensure_usable().await?;
             let simulation_result = self
                 .rpc_client
-                .simulate_transactions(
-                    block_id,
-                    transactions_to_try,
-                    [],
-                )
+                .simulate_transactions(block_id, transactions_to_try, [])
                 .await;
 
             if simulation_result.is_ok() {
@@ -190,11 +186,7 @@ impl TransactionSimulator for JunoManager {
             self.ensure_usable().await?;
             let simulation_result = self
                 .rpc_client
-                .simulate_transactions(
-                    block_id,
-                    transactions_to_try,
-                    [],
-                )
+                .simulate_transactions(block_id, transactions_to_try, [])
                 .await;
 
             if simulation_result.is_ok() {
@@ -225,11 +217,7 @@ impl TransactionSimulator for JunoManager {
             self.ensure_usable().await?;
             let simulation_result = self
                 .rpc_client
-                .simulate_transactions(
-                    block_id,
-                    transactions_to_try,
-                    [],
-                )
+                .simulate_transactions(block_id, transactions_to_try, [])
                 .await;
 
             if simulation_result.is_ok() {

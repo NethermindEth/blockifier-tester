@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
-use crate::{block_tracer::TraceBlockReport, transaction_tracer::TraceResult};
+use crate::block_tracer::TraceBlockReport;
 
 const SAME: &str = "Same";
 const EMPTY: &str = "Empty";
@@ -29,11 +29,17 @@ impl ComparisonResult {
     }
 
     pub fn new_different_base_only(base: Value) -> Self {
-        ComparisonResult::Different { base: Some(base), native: None }
+        ComparisonResult::Different {
+            base: Some(base),
+            native: None,
+        }
     }
 
     pub fn new_different_native_only(native: Value) -> Self {
-        ComparisonResult::Different { base: None, native: Some(native) }
+        ComparisonResult::Different {
+            base: None,
+            native: Some(native),
+        }
     }
 
     pub fn into_json(self) -> Value {
@@ -54,30 +60,10 @@ impl From<ComparisonResult> for Value {
     }
 }
 
-fn trace_block_result_to_json(result: TraceResult) -> Value {
-    match result {
-        TraceResult::Success => json!({
-            "outcome": "Success",
-        }),
-        TraceResult::OtherError(err) => json!({
-            "outcome": "OtherError",
-            "error": err,
-        }),
-        TraceResult::NotFound => json!({
-            "outcome": "NotFound",
-        }),
-        TraceResult::Crash { error } => json!({
-            "outcome": "Crash",
-            "error": error,
-        }),
-    }
-}
-
 fn trace_block_report_to_json(report: TraceBlockReport) -> Value {
     json!({
         "block_num": report.block_num,
         "post_response": serde_json::value::to_value(report.post_response.unwrap_or_default()).unwrap(),
-        "result": trace_block_result_to_json(report.result),
     })
 }
 
@@ -115,12 +101,18 @@ fn compare_json_objects(obj_1: Map<String, Value>, mut obj_2: Map<String, Value>
     for (key_1, val_1) in obj_1 {
         match obj_2.remove(&key_1) {
             Some(val_2) => output.insert(key_1, compare_json_values(val_1, val_2)),
-            None => output.insert(key_1, ComparisonResult::new_different_base_only(val_1).into()),
+            None => output.insert(
+                key_1,
+                ComparisonResult::new_different_base_only(val_1).into(),
+            ),
         };
     }
 
     for (key_2, val_2) in obj_2 {
-        output.insert(key_2, ComparisonResult::new_different_native_only(val_2).into());
+        output.insert(
+            key_2,
+            ComparisonResult::new_different_native_only(val_2).into(),
+        );
     }
 
     Value::Object(output)
