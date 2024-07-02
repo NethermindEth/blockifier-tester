@@ -3,6 +3,7 @@ use std::{fmt::Display, fs::OpenOptions};
 use log::{info, warn};
 
 use itertools::Itertools;
+use num_bigint::BigUint;
 use serde::Serialize;
 use starknet::{
     core::types::{
@@ -16,10 +17,7 @@ use starknet::{
     providers::Provider,
 };
 
-use crate::{
-    juno_manager::{JunoBranch, JunoManager, ManagerError},
-    trace_comparison::hex_serialize,
-};
+use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
 
 #[allow(dead_code)]
 pub enum SimulationStrategy {
@@ -283,6 +281,17 @@ impl From<MaybePendingTransactionReceipt> for TransactionResult {
             },
         }
     }
+}
+
+pub fn hex_serialize<S>(val: &FieldElement, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_str(&format!("0x{}", hash_to_hex(val)))
+}
+
+fn hash_to_hex(h: &FieldElement) -> String {
+    BigUint::from_bytes_be(&h.to_bytes_be()).to_str_radix(16)
 }
 
 #[derive(Debug, Serialize)]

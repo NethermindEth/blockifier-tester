@@ -1,7 +1,7 @@
 use log::{debug, info};
 use starknet::{
     core::types::{BlockId, TransactionTraceWithHash},
-    providers::{Provider, ProviderError},
+    providers::Provider,
 };
 
 use crate::{
@@ -11,8 +11,8 @@ use crate::{
 
 #[derive(Debug)]
 pub struct TraceBlockReport {
-    pub block: BlockId,
-    pub post_response: Result<Vec<TransactionTraceWithHash>, ProviderError>,
+    pub block_num: u64,
+    pub post_response: Option<Vec<TransactionTraceWithHash>>,
     pub result: TraceResult,
 }
 
@@ -29,18 +29,18 @@ impl BlockTracer for JunoManager {
         let trace_result = self.rpc_client.trace_block_transactions(block_id).await;
         self.ensure_dead().await?;
 
-        match &trace_result {
-            Ok(_) => Ok(TraceBlockReport {
-                block: block_id,
+        match trace_result {
+            Ok(trace_result) => Ok(TraceBlockReport {
+                block_num,
                 result: TraceResult::Success,
-                post_response: trace_result,
+                post_response: Some(trace_result),
             }),
-            Err(_) => Ok(TraceBlockReport {
-                block: block_id,
+            Err(provider_error) => Ok(TraceBlockReport {
+                block_num,
                 result: TraceResult::Crash {
-                    error: "".to_string(),
+                    error: provider_error.to_string(),
                 },
-                post_response: trace_result,
+                post_response: None,
             }),
         }
     }

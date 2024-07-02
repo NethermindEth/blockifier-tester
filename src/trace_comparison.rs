@@ -1,14 +1,15 @@
+#![allow(dead_code)]
+
 use itertools::{EitherOrBoth, Itertools};
 use num_bigint::BigUint;
 use serde::Serialize;
 use starknet::core::types::{
-    BlockId, ExecuteInvocation, FieldElement, FunctionInvocation, TransactionTrace,
-    TransactionTraceWithHash,
+    ExecuteInvocation, FieldElement, FunctionInvocation, TransactionTrace, TransactionTraceWithHash,
 };
 // use super::{serde_impls::NumAsHex, *};
 // use starknet::core::types::serde_impls;
 
-use crate::block_tracer::TraceBlockReport;
+use crate::{block_tracer::TraceBlockReport, transaction_tracer::TraceResult};
 
 // TODO more distinct naming
 #[derive(Serialize)]
@@ -106,25 +107,30 @@ pub fn generate_comparison(
     base_report: TraceBlockReport,
     native_report: TraceBlockReport,
 ) -> BlockTraceResult {
-    let block_number = match (base_report.block, native_report.block) {
-        (BlockId::Number(base_block_number), BlockId::Number(native_block_number)) => {
-            assert_eq!(
-                base_block_number, native_block_number,
-                "Attempted to do block comparison for different blocks"
-            );
-            base_block_number
-        }
-        _ => todo!("Serializing non-block-number block ids not implemented yet"),
-    };
+    assert_eq!(
+        base_report.block_num, native_report.block_num,
+        "Attempted to do block comparison for different blocks. Base: {}, Native {}",
+        base_report.block_num, native_report.block_num
+    );
+
+    let block_number = base_report.block_num;
+
     BlockTraceResult {
         block_number,
-        comparison: match (base_report.post_response, native_report.post_response) {
-            (Ok(base_traces), Ok(native_traces)) => BlockTraceComparison::BothSucceeded {
-                transaction_traces: compare_traces(base_traces, native_traces),
+        comparison: match (base_report.result, native_report.result) {
+            (TraceResult::Success, TraceResult::Success) => BlockTraceComparison::BothSucceeded {
+                transaction_traces: compare_traces(
+                    base_report.post_response.unwrap(),
+                    native_report.post_response.unwrap(),
+                ),
             },
-            (Ok(_), Err(native_err)) => BlockTraceComparison::NativeFailed(native_err.to_string()),
-            (Err(base_err), Ok(_)) => BlockTraceComparison::BaseFailed(base_err.to_string()),
-            (Err(base_err), Err(native_err)) => BlockTraceComparison::BothFailed {
+            (TraceResult::Success, native_err) => {
+                BlockTraceComparison::NativeFailed(native_err.to_string())
+            }
+            (base_err, TraceResult::Success) => {
+                BlockTraceComparison::BaseFailed(base_err.to_string())
+            }
+            (base_err, native_err) => BlockTraceComparison::BothFailed {
                 base_error: base_err.to_string(),
                 native_error: native_err.to_string(),
             },
