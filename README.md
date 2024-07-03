@@ -1,16 +1,14 @@
 # Blockifier Tester
 
-This is a tool created for testing the [Blockifier integrated with Cairo Native](https://github.com/NethermindEth/blockifier).
+> ⚠️ **NOTE**: This project goal is to test software which has not yet reached production stage which means setting it up might not be as easy as it should. Please follow the README thoroughly since we tried to add every possible shortcomming to it. If you see there is something missing here that might help with anything please open an issue and we will fix it asap.
 
-## Project Status
-
-The tool is a work in progress and is primarily used only during this stage to replay blocks. It currently has no guarantees of stability for any behavior.
+This is a tool created for testing the [Blockifier integrated with Cairo Native](https://github.com/NethermindEth/blockifier). It is still a work in progress and currenty it is meant to be used only to assert that _natively compiled contracts_ behaves the same way as _casm compiled contract_.
 
 ## Terminology
 
-Native Juno : Juno instance running with [Native Blockifier](https://github.com/NethermindEth/blockifier) a.k.a. executing Cairo transactions natively, by compiling them with [Cairo Native](https://github.com/lambdaclass/cairo_native).
+**Native Juno**: Juno instance running with [Native Blockifier](https://github.com/NethermindEth/blockifier), that is, executing Cairo transactions natively by compiling them first with [Cairo Native](https://github.com/lambdaclass/cairo_native).
 
-Base Juno : Juno instance running using the "normal" [Blockifier](https://github.com/starkware-libs/blockifier) a.k.a. executing Cairo transactions with the VM.
+**Base Juno**: Juno instance running using the "normal" [Blockifier](https://github.com/starkware-libs/blockifier) or executing Cairo transactions the same way as always, with the VM.
 
 ## What it does
 
@@ -31,7 +29,7 @@ Attempt to trace the block with Native Juno. If the trace had no failures\*\* th
 
 To get your base version of Juno you need to first clone the [repo](https://github.com/NethermindEth/juno) and build it via `make juno`. Be sure to install all needed dependencies first, which are specified in the that same repository.
 
-Then, to obtain the native version, clone the project again, _switch to `native2.6.3-blockifier` branch_ and recompile. If you haven't compiled Cairo Native before you may face many compilation issues. We suggest you clone [Cairo Native](https://github.com/lambdaclass/cairo_native) and compile it separately first _(be sure to be using the same version as `native2.6.3-blockifier`)_. After both projects are compiled, make sure you have Cairo Native runtime library in your environment which is essential for running Ahead of Time Compiled Cairo.
+Then, to obtain the native version, clone the project again, _switch to `native2.6.3-blockifier` branch_ and recompile. If you haven't compiled Cairo Native before you may face many compilation issues. We suggest you clone [Cairo Native](https://github.com/lambdaclass/cairo_native) and compile it separately first _(be sure to be using the same version as `native2.6.3-blockifier`)_. After both projects are compiled, make sure you have Cairo Native runtime library in your environment which is **essential** for running Ahead of Time Compiled Cairo.
 
 ```
 export CAIRO_NATIVE_RUNTIME_LIBRARY=/<absolute_path_to>/cairo_native/target/release/libcairo_native_runtime.a
@@ -77,14 +75,25 @@ Once setup is complete, build the project with `cargo build`. The tool presents 
 Execute them with:
 
 ```bash
-cd target/debug # or whatever compilation profile you've used
-juno_compare_traces block 610508
+target/cprof/juno_compare_traces block 610508
 ```
 
 or
 
 ```bash
-juno_compare_traces range 610508 611000
+target/cprof/juno_compare_traces range 610508 611000
+```
+
+> **cprof** stands for compilation profile. It is usually debug or release
+
+> There are some issues with pathing currently. It's advised to run the binary from the project root.
+
+### Logging
+
+The tool will log it's execution. Currently it default to `debug`, but you can set any of the other logging profiles (i.e. `info`, `warn` and `error`) setting the `LOG_LEVEL` variable.
+
+```
+LOG_LEVEL=info juno_compare_traces range 610508 611000
 ```
 
 ## Troubleshooting
