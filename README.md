@@ -1,16 +1,14 @@
 # Blockifier Tester
 
-This is a tool created for testing the [Blockifier integrated with Cairo Native](https://github.com/NethermindEth/blockifier).
+⚠️ **NOTE**: This project goal is to test software which has not yet reached production stage which means setting it up might not be as easy as it should. Please follow the README thoroughly since we tried to add every possible shortcomming to it. If you see there is something missing here that might help with anything please open an issue and we will fix it asap.
 
-## Project Status
-
-The tool is a work in progress and is primarily used only during this stage to replay blocks. It currently has no guarantees of stability for any behavior.
+This is a tool created for testing the [Blockifier integrated with Cairo Native](https://github.com/NethermindEth/blockifier). It is still a work in progress and currenty it is meant to be used only to assert that _natively compiled contracts_ behaves the same way as _casm compiled contract_. We have focused on building it fast so we can test the network sooner rather than later which means there may be some rough edges around the code. Nonetheless, we expect that by following the instructions of the README.md anyone could use it without a hitch.
 
 ## Terminology
 
-Native Juno : Juno instance running with [Native Blockifier](https://github.com/NethermindEth/blockifier) a.k.a. executing Cairo transactions natively, by compiling them with [Cairo Native](https://github.com/lambdaclass/cairo_native).
+**Native Juno**: Juno instance running with [Native Blockifier](https://github.com/NethermindEth/blockifier), that is, executing Cairo transactions natively by compiling them first with [Cairo Native](https://github.com/lambdaclass/cairo_native).
 
-Base Juno : Juno instance running using the "normal" [Blockifier](https://github.com/starkware-libs/blockifier) a.k.a. executing Cairo transactions with the VM.
+**Base Juno**: Juno instance running using the "normal" [Blockifier](https://github.com/starkware-libs/blockifier) or executing Cairo transactions the same way as always, with the VM.
 
 ## What it does
 
