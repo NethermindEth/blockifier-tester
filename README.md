@@ -1,8 +1,8 @@
 # Blockifier Tester
 
-⚠️ **NOTE**: This project goal is to test software which has not yet reached production stage which means setting it up might not be as easy as it should. Please follow the README thoroughly since we tried to add every possible shortcomming to it. If you see there is something missing here that might help with anything please open an issue and we will fix it asap.
+> ⚠️ **NOTE**: This project goal is to test software which has not yet reached production stage which means setting it up might not be as easy as it should. Please follow the README thoroughly since we tried to add every possible shortcomming to it. If you see there is something missing here that might help with anything please open an issue and we will fix it asap.
 
-This is a tool created for testing the [Blockifier integrated with Cairo Native](https://github.com/NethermindEth/blockifier). It is still a work in progress and currenty it is meant to be used only to assert that _natively compiled contracts_ behaves the same way as _casm compiled contract_. We have focused on building it fast so we can test the network sooner rather than later which means there may be some rough edges around the code. Nonetheless, we expect that by following the instructions of the README.md anyone could use it without a hitch.
+This is a tool created for testing the [Blockifier integrated with Cairo Native](https://github.com/NethermindEth/blockifier). It is still a work in progress and currenty it is meant to be used only to assert that _natively compiled contracts_ behaves the same way as _casm compiled contract_.
 
 ## Terminology
 
