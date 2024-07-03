@@ -10,6 +10,7 @@ use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
 use clap::{arg, command, value_parser, ArgAction, Command};
 use core::panic;
+use env_logger::Env;
 use general_trace_comparison::generate_block_comparison;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
 use log::{info, warn};
@@ -71,7 +72,7 @@ async fn log_trace_comparison(
 
 fn setup_env_logger() {
     // run with RUST_LOG=juno_compare_traces to log everything
-    env_logger::builder()
+    env_logger::Builder::from_env(Env::default().filter_or("LOG_LEVEL", "debug"))
         .format(|buf, record| {
             writeln!(
                 buf,
