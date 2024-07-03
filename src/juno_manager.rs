@@ -70,7 +70,7 @@ impl From<ProviderError> for ManagerError {
 impl Display for ManagerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ManagerError::ProviderError(err) => write!(f, "Manager error: {}", err.to_string()),
+            ManagerError::ProviderError(err) => write!(f, "Manager error: {}", err),
             ManagerError::InternalError(err) => write!(f, "Internal error: {}", err),
         }
     }
