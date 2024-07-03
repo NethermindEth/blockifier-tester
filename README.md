@@ -17,7 +17,8 @@ For each block it will:
 
 1. attempt to trace the block with Native Juno
 2. if the trace had no failures\*\* then
-3. the block will be traced with Base Juno and a comparison between the two results will be writte in `./results/trace-<block_number>`.
+3. the block will be traced with Base Juno and
+4. a comparison between the two results will be written in `./results/trace-<block_number>`.
 
 Otherwise, if there was a failure, the block will be scanned (using binary search) until the faulty transaction is found. The report will be written in `./results/block-<block_number>`.
 
