@@ -84,6 +84,12 @@ or
 target/cprof/juno_compare_traces range 610508 611000
 ```
 
+For extra options, run:
+
+```bash
+target/cprof/juno_compare_traces --help
+```
+
 > **cprof** stands for compilation profile. It is usually debug or release
 
 > There are some issues with pathing currently. It's advised to run the binary from the project root.
