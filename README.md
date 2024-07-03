@@ -14,7 +14,15 @@ This is a tool created for testing the [Blockifier integrated with Cairo Native]
 
 The tool takes either a single block or a block range\* (see [Usage](#usage)).
 For each block it will:
-Attempt to trace the block with Native Juno. If the trace had no failures\*\* then the block will be traced with Base Juno and a comparison between the two results will be dumped in `./results/trace-<block_number>`. Otherwise, the block transactions will be simulated and a report will be dumped in `./results/block-<block_number>`. Currently, the block is simulated using a binary search to find which transaction crashes Juno. Results are tracked using [Git LFS](#git-lfs)
+
+1. attempt to trace the block with Native Juno
+2. if the trace had no failures\*\* then
+3. the block will be traced with Base Juno and
+4. a comparison between the two results will be written in `./results/trace-<block_number>`.
+
+Otherwise, if there was a failure, the block will be scanned (using binary search) until the faulty transaction is found. The report will be written in `./results/block-<block_number>`.
+
+Please note that everything in `./results/` is being tracked using [Git LFS](#git-lfs) to remove noise from the codebase.
 
 > \*Blocks are sorted in ascending order of how many transactions they have to avoid having to run many long RPC calls before we can get any results.
 
@@ -82,6 +90,12 @@ or
 
 ```bash
 target/cprof/juno_compare_traces range 610508 611000
+```
+
+For extra options, run:
+
+```bash
+target/cprof/juno_compare_traces --help
 ```
 
 > **cprof** stands for compilation profile. It is usually debug or release

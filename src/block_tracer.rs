@@ -1,11 +1,11 @@
-use log::{debug, info};
+use log::info;
 use starknet::{
     core::types::{BlockId, TransactionTraceWithHash},
     providers::Provider,
 };
 
 use crate::{
-    juno_manager::{JunoBranch, JunoManager, ManagerError},
+    juno_manager::{JunoManager, ManagerError},
     transaction_tracer::TraceResult,
 };
 
@@ -25,7 +25,7 @@ impl BlockTracer for JunoManager {
         self.ensure_usable().await?;
 
         let block_id = BlockId::Number(block_num);
-        debug!("Tracing block {block_num}");
+        info!("Tracing block {block_num}");
         let trace_result = self.rpc_client.trace_block_transactions(block_id).await;
         self.ensure_dead().await?;
 
@@ -44,16 +44,4 @@ impl BlockTracer for JunoManager {
             }),
         }
     }
-}
-
-#[allow(dead_code)]
-pub async fn block_main() -> Result<(), ManagerError> {
-    let block_number = 640000;
-    let mut juno_manager = JunoManager::new(JunoBranch::Native).await?;
-    let trace_report = juno_manager.trace_block(block_number).await?;
-
-    info!("//Done {block_number}");
-    info!("{trace_report:?}");
-
-    Ok(())
 }

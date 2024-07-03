@@ -1,6 +1,6 @@
 use std::{fmt::Display, fs::OpenOptions};
 
-use log::{info, warn};
+use log::{debug, info};
 
 use itertools::Itertools;
 use num_bigint::BigUint;
@@ -61,7 +61,7 @@ impl TransactionSimulator for JunoManager {
         &mut self,
         tx_hash: FieldElement,
     ) -> Result<TransactionResult, ManagerError> {
-        info!("Getting transaction receipt for {}", tx_hash);
+        debug!("Getting receipt for Tx 0x{}", hash_to_hex(&tx_hash));
         self.ensure_usable().await?;
         let result = self
             .rpc_client
@@ -205,13 +205,23 @@ impl TransactionSimulator for JunoManager {
         block_id: BlockId,
         transactions: &[TransactionToSimulate],
     ) -> Result<Vec<SimulatedTransaction>, ManagerError> {
+        info!(
+            "Searching for failed transaction in block {} (Using binary search)",
+            match block_id {
+                BlockId::Number(n) => n.to_string(),
+                _ => "<block_id is not a number>".into(),
+            }
+        );
         let broadcasted_transactions = transactions.iter().map(|tx| tx.tx.clone()).collect_vec();
-        let mut successful_results = vec![];
+        let mut known_succesful_results = vec![];
         let mut known_failure_length = transactions.len() + 1;
         let mut i = known_failure_length / 2;
         loop {
-            info!("Known failure length: {known_failure_length}");
-            info!("Known success length: {}", successful_results.len());
+            info!(
+                "First failed transaction index: {}. Last succesful transactions index: {}",
+                known_failure_length,
+                known_succesful_results.len()
+            );
             info!("Trying {} transactions", i);
             let transactions_to_try = &broadcasted_transactions[0..i];
             self.ensure_usable().await?;
@@ -220,22 +230,24 @@ impl TransactionSimulator for JunoManager {
                 .simulate_transactions(block_id, transactions_to_try, [])
                 .await;
 
-            if simulation_result.is_ok() {
-                successful_results = simulation_result.unwrap();
-                if i + 1 >= known_failure_length {
-                    return Ok(successful_results);
-                } else {
+            match simulation_result {
+                Ok(new_succesful_results) => {
+                    debug!("Succesful simulation up to {i} transactions");
+                    if i + 1 >= known_failure_length {
+                        return Ok(new_succesful_results);
+                    }
+                    known_succesful_results = new_succesful_results;
                     i = (i + known_failure_length) / 2;
                 }
-            } else {
-                // TODO branch on error
-                warn!("Got error {:?}", simulation_result.unwrap_err());
-                self.ensure_dead().await?;
-                if i - 1 <= successful_results.len() {
-                    return Ok(successful_results);
-                } else {
-                    known_failure_length = i;
-                    i = (i + successful_results.len()) / 2;
+                Err(error) => {
+                    debug!("Error simulating {i} transactions: {:?}", error);
+                    self.ensure_dead().await?;
+                    if i - 1 <= known_succesful_results.len() {
+                        return Ok(known_succesful_results);
+                    } else {
+                        known_failure_length = i;
+                        i = (i + known_succesful_results.len()) / 2;
+                    }
                 }
             }
         }
