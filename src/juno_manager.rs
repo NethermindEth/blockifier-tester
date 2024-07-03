@@ -57,15 +57,22 @@ impl Drop for JunoManager {
 
 #[derive(Debug)]
 pub enum ManagerError {
-    #[allow(dead_code)]
     ProviderError(ProviderError),
-    #[allow(dead_code)]
     InternalError(String),
 }
 
 impl From<ProviderError> for ManagerError {
     fn from(value: ProviderError) -> Self {
         Self::ProviderError(value)
+    }
+}
+
+impl Display for ManagerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ManagerError::ProviderError(err) => write!(f, "Manager error: {}", err.to_string()),
+            ManagerError::InternalError(err) => write!(f, "Internal error: {}", err),
+        }
     }
 }
 
@@ -157,43 +164,40 @@ impl JunoManager {
             return Ok(());
         }
 
-        info!("ensure_usable found no contactable juno");
-
+        info!("Couldn't contact Juno. Re-spawning...");
         let time_limit_seconds = 30;
-        info!("Waiting for juno: ");
         for time in 0..time_limit_seconds * 10 {
             if let Some(process) = self.process.as_mut() {
                 let exit_code = process.try_wait();
                 match exit_code {
                     Ok(Some(_)) => {
-                        info!("Spawning new process as previous one ended");
+                        debug!("Spawning new Juno process as previous one ended");
                         self.spawn_process_unchecked()
                     }
                     Ok(None) => {}
                     Err(err) => return Err(ManagerError::InternalError(format!("{err}"))),
                 }
             } else {
-                info!("Spawning fresh process as none was present or responding");
+                debug!("Spawning fresh Juno process as none was present or responding");
                 self.spawn_process_unchecked();
             }
+
             async_std::task::sleep(Duration::from_millis(100)).await;
-            if time % 10 == 0 {
-                info!("{}s ", time / 10);
-            }
-            let ping_result = self.rpc_client.block_number().await;
-            match ping_result {
+            match self.rpc_client.block_number().await {
                 Ok(block_number) => {
                     info!(
-                        "\nJuno contactable after {}ms with block number: {block_number}",
+                        "Juno is alive. Contactable after {}ms with block number: {block_number}",
                         time * 100
                     );
                     return Ok(());
                 }
                 Err(e) => match e {
-                    ProviderError::StarknetError(_) => todo!("Starknet error {e:?}"),
-                    ProviderError::RateLimited => todo!("Rate limit"),
-                    ProviderError::ArrayLengthMismatch => todo!("Array length mismatch"),
-                    ProviderError::Other(_) => continue,
+                    ProviderError::StarknetError(sn_err) => panic!("Starknet error {sn_err:?}"),
+                    ProviderError::RateLimited => panic!("Rate limit"),
+                    ProviderError::ArrayLengthMismatch => panic!("Array length mismatch"),
+                    ProviderError::Other(other_err) => {
+                        debug!("Juno is not contactable, retrying. Error: {}", other_err)
+                    }
                 },
             }
         }
@@ -207,17 +211,16 @@ impl JunoManager {
 
     pub async fn ensure_dead(&mut self) -> Result<(), ManagerError> {
         let start_time = SystemTime::now();
-        info!("Ensuring juno is dead");
+        info!("Killing Juno process...");
         if let Some(process) = self.process.as_mut() {
             let id = process.id().to_string();
-            info!("Spawning kill -s INT {id}");
+            debug!("Spawning kill -s INT {id}");
             let mut kill = Command::new("kill")
                 .args(["-s", "INT", &id])
                 .spawn()
                 .expect("Failed to spawn kill process");
             kill.wait().expect("Failed to send sigint");
             self.process = None;
-            info!("Sent sigint to child");
             while start_time.elapsed().unwrap().as_secs() < 30 {
                 let ping_result = self.rpc_client.block_number().await;
                 match ping_result {
@@ -225,7 +228,8 @@ impl JunoManager {
                         async_std::task::sleep(Duration::from_millis(100)).await;
                     }
                     Err(err) => {
-                        warn!("Received error (as expected) when killing juno: {err}");
+                        info!("Juno Killed");
+                        debug!("Received error (as expected): {err}");
                         return Ok(());
                     }
                 }

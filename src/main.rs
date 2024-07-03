@@ -13,7 +13,7 @@ use core::panic;
 use env_logger::Env;
 use general_trace_comparison::generate_block_comparison;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
-use log::{info, warn};
+use log::{error, info, warn};
 use std::io::Write;
 use std::path::Path;
 use tokio::fs::OpenOptions;
@@ -71,13 +71,12 @@ async fn log_trace_comparison(
 }
 
 fn setup_env_logger() {
-    // run with RUST_LOG=juno_compare_traces to log everything
     env_logger::Builder::from_env(Env::default().filter_or("LOG_LEVEL", "debug"))
         .format(|buf, record| {
             writeln!(
                 buf,
                 "{} {}: {}",
-                Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
+                Local::now().format("%d %H:%M:%S%.3f"),
                 record.level(),
                 record.args()
             )
@@ -115,15 +114,20 @@ async fn execute_traces(start_block: u64, end_block: u64, should_run_known: bool
             let mut juno_manager = JunoManager::new(JunoBranch::Native).await.unwrap();
             let result = juno_manager
                 .simulate_block(block_number, SimulationStrategy::Binary)
-                .await
-                .unwrap();
-            // Note that this doesn't compare the reasons for failure or the result on a success
-            let successes = result.iter().filter(|result| result.is_correct()).count();
-            info!(
-                "Completed block {block_number} with {successes}/{} successes",
-                result.len()
-            );
-            log_block_report(block_number, result);
+                .await;
+
+            match result {
+                // Note that this doesn't compare the reasons for failure or the result on a success
+                Ok(result) => {
+                    let successes = result.iter().filter(|result| result.is_correct()).count();
+                    info!(
+                        "Completed block {block_number} with {successes}/{} successes",
+                        result.len()
+                    );
+                    log_block_report(block_number, result);
+                }
+                Err(err) => error!("Error simulating transactions: {}", err),
+            }
         } else {
             let native_report = native_result.unwrap();
             info!("{}", native_report.result);
