@@ -79,7 +79,9 @@ Once setup is complete, build the project with `cargo build`. The tool presents 
 
 - _**block** `<block_num>`_ which traces and perform comparisons between base and native juno over a single block.
 - _**range** `<start_block>` `<end_block>`_ which does the same but over a range of blocks from inclusive `<start_block>` to exclusive `<end_block>`. Note that _(currently)_ blocks are sorted in ascending order by their amount of transactions.
-
+- _**--skip-fee-charge**_ which enables `SKIP_FEE_CHARGE` mode for simulating transactions.
+- _**--skip-validate**_ which enables `SKIP_VALIDATE` mode for simulating transactions.
+- _**--run-known**_ which forces action even if an output file (block- or trace-) already exists for block.
 Execute them with:
 
 ```bash

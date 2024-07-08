@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
-#[command(name = "blockifier-tester")]
+#[command(name = "juno_compare_traces")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
