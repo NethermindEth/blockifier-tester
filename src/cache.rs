@@ -33,7 +33,7 @@ pub async fn get_sorted_blocks_with_tx_count(
 
     // For each block, use its cached result if present, and if not then ask juno and add it to the cache data
     for block_num in block_start..block_end {
-      debug!("Searching for {block_num} in cache");
+        debug!("Searching for {block_num} in cache");
         match cache_data.binary_search_by(|(x, _)| x.cmp(&block_num)) {
             Ok(idx) => result.push(cache_data[idx]),
             Err(idx) => {

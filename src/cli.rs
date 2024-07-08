@@ -11,6 +11,9 @@ pub struct Cli {
     /// Enables `SKIP_VALIDATE` mode for simulating transactions.
     #[clap(long)]
     pub skip_validate: Option<u64>,
+    /// Forces action even if an output file (block- or trace-) already exists for block
+    #[clap(long)]
+    pub run_known: bool,
 }
 
 #[derive(Debug, Subcommand)]

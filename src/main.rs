@@ -11,27 +11,16 @@ use block_tracer::{BlockTracer, TraceBlockReport};
 use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
 use clap::Parser;
+use env_logger::Env;
 use general_trace_comparison::generate_block_comparison;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
-use log::{info, warn};
+use log::{error, info, warn};
 use std::io::Write;
 use std::path::Path;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncWriteExt, BufWriter};
 use transaction_simulator::{log_block_report, SimulationStrategy, TransactionSimulator};
 use transaction_tracer::TraceResult;
-
-const RERUNNING_AFTER_FIXES: bool = true;
-
-fn should_run_block(block_number: &u64) -> bool {
-    RERUNNING_AFTER_FIXES
-        || (!Path::new(&format!("./results/{block_number}.json")).exists()
-            && !Path::new(&format!("./results/trace-{block_number}.json")).exists()
-            && ![
-                610508_u64, 610541_u64, 612572_u64, 612787_u64, 613138_u64, 613978_u64,
-            ]
-            .contains(block_number))
-}
 
 async fn try_native_block_trace(block_number: u64) -> Result<TraceBlockReport, ManagerError> {
     let mut juno_manager = JunoManager::new(JunoBranch::Native).await?;
@@ -83,13 +72,12 @@ async fn log_trace_comparison(
 }
 
 fn setup_env_logger() {
-    // run with RUST_LOG=juno_compare_traces to log everything
-    env_logger::builder()
+    env_logger::Builder::from_env(Env::default().filter_or("LOG_LEVEL", "debug"))
         .format(|buf, record| {
             writeln!(
                 buf,
                 "{} {}: {}",
-                Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
+                Local::now().format("%d %H:%M:%S%.3f"),
                 record.level(),
                 record.args()
             )
@@ -97,14 +85,22 @@ fn setup_env_logger() {
         .init();
 }
 
-async fn execute_traces(start_block: u64, end_block: u64) {
+fn results_exist_for_block(block: u64) -> bool {
+    Path::new(&format!("results/trace-{}.json", block)).exists()
+        || Path::new(&format!("results/block-{}.json", block)).exists()
+}
+
+async fn execute_traces(start_block: u64, end_block: u64, should_run_known: bool) {
     let blocks_with_tx_count = get_sorted_blocks_with_tx_count(start_block, end_block)
         .await
-        .unwrap()
-        .into_iter()
-        .filter(|(block_number, _)| should_run_block(block_number));
+        .unwrap();
 
     for (block_number, tx_count) in blocks_with_tx_count {
+        if !should_run_known && results_exist_for_block(block_number) {
+            info!("Skipping block {block_number} because results exist (use --run-known to run anyways)");
+            continue;
+        }
+
         info!("Tracing block {block_number} with Native. It has {tx_count} transactions");
 
         let native_result = try_native_block_trace(block_number).await;
@@ -119,15 +115,20 @@ async fn execute_traces(start_block: u64, end_block: u64) {
             let mut juno_manager = JunoManager::new(JunoBranch::Native).await.unwrap();
             let result = juno_manager
                 .simulate_block(block_number, SimulationStrategy::Binary)
-                .await
-                .unwrap();
-            // Note that this doesn't compare the reasons for failure or the result on a success
-            let successes = result.iter().filter(|result| result.is_correct()).count();
-            info!(
-                "Completed block {block_number} with {successes}/{} successes",
-                result.len()
-            );
-            log_block_report(block_number, result);
+                .await;
+
+            match result {
+                // Note that this doesn't compare the reasons for failure or the result on a success
+                Ok(result) => {
+                    let successes = result.iter().filter(|result| result.is_correct()).count();
+                    info!(
+                        "Completed block {block_number} with {successes}/{} successes",
+                        result.len()
+                    );
+                    log_block_report(block_number, result);
+                }
+                Err(err) => error!("Error simulating transactions: {}", err),
+            }
         } else {
             let native_report = native_result.unwrap();
             info!("{}", native_report.result);
@@ -153,17 +154,19 @@ async fn main() {
 
     let cli = Cli::parse();
 
+    let run_known = cli.run_known;
+
     match cli.command {
         Commands::Block { block_num } => {
             let start_block = block_num;
             let end_block = block_num + 1;
-            execute_traces(start_block, end_block).await;
+            execute_traces(start_block, end_block, run_known).await;
         }
         Commands::Range {
             start_block_num,
             end_block_num,
         } => {
-            execute_traces(start_block_num, end_block_num).await;
+            execute_traces(start_block_num, end_block_num, run_known).await;
         }
     }
 }
