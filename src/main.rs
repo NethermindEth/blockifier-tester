@@ -15,6 +15,7 @@ use env_logger::Env;
 use general_trace_comparison::generate_block_comparison;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
 use log::{error, info, warn};
+use starknet::core::types::SimulationFlag;
 use std::io::Write;
 use std::path::Path;
 use tokio::fs::OpenOptions;
@@ -90,7 +91,12 @@ fn results_exist_for_block(block: u64) -> bool {
         || Path::new(&format!("results/block-{}.json", block)).exists()
 }
 
-async fn execute_traces(start_block: u64, end_block: u64, should_run_known: bool) {
+async fn execute_traces(
+    start_block: u64,
+    end_block: u64,
+    should_run_known: bool,
+    simulation_flags: Vec<SimulationFlag>,
+) {
     let blocks_with_tx_count = get_sorted_blocks_with_tx_count(start_block, end_block)
         .await
         .unwrap();
@@ -114,7 +120,7 @@ async fn execute_traces(start_block: u64, end_block: u64, should_run_known: bool
             info!("Simulating block {block_number} with Native. It has {tx_count} transactions");
             let mut juno_manager = JunoManager::new(JunoBranch::Native).await.unwrap();
             let result = juno_manager
-                .simulate_block(block_number, SimulationStrategy::Binary)
+                .simulate_block(block_number, SimulationStrategy::Binary, &simulation_flags)
                 .await;
 
             match result {
@@ -156,17 +162,29 @@ async fn main() {
 
     let run_known = cli.run_known;
 
+    let mut simulation_flags = vec![];
+
+    if cli.skip_validate {
+        info!("Running a simulation with SKIP_VALIDATE flag");
+        simulation_flags.push(SimulationFlag::SkipValidate)
+    }
+
+    if cli.skip_fee_charge {
+        info!("Running a simulation with SKIP_FEE_CHARGE flag");
+        simulation_flags.push(SimulationFlag::SkipFeeCharge)
+    }
+
     match cli.command {
         Commands::Block { block_num } => {
             let start_block = block_num;
             let end_block = block_num + 1;
-            execute_traces(start_block, end_block, run_known).await;
+            execute_traces(start_block, end_block, run_known, simulation_flags).await;
         }
         Commands::Range {
             start_block_num,
             end_block_num,
         } => {
-            execute_traces(start_block_num, end_block_num, run_known).await;
+            execute_traces(start_block_num, end_block_num, run_known, simulation_flags).await;
         }
     }
 }
