@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use log::{info, warn};
 
+use serde::{Deserialize, Serialize};
 use starknet::{
     core::types::{FieldElement, StarknetError},
     providers::{Provider, ProviderError},
@@ -9,7 +10,7 @@ use starknet::{
 
 use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum TraceResult {
     Success,
     OtherError(String),

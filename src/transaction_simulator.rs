@@ -1,10 +1,10 @@
-use std::{fmt::Display, fs::OpenOptions};
+use std::fmt::Display;
 
-use log::{debug, info};
+use log::{debug, info, warn};
 
 use itertools::Itertools;
 use num_bigint::BigUint;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use starknet::{
     core::types::{
         BlockId, BroadcastedDeployAccountTransaction, BroadcastedDeployAccountTransactionV1,
@@ -17,7 +17,10 @@ use starknet::{
     providers::Provider,
 };
 
-use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
+use crate::{
+    juno_manager::{JunoManager, ManagerError},
+    utils,
+};
 
 #[allow(dead_code)]
 pub enum SimulationStrategy {
@@ -38,7 +41,7 @@ pub trait TransactionSimulator {
         &mut self,
         block_number: u64,
         strategy: SimulationStrategy,
-    ) -> Result<Vec<SimulationReport>, ManagerError>;
+    ) -> Result<BlockSimulationReport, ManagerError>;
     async fn binary_repeat_simulate_until_success(
         &mut self,
         block_id: BlockId,
@@ -54,6 +57,32 @@ pub trait TransactionSimulator {
         block_id: BlockId,
         transactions: &[TransactionToSimulate],
     ) -> Result<Vec<SimulatedTransaction>, ManagerError>;
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct BinarySearchParams {
+    block: BlockId,
+    known_succesful_results: Vec<SimulatedTransaction>,
+    known_failure_length: usize,
+    i: usize,
+}
+impl BinarySearchParams {
+    fn new(transactions_len: usize, block_id: BlockId) -> Self {
+        BinarySearchParams {
+            block: block_id,
+            known_succesful_results: vec![],
+            known_failure_length: transactions_len + 1,
+            i: (transactions_len + 1) / 2,
+        }
+    }
+}
+
+fn block_id_to_string(block_id: BlockId) -> String {
+    match block_id {
+        BlockId::Number(n) => n.to_string(),
+        BlockId::Hash(hash) => utils::felt_to_hex(&hash, true),
+        BlockId::Tag(tag) => format!("{tag:?}"),
+    }
 }
 
 impl TransactionSimulator for JunoManager {
@@ -78,12 +107,19 @@ impl TransactionSimulator for JunoManager {
         let mut result = vec![];
         for transaction in block.transactions() {
             let tx_hash = get_block_transaction_hash(transaction);
-            let expected_result = self.get_expected_transaction_result(tx_hash).await?;
-            result.push(TransactionToSimulate {
-                tx: block_transaction_to_broadcasted_transaction(transaction)?,
-                hash: tx_hash,
-                expected_result,
-            })
+            println!("get expected transaction: 0x{}", hash_to_hex(&tx_hash));
+            // let expected_result = self.get_expected_transaction_result(tx_hash).await?;
+            let expected_result = self.get_expected_transaction_result(tx_hash).await;
+            match expected_result {
+                Ok(expected) => result.push(TransactionToSimulate {
+                    tx: block_transaction_to_broadcasted_transaction(transaction)?,
+                    hash: tx_hash,
+                    expected_result: expected,
+                }),
+                Err(err) => {
+                    warn!("get_expected_transaction_result returned err: {err:?} ");
+                }
+            }
         }
         Ok(result)
     }
@@ -92,7 +128,7 @@ impl TransactionSimulator for JunoManager {
         &mut self,
         block_number: u64,
         strategy: SimulationStrategy,
-    ) -> Result<Vec<SimulationReport>, ManagerError> {
+    ) -> Result<BlockSimulationReport, ManagerError> {
         info!("Getting block {block_number} with txns");
         let block = self
             .get_block_with_txs(BlockId::Number(block_number))
@@ -143,7 +179,11 @@ impl TransactionSimulator for JunoManager {
             });
         }
 
-        Ok(report)
+        Ok(BlockSimulationReport {
+            simulated_reports: report,
+            simulated_transactions: simulation_results,
+            transactions_list: transactions,
+        })
     }
 
     // Try all transactions and count down until they all work
@@ -212,41 +252,78 @@ impl TransactionSimulator for JunoManager {
                 _ => "<block_id is not a number>".into(),
             }
         );
-        let broadcasted_transactions = transactions.iter().map(|tx| tx.tx.clone()).collect_vec();
-        let mut known_succesful_results = vec![];
-        let mut known_failure_length = transactions.len() + 1;
-        let mut i = known_failure_length / 2;
-        loop {
-            info!(
-                "First failed transaction index: {}. Last succesful transactions index: {}",
-                known_failure_length,
-                known_succesful_results.len()
+
+        let cache_path = std::path::Path::new("cache/bin_search");
+        let mut search_params = utils::memoized_call(cache_path, || async {
+            debug!("cached path was not read. creating new binarysearchparams");
+            Ok(
+                BinarySearchParams::new(transactions.len(), block_id), //   BinarySearchParams {
+                                                                       //     block: block_id,
+                                                                       //     known_succesful_results: vec![],
+                                                                       //     known_failure_length: transactions.len() + 1,
+                                                                       //     i: (transactions.len() + 1) / 2,
+                                                                       // }
+            )
+        })
+        .await
+        .unwrap();
+        if search_params.block != block_id {
+            debug!(
+                "Cached search params were for a different block. Cached: {}\tRequested: {}",
+                block_id_to_string(search_params.block),
+                block_id_to_string(block_id)
             );
-            info!("Trying {} transactions", i);
-            let transactions_to_try = &broadcasted_transactions[0..i];
+            search_params = BinarySearchParams::new(transactions.len(), block_id);
+        } else {
+            debug!("using either cached params or new params");
+        }
+
+        let broadcasted_transactions = transactions.iter().map(|tx| tx.tx.clone()).collect_vec();
+        loop {
+            let _ = utils::try_write_to_file(cache_path, &search_params)
+                .await
+                .inspect_err(|write_err| {
+                    warn!("write error trying to cache binary search: {write_err:?}")
+                });
+
+            info!(
+                "Last succesful transactions index: {}. First failed transaction index: {}",
+                search_params.known_succesful_results.len(),
+                search_params.known_failure_length
+            );
+            info!("Trying {} transactions", search_params.i);
+            let transactions_to_try = &broadcasted_transactions[0..(search_params.i)];
             self.ensure_usable().await?;
             let simulation_result = self
                 .rpc_client
                 .simulate_transactions(block_id, transactions_to_try, [])
                 .await;
 
+            info!("Finished trying {} transactions", search_params.i);
             match simulation_result {
                 Ok(new_succesful_results) => {
-                    debug!("Succesful simulation up to {i} transactions");
-                    if i + 1 >= known_failure_length {
+                    debug!(
+                        "Succesful simulation up to {} transactions",
+                        search_params.i
+                    );
+                    if search_params.i + 1 >= search_params.known_failure_length {
                         return Ok(new_succesful_results);
                     }
-                    known_succesful_results = new_succesful_results;
-                    i = (i + known_failure_length) / 2;
+                    search_params.known_succesful_results = new_succesful_results;
+                    search_params.i = (search_params.i + search_params.known_failure_length) / 2;
                 }
                 Err(error) => {
-                    debug!("Error simulating {i} transactions: {:?}", error);
+                    debug!(
+                        "Error simulating {} transactions: {:?}",
+                        search_params.i, error
+                    );
                     self.ensure_dead().await?;
-                    if i - 1 <= known_succesful_results.len() {
-                        return Ok(known_succesful_results);
+                    if search_params.i - 1 <= search_params.known_succesful_results.len() {
+                        return Ok(search_params.known_succesful_results);
                     } else {
-                        known_failure_length = i;
-                        i = (i + known_succesful_results.len()) / 2;
+                        search_params.known_failure_length = search_params.i;
+                        search_params.i =
+                            (search_params.i + search_params.known_succesful_results.len()) / 2;
                     }
                 }
             }
@@ -309,9 +386,16 @@ fn hash_to_hex(h: &FieldElement) -> String {
 #[derive(Debug, Serialize)]
 pub struct SimulationReport {
     #[serde(serialize_with = "hex_serialize")]
-    tx_hash: FieldElement,
+    pub tx_hash: FieldElement,
     expected_result: TransactionResult,
     simulated_result: TransactionResult,
+}
+
+// #[derive(Serialize, Deserialize)]
+pub struct BlockSimulationReport {
+    pub simulated_reports: Vec<SimulationReport>,
+    pub simulated_transactions: Vec<SimulatedTransaction>,
+    pub transactions_list: Vec<TransactionToSimulate>,
 }
 
 impl Display for SimulationReport {
@@ -331,22 +415,9 @@ impl SimulationReport {
     }
 }
 
-pub fn log_block_report(block_number: u64, report: Vec<SimulationReport>) {
-    info!("Log report for block {block_number}");
-    let block_file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(format!("./results/block-{}.json", block_number))
-        .expect("Failed to open log file");
-
-    serde_json::to_writer_pretty(block_file, &report)
-        .unwrap_or_else(|_| panic!("failed to write block: {block_number}"));
-}
-
 pub struct TransactionToSimulate {
     tx: BroadcastedTransaction,
-    hash: FieldElement,
+    pub hash: FieldElement,
     expected_result: TransactionResult,
 }
 
@@ -382,7 +453,10 @@ fn block_transaction_to_broadcasted_transaction(
                 }),
             )),
         },
-        Transaction::L1Handler(_) => Err(ManagerError::InternalError("L1Handler".to_string())),
+        Transaction::L1Handler(err) => {
+            warn!("block_transaction_to_broadcasted_transaction::L1Handler: {err:?}");
+            Err(ManagerError::InternalError("L1Handler".to_string()))
+        }
         Transaction::Declare(_declare_transaction) => {
             Err(ManagerError::InternalError("Declare".to_string()))
             // BroadcastedTransaction::Declare(match declare_transaction {
@@ -468,24 +542,4 @@ fn get_simulated_transaction_result(transaction: &SimulatedTransaction) -> Trans
         TransactionTrace::L1Handler(_) => TransactionResult::L1Handler,
         TransactionTrace::Declare(_) => TransactionResult::Declare,
     }
-}
-
-#[allow(dead_code)]
-pub async fn simulate_main() -> Result<(), ManagerError> {
-    let block_number = 610026;
-    let mut juno_manager = JunoManager::new(JunoBranch::Native).await?;
-    let block_report = juno_manager
-        .simulate_block(block_number, SimulationStrategy::Optimistic)
-        .await?;
-    log_block_report(block_number, block_report);
-    info!("//Done {block_number}");
-
-    for block_number in 645000..645100 {
-        let block_report = juno_manager
-            .simulate_block(block_number, SimulationStrategy::Binary)
-            .await?;
-        log_block_report(block_number, block_report);
-        info!("//Done {block_number}");
-    }
-    Ok(())
 }

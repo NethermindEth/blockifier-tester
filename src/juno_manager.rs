@@ -165,7 +165,7 @@ impl JunoManager {
         }
 
         info!("Couldn't contact Juno. Re-spawning...");
-        let time_limit_seconds = 30;
+        let time_limit_seconds = 2030;
         for time in 0..time_limit_seconds * 10 {
             if let Some(process) = self.process.as_mut() {
                 let exit_code = process.try_wait();
