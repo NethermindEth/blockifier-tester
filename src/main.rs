@@ -1,7 +1,7 @@
 mod block_tracer;
 mod cache;
 mod cli;
-mod general_trace_comparison;
+mod trace_comparison;
 mod juno_manager;
 mod transaction_simulator;
 mod transaction_tracer;
@@ -12,7 +12,7 @@ use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
 use clap::Parser;
 use env_logger::Env;
-use general_trace_comparison::generate_block_comparison;
+use trace_comparison::generate_block_comparison;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
 use log::{error, info, warn};
 use std::io::Write;
