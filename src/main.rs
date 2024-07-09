@@ -1,15 +1,16 @@
 mod block_tracer;
 mod cache;
+mod cli;
 mod general_trace_comparison;
 mod juno_manager;
 mod transaction_simulator;
 mod transaction_tracer;
 
+use crate::cli::{Cli, Commands};
 use block_tracer::{BlockTracer, TraceBlockReport};
 use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
-use clap::{arg, command, value_parser, ArgAction, Command};
-use core::panic;
+use clap::Parser;
 use env_logger::Env;
 use general_trace_comparison::generate_block_comparison;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
@@ -151,49 +152,21 @@ async fn execute_traces(start_block: u64, end_block: u64, should_run_known: bool
 async fn main() {
     setup_env_logger();
 
-    let run_known_flag =
-                  arg!(<run_known> "Forces action even if an output file (block- or trace-) already exists for block")
-                    .long("run-known")
-                    .action(ArgAction::SetTrue)
-                    .required(false);
-    let cli = command!()
-        .subcommand(
-            Command::new("block")
-                .about("traces a single block")
-                .arg(arg!(<block_num> "block number to trace").value_parser(value_parser!(u64)))
-                .arg(run_known_flag.clone()),
-        )
-        .subcommand(
-            Command::new("range")
-                .about("traces a block range")
-                .arg(
-                    arg!(<first_block_num> "inclusive initial block number")
-                        .value_parser(value_parser!(u64)),
-                )
-                .arg(
-                    arg!(<last_block_num> "exclusive last block number")
-                        .value_parser(value_parser!(u64)),
-                )
-                .arg(run_known_flag),
-        )
-        .get_matches();
+    let cli = Cli::parse();
 
-    match cli.subcommand() {
-        Some(("block", args)) => {
-            let should_run_known = args.get_one::<bool>("run_known").unwrap().to_owned();
-            let block_num = args.get_one::<u64>("block_num").unwrap().to_owned();
-            execute_traces(block_num, block_num + 1, should_run_known).await;
+    let run_known = cli.run_known;
+
+    match cli.command {
+        Commands::Block { block_num } => {
+            let start_block = block_num;
+            let end_block = block_num + 1;
+            execute_traces(start_block, end_block, run_known).await;
         }
-        Some(("range", args)) => {
-            let first_block_num = args.get_one::<u64>("first_block_num").unwrap().to_owned();
-            let last_block_num = args.get_one::<u64>("last_block_num").unwrap().to_owned();
-            if last_block_num <= first_block_num {
-                panic!("first_block_num must be higher than last_block_num");
-            }
-            let should_run_known = args.get_one::<bool>("run_known").unwrap().to_owned();
-            execute_traces(first_block_num, last_block_num, should_run_known).await;
+        Commands::Range {
+            start_block_num,
+            end_block_num,
+        } => {
+            execute_traces(start_block_num, end_block_num, run_known).await;
         }
-        Some((cmd, _)) => panic!("Unknown {cmd} "),
-        None => panic!("Expecting either `block` or `range` sub-commands"),
     }
 }

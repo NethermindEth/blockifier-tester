@@ -79,8 +79,7 @@ Once setup is complete, build the project with `cargo build`. The tool presents 
 
 - _**block** `<block_num>`_ which traces and perform comparisons between base and native juno over a single block.
 - _**range** `<start_block>` `<end_block>`_ which does the same but over a range of blocks from inclusive `<start_block>` to exclusive `<end_block>`. Note that _(currently)_ blocks are sorted in ascending order by their amount of transactions.
-
-Execute them with:
+  Execute them with:
 
 ```bash
 target/cprof/juno_compare_traces block 610508
@@ -92,7 +91,8 @@ or
 target/cprof/juno_compare_traces range 610508 611000
 ```
 
-For extra options, run:
+The tester once it runs a block, it won't re-running it again unless the `--run-known` flag is used.
+There are some extra options like this for each of these commands. Please be sure to execute `--help` to know about them:
 
 ```bash
 target/cprof/juno_compare_traces --help
