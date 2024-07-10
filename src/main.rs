@@ -21,6 +21,7 @@ use tokio::fs::OpenOptions;
 use tokio::io::{AsyncWriteExt, BufWriter};
 use transaction_simulator::{log_block_report, SimulationStrategy, TransactionSimulator};
 use transaction_tracer::TraceResult;
+use crate::transaction_simulator::{log_base_trace};
 
 async fn try_native_block_trace(block_number: u64) -> Result<TraceBlockReport, ManagerError> {
     let mut juno_manager = JunoManager::new(JunoBranch::Native).await?;
@@ -101,56 +102,67 @@ async fn execute_traces(start_block: u64, end_block: u64, should_run_known: bool
             continue;
         }
 
-        info!("Tracing block {block_number} with Native. It has {tx_count} transactions");
+        info!("Tracing block {block_number} with Base. It has {tx_count} transactions");
+        let base_result = try_base_block_trace(block_number).await;
+        match base_result {
+            Ok(base_report) => {
+                info!("{}", base_report.result);
+                log_base_trace(block_number, &base_report).await;
 
-        let native_result = try_native_block_trace(block_number).await;
-        let should_simulate = native_result
-            .as_ref()
-            .map(|report| report.result != TraceResult::Success)
-            .unwrap_or(true);
+                info!("Tracing block {block_number} with Native. It has {tx_count} transactions");
+                let native_result = try_native_block_trace(block_number).await;
+                let should_simulate = native_result
+                    .as_ref()
+                    .map(|report| report.result != TraceResult::Success)
+                    .unwrap_or(true);
 
-        if should_simulate {
-            info!("Failed to trace block with Native, got {native_result:?}");
-            info!("Simulating block {block_number} with Native. It has {tx_count} transactions");
-            let mut juno_manager = JunoManager::new(JunoBranch::Native).await.unwrap();
-            let result = juno_manager
-                .simulate_block(block_number, SimulationStrategy::Binary)
-                .await;
+                if should_simulate {
+                    info!("Failed to trace block with Native, got {native_result:?}");
+                    info!("Simulating block {block_number} with Native. It has {tx_count} transactions");
+                    let mut juno_manager = JunoManager::new(JunoBranch::Native).await.unwrap();
+                    let result = juno_manager
+                        .simulate_block(block_number, SimulationStrategy::Binary)
+                        .await;
 
-            match result {
-                // Note that this doesn't compare the reasons for failure or the result on a success
-                Ok(result) => {
-                    let successes = result.iter().filter(|result| result.is_correct()).count();
-                    info!(
-                        "Completed block {block_number} with {successes}/{} successes",
-                        result.len()
-                    );
-                    log_block_report(block_number, result);
+                    match result {
+                        // Note that this doesn't compare the reasons for failure or the result on a success
+                        Ok(result) => {
+                            let successes = result.iter().filter(|result| result.is_correct()).count();
+                            info!(
+                                "Completed block {block_number} with {successes}/{} successes",
+                                result.len()
+                            );
+                            log_block_report(block_number, result);
+                        }
+                        Err(err) => error!("Error simulating transactions: {}", err),
+                    }
+                } else {
+                    let native_report = native_result.unwrap();
+                    info!("{}", native_report.result);
+                    log_trace_comparison(block_number, base_report, native_report).await;
                 }
-                Err(err) => error!("Error simulating transactions: {}", err),
             }
-        } else {
-            let native_report = native_result.unwrap();
-            info!("{}", native_report.result);
-            info!("Tracing block {block_number} with Base. It has {tx_count} transactions");
-            let base_result = try_base_block_trace(block_number).await;
-            match base_result {
-                Ok(base_report) => {
-                    info!("{}", base_report.result);
-                    log_trace_comparison(block_number, native_report, base_report).await;
-                }
-                Err(err) => {
-                    warn!("{err:?}");
-                    log_trace_crash(block_number, err).await;
-                }
+            Err(err) => {
+                warn!("{err:?}");
+                log_trace_crash(block_number, err).await;
             }
         }
     }
 }
 
+async fn prepare_direcotroies() {
+    info!("Preparing directories");
+
+    tokio::fs::create_dir_all("./results").await.unwrap();
+    tokio::fs::create_dir_all("./cache").await.unwrap();
+    tokio::fs::create_dir_all("./results/base").await.unwrap();
+    tokio::fs::create_dir_all("./results/native").await.unwrap();
+}
+
 #[tokio::main]
 async fn main() {
     setup_env_logger();
+    prepare_direcotroies().await;
 
     let cli = Cli::parse();
 
