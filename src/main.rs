@@ -150,7 +150,7 @@ async fn execute_traces(start_block: u64, end_block: u64, should_run_known: bool
     }
 }
 
-async fn prepare_direcotroies() {
+async fn prepare_directories() {
     info!("Preparing directories");
 
     tokio::fs::create_dir_all("./results").await.unwrap();
@@ -162,7 +162,7 @@ async fn prepare_direcotroies() {
 #[tokio::main]
 async fn main() {
     setup_env_logger();
-    prepare_direcotroies().await;
+    prepare_directories().await;
 
     let cli = Cli::parse();
 
