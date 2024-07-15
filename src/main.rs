@@ -1,8 +1,9 @@
 mod block_tracer;
 mod cache;
 mod cli;
-mod trace_comparison;
+mod graph;
 mod juno_manager;
+mod trace_comparison;
 mod transaction_simulator;
 mod transaction_tracer;
 
@@ -12,13 +13,14 @@ use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
 use clap::Parser;
 use env_logger::Env;
-use trace_comparison::generate_block_comparison;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
 use log::{error, info, warn};
+use starknet::core::types::{SimulationFlag, TransactionTraceWithHash};
 use std::io::Write;
 use std::path::Path;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncWriteExt, BufWriter};
+use trace_comparison::generate_block_comparison;
 use transaction_simulator::{log_block_report, SimulationStrategy, TransactionSimulator};
 use transaction_tracer::TraceResult;
 
@@ -85,12 +87,55 @@ fn setup_env_logger() {
         .init();
 }
 
+async fn log_block_trace(trace: &Vec<TransactionTraceWithHash>, block_number: u64, branch: &str) {
+    let log_file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(format!("./dump/trace-{block_number}-{branch}.json"))
+        .await
+        .expect("Failed to open log file");
+    let mut buffer = Vec::new();
+    serde_json::to_writer_pretty(&mut buffer, &trace).unwrap();
+    let mut writer = BufWriter::new(log_file);
+    writer.write_all(&buffer).await.unwrap();
+    writer
+        .flush()
+        .await
+        .expect("failed to write block: {block_number}");
+}
+
+async fn dump_block_traces(block_number: u64) -> Result<(), ManagerError> {
+    for branch in [JunoBranch::Native, JunoBranch::Base] {
+        if Path::new(&format!("./dump/trace-{block_number}-{branch}.json")).exists() {
+            info!("skipping dump for block {block_number}: {branch}");
+            continue;
+        }
+        let mut native_juno_manager = JunoManager::new(branch)
+            .await
+            .expect("failed to start juno");
+        let base_report = native_juno_manager.trace_block(block_number).await?;
+        match base_report.post_response {
+            Some(traces) => log_block_trace(&traces, block_number, &branch.to_string()).await,
+            None => {
+                warn!("Failed to dump trace for block: {block_number:?}");
+            }
+        }
+    }
+    Ok(())
+}
+
 fn results_exist_for_block(block: u64) -> bool {
     Path::new(&format!("results/trace-{}.json", block)).exists()
         || Path::new(&format!("results/block-{}.json", block)).exists()
 }
 
-async fn execute_traces(start_block: u64, end_block: u64, should_run_known: bool) {
+async fn execute_traces(
+    start_block: u64,
+    end_block: u64,
+    should_run_known: bool,
+    simulation_flags: Vec<SimulationFlag>,
+) {
     let blocks_with_tx_count = get_sorted_blocks_with_tx_count(start_block, end_block)
         .await
         .unwrap();
@@ -103,18 +148,27 @@ async fn execute_traces(start_block: u64, end_block: u64, should_run_known: bool
 
         info!("Tracing block {block_number} with Native. It has {tx_count} transactions");
 
+        let _ = dump_block_traces(block_number).await;
+
         let native_result = try_native_block_trace(block_number).await;
         let should_simulate = native_result
             .as_ref()
             .map(|report| report.result != TraceResult::Success)
             .unwrap_or(true);
 
+        // If we got the transactions, create dependency map.
+        let _ = native_result.as_ref().map(|report| {
+            report.post_response.as_ref().map(|transactions| {
+                graph::dump_transaction_dependencies(block_number, "native", transactions.iter())
+            })
+        });
+
         if should_simulate {
             info!("Failed to trace block with Native, got {native_result:?}");
             info!("Simulating block {block_number} with Native. It has {tx_count} transactions");
             let mut juno_manager = JunoManager::new(JunoBranch::Native).await.unwrap();
             let result = juno_manager
-                .simulate_block(block_number, SimulationStrategy::Binary)
+                .simulate_block(block_number, SimulationStrategy::Binary, &simulation_flags)
                 .await;
 
             match result {
@@ -136,6 +190,13 @@ async fn execute_traces(start_block: u64, end_block: u64, should_run_known: bool
             let base_result = try_base_block_trace(block_number).await;
             match base_result {
                 Ok(base_report) => {
+                    let _ = base_report.post_response.as_ref().map(|transactions| {
+                        graph::dump_transaction_dependencies(
+                            block_number,
+                            "base",
+                            transactions.iter(),
+                        )
+                    });
                     info!("{}", base_report.result);
                     log_trace_comparison(block_number, native_report, base_report).await;
                 }
@@ -156,17 +217,29 @@ async fn main() {
 
     let run_known = cli.run_known;
 
+    let mut simulation_flags = vec![];
+
+    if cli.skip_validate {
+        info!("Running a simulation with SKIP_VALIDATE flag");
+        simulation_flags.push(SimulationFlag::SkipValidate)
+    }
+
+    if cli.skip_fee_charge {
+        info!("Running a simulation with SKIP_FEE_CHARGE flag");
+        simulation_flags.push(SimulationFlag::SkipFeeCharge)
+    }
+
     match cli.command {
         Commands::Block { block_num } => {
             let start_block = block_num;
             let end_block = block_num + 1;
-            execute_traces(start_block, end_block, run_known).await;
+            execute_traces(start_block, end_block, run_known, simulation_flags).await;
         }
         Commands::Range {
             start_block_num,
             end_block_num,
         } => {
-            execute_traces(start_block_num, end_block_num, run_known).await;
+            execute_traces(start_block_num, end_block_num, run_known, simulation_flags).await;
         }
     }
 }
