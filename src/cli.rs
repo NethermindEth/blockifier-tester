@@ -7,10 +7,10 @@ pub struct Cli {
     pub command: Commands,
     /// Enables `SKIP_FEE_CHARGE` mode for simulating transactions.
     #[clap(long)]
-    pub skip_fee_charge: Option<u64>,
+    pub skip_fee_charge: bool,
     /// Enables `SKIP_VALIDATE` mode for simulating transactions.
     #[clap(long)]
-    pub skip_validate: Option<u64>,
+    pub skip_validate: bool,
     /// Forces action even if an output file (block- or trace-) already exists for block
     #[clap(long)]
     pub run_known: bool,
