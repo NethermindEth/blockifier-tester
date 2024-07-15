@@ -1,9 +1,9 @@
 mod block_tracer;
 mod cache;
 mod cli;
-mod general_trace_comparison;
 mod graph;
 mod juno_manager;
+mod trace_comparison;
 mod transaction_simulator;
 mod transaction_tracer;
 
@@ -13,7 +13,6 @@ use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
 use clap::Parser;
 use env_logger::Env;
-use general_trace_comparison::generate_block_comparison;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
 use log::{error, info, warn};
 use starknet::core::types::{SimulationFlag, TransactionTraceWithHash};
@@ -21,6 +20,7 @@ use std::io::Write;
 use std::path::Path;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncWriteExt, BufWriter};
+use trace_comparison::generate_block_comparison;
 use transaction_simulator::{log_block_report, SimulationStrategy, TransactionSimulator};
 use transaction_tracer::TraceResult;
 
