@@ -1,4 +1,4 @@
-use log::info;
+use log::debug;
 use serde::Serialize;
 use starknet::{
     core::types::{BlockId, TransactionTraceWithHash},
@@ -26,9 +26,9 @@ impl BlockTracer for JunoManager {
         self.ensure_usable().await?;
 
         let block_id = BlockId::Number(block_num);
-        info!("Tracing block {block_num}");
+        debug!("rpc call to trace_block_transactions {block_num}");
         let trace_result = self.rpc_client.trace_block_transactions(block_id).await;
-        self.ensure_dead().await?;
+        debug!("rpc call completed");
 
         match trace_result {
             Ok(trace_result) => Ok(TraceBlockReport {

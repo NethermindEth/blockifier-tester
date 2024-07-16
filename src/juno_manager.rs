@@ -33,28 +33,6 @@ impl Display for JunoBranch {
     }
 }
 
-pub struct JunoManager {
-    pub branch: JunoBranch,
-    pub process: Option<process::Child>,
-    pub rpc_client: JsonRpcClient<HttpTransport>,
-    juno_path: String,
-    juno_native_path: String,
-    juno_database_path: String,
-}
-
-impl Drop for JunoManager {
-    fn drop(&mut self) {
-        if let Some(mut process) = self.process.take() {
-            match process.kill() {
-                Err(e) => warn!(
-                    "Failed to kill juno. You will have to kill it manually to run another one. {e}"
-                ),
-                Ok(_) => info!("Successfully killed juno."),
-            }
-        }
-    }
-}
-
 #[derive(Debug)]
 pub enum ManagerError {
     ProviderError(ProviderError),
@@ -90,6 +68,15 @@ impl Config {
     }
 }
 
+pub struct JunoManager {
+    pub branch: JunoBranch,
+    pub process: Option<process::Child>,
+    pub rpc_client: JsonRpcClient<HttpTransport>,
+    juno_path: String,
+    juno_native_path: String,
+    juno_database_path: String,
+}
+
 impl JunoManager {
     pub async fn new(branch: JunoBranch) -> Result<Self, ManagerError> {
         let config = Config::from_path(Path::new("./config.toml")).map_err(|e| {
@@ -107,7 +94,7 @@ impl JunoManager {
 
         juno_manager.ensure_usable().await?;
         if juno_manager.process.is_none() {
-            warn!("JunoManager::new found existing juno instance");
+            warn!("Didn't create a new Juno instance because an existing one was found");
         }
         Ok(juno_manager)
     }
@@ -156,11 +143,14 @@ impl JunoManager {
 
         if let Ok(block_number) = ping_result {
             let juno_type = if self.process.is_some() {
-                "Internal"
+                "internal"
             } else {
-                "External"
+                "external"
             };
-            debug!("{juno_type} juno already contactable with block number: {block_number}");
+            debug!(
+                "{} Juno (as an {juno_type} process) is already live. Pinged with block {block_number}",
+                self.branch
+            );
             return Ok(());
         }
 
@@ -171,14 +161,20 @@ impl JunoManager {
                 let exit_code = process.try_wait();
                 match exit_code {
                     Ok(Some(_)) => {
-                        debug!("Spawning new Juno process as previous one ended");
+                        debug!(
+                            "Spawning new {} Juno process as previous one ended",
+                            self.branch
+                        );
                         self.spawn_process_unchecked()
                     }
                     Ok(None) => {}
                     Err(err) => return Err(ManagerError::InternalError(format!("{err}"))),
                 }
             } else {
-                debug!("Spawning fresh Juno process as none was present or responding");
+                debug!(
+                    "Spawning fresh {} Juno process as none was present or responding",
+                    self.branch
+                );
                 self.spawn_process_unchecked();
             }
 
@@ -186,8 +182,9 @@ impl JunoManager {
             match self.rpc_client.block_number().await {
                 Ok(block_number) => {
                     info!(
-                        "Juno is alive. Contactable after {}ms with block number: {block_number}",
-                        time * 100
+                        "{} Juno is alive after {}ms. Pinged  with block {block_number}",
+                        self.branch,
+                        time * 100,
                     );
                     return Ok(());
                 }
@@ -196,22 +193,22 @@ impl JunoManager {
                     ProviderError::RateLimited => panic!("Rate limit"),
                     ProviderError::ArrayLengthMismatch => panic!("Array length mismatch"),
                     ProviderError::Other(other_err) => {
-                        debug!("Juno is not contactable, retrying. Error: {}", other_err)
+                        debug!(
+                            "{} Juno is not contactable, retrying. Error: {}",
+                            self.branch, other_err
+                        )
                     }
                 },
             }
         }
-        // We were using print! to write the time to a single line, so an empty println makes sure that
-        // whatever is printed next has its own line
-        println!();
         Err(ManagerError::InternalError(format!(
-            "Failed to set up juno in {time_limit_seconds} seconds",
+            "Failed to set up Juno in {time_limit_seconds} seconds",
         )))
     }
 
     pub async fn ensure_dead(&mut self) -> Result<(), ManagerError> {
         let start_time = SystemTime::now();
-        info!("Killing Juno process...");
+        info!("Killing {} Juno... (by ensure_dead)", self.branch);
         if let Some(process) = self.process.as_mut() {
             let id = process.id().to_string();
             debug!("Spawning kill -s INT {id}");
@@ -228,7 +225,7 @@ impl JunoManager {
                         async_std::task::sleep(Duration::from_millis(100)).await;
                     }
                     Err(err) => {
-                        info!("Juno Killed");
+                        info!("{} Juno Killed", self.branch);
                         debug!("Received error (as expected): {err}");
                         return Ok(());
                     }
@@ -238,7 +235,7 @@ impl JunoManager {
                 "Juno still contactable after 30 seconds".to_string(),
             ))
         } else {
-            warn!("Attempted to automatically kill and restart juno following an unstable action but no stored process was found. Either an external juno is being used, or ensure_dead has been run multiple times");
+            warn!("Attempted to automatically kill and restart Juno following an unstable action but no stored process was found. Either an external juno is being used, or ensure_dead has been run multiple times");
             Ok(())
         }
     }
@@ -263,5 +260,23 @@ impl JunoManager {
             .get_block_with_txs(block_id)
             .await
             .map_err(|e| e.into())
+    }
+}
+
+impl Drop for JunoManager {
+    fn drop(&mut self) {
+        if let Some(mut process) = self.process.take() {
+            match process.kill() {
+                Err(e) => warn!(
+                    "FAILED to kill {} Juno (through mem drop). Be sure to kill it manually before running another: {}", self.branch, e
+                ),
+                Ok(()) => debug!("{} Juno killed (through mem drop) succesfully", self.branch),
+            }
+        } else {
+            debug!(
+                "{} Juno wasn't dropped beacuse it was already killed.",
+                self.branch
+            );
+        }
     }
 }
