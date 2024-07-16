@@ -1,27 +1,30 @@
 mod block_tracer;
 mod cache;
 mod cli;
-mod general_trace_comparison;
+mod graph;
 mod juno_manager;
+mod trace_comparison;
 mod transaction_simulator;
 mod transaction_tracer;
 
 use crate::cli::{Cli, Commands};
+use crate::transaction_simulator::log_base_trace;
 use block_tracer::{BlockTracer, TraceBlockReport};
 use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
 use clap::Parser;
+use core::panic;
 use env_logger::Env;
-use general_trace_comparison::generate_block_comparison;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
 use log::{error, info, warn};
+use starknet::core::types::{SimulationFlag, TransactionTraceWithHash};
 use std::io::Write;
 use std::path::Path;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncWriteExt, BufWriter};
+use trace_comparison::generate_block_comparison;
 use transaction_simulator::{log_block_report, SimulationStrategy, TransactionSimulator};
 use transaction_tracer::TraceResult;
-use crate::transaction_simulator::{log_base_trace};
 
 async fn try_native_block_trace(block_number: u64) -> Result<TraceBlockReport, ManagerError> {
     let mut juno_manager = JunoManager::new(JunoBranch::Native).await?;
@@ -86,12 +89,35 @@ fn setup_env_logger() {
         .init();
 }
 
+async fn log_block_trace(trace: &Vec<TransactionTraceWithHash>, block_number: u64, branch: &str) {
+    let log_file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(format!("./dump/trace-{block_number}-{branch}.json"))
+        .await
+        .expect("Failed to open log file");
+    let mut buffer = Vec::new();
+    serde_json::to_writer_pretty(&mut buffer, &trace).unwrap();
+    let mut writer = BufWriter::new(log_file);
+    writer.write_all(&buffer).await.unwrap();
+    writer
+        .flush()
+        .await
+        .expect("failed to write block: {block_number}");
+}
+
 fn results_exist_for_block(block: u64) -> bool {
     Path::new(&format!("results/trace-{}.json", block)).exists()
         || Path::new(&format!("results/block-{}.json", block)).exists()
 }
 
-async fn execute_traces(start_block: u64, end_block: u64, should_run_known: bool) {
+async fn execute_traces(
+    start_block: u64,
+    end_block: u64,
+    should_run_known: bool,
+    simulation_flags: Vec<SimulationFlag>,
+) {
     let blocks_with_tx_count = get_sorted_blocks_with_tx_count(start_block, end_block)
         .await
         .unwrap();
@@ -106,41 +132,57 @@ async fn execute_traces(start_block: u64, end_block: u64, should_run_known: bool
         let base_result = try_base_block_trace(block_number).await;
         match base_result {
             Ok(base_report) => {
-                info!("{}", base_report.result);
+                if base_report.result != TraceResult::Success {
+                    // todo: prettier handling, but low prio.
+                    panic!("Tracing with base juno is always expected to work. Check your config.");
+                }
+
                 log_base_trace(block_number, &base_report).await;
 
                 info!("Tracing block {block_number} with Native. It has {tx_count} transactions");
                 let native_result = try_native_block_trace(block_number).await;
-                let should_simulate = native_result
-                    .as_ref()
-                    .map(|report| report.result != TraceResult::Success)
-                    .unwrap_or(true);
 
-                if should_simulate {
-                    info!("Failed to trace block with Native, got {native_result:?}");
-                    info!("Simulating block {block_number} with Native. It has {tx_count} transactions");
-                    let mut juno_manager = JunoManager::new(JunoBranch::Native).await.unwrap();
-                    let result = juno_manager
-                        .simulate_block(block_number, SimulationStrategy::Binary)
-                        .await;
-
-                    match result {
-                        // Note that this doesn't compare the reasons for failure or the result on a success
-                        Ok(result) => {
-                            let successes = result.iter().filter(|result| result.is_correct()).count();
-                            info!(
-                                "Completed block {block_number} with {successes}/{} successes",
-                                result.len()
-                            );
-                            log_block_report(block_number, result);
-                        }
-                        Err(err) => error!("Error simulating transactions: {}", err),
+                // First branch is succesful block trace with Native
+                // Second branch is an unhandled crash by the blockifier/native during tracing
+                // Third branch is an unexpected crash by Juno Manager
+                match native_result {
+                    Ok(native_report) if native_report.result == TraceResult::Success => {
+                        info!("SUCCESS tracing block with native");
+                        log_trace_comparison(block_number, base_report, native_report).await;
                     }
-                } else {
-                    let native_report = native_result.unwrap();
-                    info!("{}", native_report.result);
-                    log_trace_comparison(block_number, base_report, native_report).await;
-                }
+                    Ok(native_report) => {
+                        // When tracing a block with native fails, the next step is performing a
+                        // binary search over the transactions searching for the one that crashes
+                        info!("Failed to trace block with Native, got {native_report:?}");
+                        info!("Simulating block {block_number} with Native. It has {tx_count} transactions");
+                        let mut juno_manager = JunoManager::new(JunoBranch::Native).await.unwrap();
+                        let result = juno_manager
+                            .simulate_block(
+                                block_number,
+                                SimulationStrategy::Binary,
+                                &simulation_flags,
+                            )
+                            .await;
+
+                        match result {
+                            // Note that this doesn't compare the reasons for failure or the result on a success
+                            Ok(result) => {
+                                let successes =
+                                    result.iter().filter(|result| result.is_correct()).count();
+                                info!(
+                                    "Completed block {block_number} with {successes}/{} successes",
+                                    result.len()
+                                );
+                                log_block_report(block_number, result);
+                            }
+                            Err(err) => error!("Error simulating transactions: {}", err),
+                        };
+                    }
+                    Err(err) => {
+                        warn!("{err:?}");
+                        log_trace_crash(block_number, err).await;
+                    }
+                };
             }
             Err(err) => {
                 warn!("{err:?}");
@@ -168,17 +210,29 @@ async fn main() {
 
     let run_known = cli.run_known;
 
+    let mut simulation_flags = vec![];
+
+    if cli.skip_validate {
+        info!("Running a simulation with SKIP_VALIDATE flag");
+        simulation_flags.push(SimulationFlag::SkipValidate)
+    }
+
+    if cli.skip_fee_charge {
+        info!("Running a simulation with SKIP_FEE_CHARGE flag");
+        simulation_flags.push(SimulationFlag::SkipFeeCharge)
+    }
+
     match cli.command {
         Commands::Block { block_num } => {
             let start_block = block_num;
             let end_block = block_num + 1;
-            execute_traces(start_block, end_block, run_known).await;
+            execute_traces(start_block, end_block, run_known, simulation_flags).await;
         }
         Commands::Range {
             start_block_num,
             end_block_num,
         } => {
-            execute_traces(start_block_num, end_block_num, run_known).await;
+            execute_traces(start_block_num, end_block_num, run_known, simulation_flags).await;
         }
     }
 }
