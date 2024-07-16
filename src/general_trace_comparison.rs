@@ -1,5 +1,7 @@
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
+use starknet::core::types::{TransactionTrace, TransactionTraceWithHash};
 
 use crate::block_tracer::TraceBlockReport;
 
@@ -61,10 +63,27 @@ impl From<ComparisonResult> for Value {
 }
 
 fn trace_block_report_to_json(report: TraceBlockReport) -> Value {
+    let mut traces = report.post_response.unwrap_or_default();
+    for mut trace in traces.iter_mut() {
+        normalize_state_diff(&mut trace);
+    }
     json!({
         "block_num": report.block_num,
-        "post_response": serde_json::value::to_value(report.post_response.unwrap_or_default()).unwrap(),
+        "post_response": serde_json::value::to_value(traces).unwrap(),
     })
+}
+
+fn normalize_state_diff(trace: &mut TransactionTraceWithHash) {
+    match &mut trace.trace_root {
+        TransactionTrace::Invoke(trace) => {
+            if let Some(state_diff) = &mut trace.state_diff {
+                state_diff.storage_diffs.sort_by(|lhs, rhs| lhs.address.cmp(&rhs.address));
+            }
+        },
+        TransactionTrace::DeployAccount(_) => {},
+        TransactionTrace::L1Handler(_) => {},
+        TransactionTrace::Declare(_) => {},
+    }
 }
 
 // Take two JSONs and compare each (key, value) recursively.
@@ -99,13 +118,34 @@ fn compare_json_objects(obj_1: Map<String, Value>, mut obj_2: Map<String, Value>
     let mut output = Map::<String, Value>::new();
 
     for (key_1, val_1) in obj_1 {
-        match obj_2.remove(&key_1) {
-            Some(val_2) => output.insert(key_1, compare_json_values(val_1, val_2)),
-            None => output.insert(
-                key_1,
-                ComparisonResult::new_different_base_only(val_1).into(),
-            ),
-        };
+        if key_1 == "revert_reason" {
+            match obj_2.remove(&key_1) {
+                Some(val_2) => {
+                    if let (Value::String(str_1), Value::String(str_2)) = (val_1, val_2) {
+                        let lines_1 = str_1.split("\n");
+                        let lines_2 = str_2.split("\n");
+                        .filter(|s| s.starts_with("Error message:"))
+                    }
+                    println!("{:?}", val_1);
+                    println!("{:?}", val_2);
+                    todo!();
+                    // output.insert(key_1, compare_json_values(val_1, val_2))
+                },
+                None => output.insert(
+                    key_1,
+                    ComparisonResult::new_different_base_only(val_1).into(),
+                ),
+            };
+        } else {
+            match obj_2.remove(&key_1) {
+                Some(val_2) => output.insert(key_1, compare_json_values(val_1, val_2)),
+                None => output.insert(
+                    key_1,
+                    ComparisonResult::new_different_base_only(val_1).into(),
+                ),
+            };
+        }
+        
     }
 
     for (key_2, val_2) in obj_2 {
@@ -143,7 +183,9 @@ fn clean_json_value(val: Value) -> Value {
 fn clean_json_object(obj: Map<String, Value>) -> Value {
     let mut cleaned_obj = Map::<String, Value>::new();
     for (key, val) in obj {
-        cleaned_obj.insert(key, clean_json_value(val));
+        if key != "execution_resources" && key != "fee_transfer_invocation" {
+            cleaned_obj.insert(key, clean_json_value(val));
+        }
     }
 
     let all_same = cleaned_obj
