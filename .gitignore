@@ -2,3 +2,4 @@ target/
 config.toml
 juno_out.log
 .vscode/
+.idea/

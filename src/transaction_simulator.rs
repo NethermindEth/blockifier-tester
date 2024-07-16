@@ -17,6 +17,7 @@ use starknet::{
     },
     providers::Provider,
 };
+use crate::block_tracer::TraceBlockReport;
 
 use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
 
@@ -353,6 +354,20 @@ pub fn log_block_report(block_number: u64, report: Vec<SimulationReport>) {
         .expect("Failed to open log file");
 
     serde_json::to_writer_pretty(block_file, &report)
+        .unwrap_or_else(|_| panic!("failed to write block: {block_number}"));
+}
+
+pub async fn log_base_trace(block_number: u64, trace: &TraceBlockReport) {
+    info!("Log trace for block {block_number}");
+
+    let block_file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(format!("./results/base/trace-{block_number}.json"))
+        .expect("Failed to open log file");
+
+    serde_json::to_writer_pretty(block_file, &trace)
         .unwrap_or_else(|_| panic!("failed to write block: {block_number}"));
 }
 
