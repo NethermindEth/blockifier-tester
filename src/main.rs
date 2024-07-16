@@ -8,6 +8,7 @@ mod transaction_simulator;
 mod transaction_tracer;
 
 use crate::cli::{Cli, Commands};
+use crate::graph::write_transactions_dependencies;
 use crate::transaction_simulator::log_base_trace;
 use block_tracer::{BlockTracer, TraceBlockReport};
 use cache::get_sorted_blocks_with_tx_count;
@@ -17,7 +18,7 @@ use core::panic;
 use env_logger::Env;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
 use log::{error, info, warn};
-use starknet::core::types::{SimulationFlag, TransactionTraceWithHash};
+use starknet::core::types::SimulationFlag;
 use std::io::Write;
 use std::path::Path;
 use tokio::fs::OpenOptions;
@@ -89,24 +90,6 @@ fn setup_env_logger() {
         .init();
 }
 
-async fn log_block_trace(trace: &Vec<TransactionTraceWithHash>, block_number: u64, branch: &str) {
-    let log_file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(format!("./dump/trace-{block_number}-{branch}.json"))
-        .await
-        .expect("Failed to open log file");
-    let mut buffer = Vec::new();
-    serde_json::to_writer_pretty(&mut buffer, &trace).unwrap();
-    let mut writer = BufWriter::new(log_file);
-    writer.write_all(&buffer).await.unwrap();
-    writer
-        .flush()
-        .await
-        .expect("failed to write block: {block_number}");
-}
-
 fn results_exist_for_block(block: u64) -> bool {
     Path::new(&format!("results/trace-{}.json", block)).exists()
         || Path::new(&format!("results/block-{}.json", block)).exists()
@@ -134,7 +117,7 @@ async fn execute_traces(
             Ok(base_report) => {
                 if base_report.result != TraceResult::Success {
                     // todo: prettier handling, but low prio.
-                    panic!("Tracing with base juno is always expected to work. Check your config.");
+                    panic!("Tracing with base juno is always expected to work. Check your base juno bin and config");
                 }
 
                 log_base_trace(block_number, &base_report).await;
@@ -148,6 +131,13 @@ async fn execute_traces(
                 match native_result {
                     Ok(native_report) if native_report.result == TraceResult::Success => {
                         info!("SUCCESS tracing block with native");
+                        if let Err(e) = write_transactions_dependencies(
+                            block_number,
+                            "native",
+                            native_report.post_response.as_ref().unwrap().iter(),
+                        ) {
+                            warn!("Error writing transaction dependencies: {e:?}");
+                        }
                         log_trace_comparison(block_number, base_report, native_report).await;
                     }
                     Ok(native_report) => {

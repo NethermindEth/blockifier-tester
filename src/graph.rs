@@ -174,7 +174,7 @@ impl TransactionDiffStore {
     }
 }
 
-pub fn dump_transaction_dependencies<'a, T>(
+pub fn write_transactions_dependencies<'a, T>(
     block_num: u64,
     branch: &str,
     transactions: T,
