@@ -109,7 +109,10 @@ impl JunoManager {
         let juno_out_file = OpenOptions::new()
             .create(true)
             .append(true)
-            .open("./juno_out.log")
+            .open(format!(
+                "./{}_juno_out.log",
+                self.branch.to_string().to_lowercase()
+            ))
             .unwrap();
         let juno_err_file = juno_out_file.try_clone().unwrap();
         let process = match self.branch {
