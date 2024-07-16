@@ -1,0 +1,862 @@
+15 12:55:43.226 INFO: Got cache with 35274 elements
+15 12:55:43.306 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:43.317 INFO: Couldn't contact Juno. Re-spawning...
+15 12:55:43.317 DEBUG: Spawning fresh Juno process as none was present or responding
+15 12:55:43.371 INFO: Spawned Native juno with id 31762
+15 12:55:43.471 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:43.472 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:43.572 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:43.573 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:43.673 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:43.673 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:43.773 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:43.774 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:43.874 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:43.875 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:43.975 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:43.975 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:44.075 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:44.076 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:44.176 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:44.177 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:44.277 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:44.277 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:44.377 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:44.378 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:44.478 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:44.479 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:44.579 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:44.579 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:44.680 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:44.680 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:44.780 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:44.781 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:44.881 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:44.882 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:44.982 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:44.983 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:45.083 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:45.083 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:45.184 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:45.184 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:45.284 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:45.285 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:45.385 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:45.385 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:45.486 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:45.486 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:45.587 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:45.587 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:45.688 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:45.688 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:45.789 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:45.789 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:45.890 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:45.890 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:45.990 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:45.991 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:46.091 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:46.092 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:46.192 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:46.192 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:46.293 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:46.293 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:46.393 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:46.394 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:46.494 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:46.494 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:46.595 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:46.595 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:46.695 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:46.696 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:46.796 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:46.797 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:46.897 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:46.898 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:46.998 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:46.998 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:47.099 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:47.099 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:47.199 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:47.200 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:47.300 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:47.301 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:47.401 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:47.402 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:47.502 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:47.502 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:47.603 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:47.603 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:47.703 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:47.704 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:47.804 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:47.805 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:47.905 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:47.905 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:48.006 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:48.007 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:48.107 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:48.107 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:48.207 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:48.208 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:48.308 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:48.308 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:48.409 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:48.409 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:48.509 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:48.510 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:48.610 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:48.611 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:48.711 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:48.712 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:48.812 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:48.812 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:48.912 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:48.913 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:49.013 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:49.014 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:49.114 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:49.114 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:49.215 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:49.215 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:49.315 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:49.316 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:49.416 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:49.416 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:49.516 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:49.517 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:49.617 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:49.617 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:49.718 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:49.718 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:49.818 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:49.819 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:49.919 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:49.919 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:50.019 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:50.020 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:50.120 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:50.121 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:50.221 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:50.221 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:50.322 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:50.322 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:50.422 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:50.423 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:50.523 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:50.523 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:50.623 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:50.624 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:50.724 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:50.724 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:50.825 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:50.825 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:50.925 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:50.926 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:51.026 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:51.026 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:51.127 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:51.127 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:51.227 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:51.228 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:51.328 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:51.328 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:51.428 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:51.429 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:51.529 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:51.529 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:51.630 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:51.630 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:51.730 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:51.731 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:51.831 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:51.831 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:51.932 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:51.932 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:52.032 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:52.033 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:52.133 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:52.133 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:52.234 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:52.234 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:52.334 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:52.335 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:52.435 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:52.435 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:52.536 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:52.536 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:52.636 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:52.637 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:52.737 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:52.737 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:52.838 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:52.896 INFO: Juno is alive. Contactable after 9300ms with block number: 642573
+15 12:55:52.896 DEBUG: Searching for block 641970 in cache
+15 12:55:52.896 DEBUG: Searching for block 641971 in cache
+15 12:55:52.896 DEBUG: Searching for block 641972 in cache
+15 12:55:52.896 DEBUG: Searching for block 641973 in cache
+15 12:55:52.896 DEBUG: Searching for block 641974 in cache
+15 12:55:52.896 DEBUG: Searching for block 641975 in cache
+15 12:55:52.896 DEBUG: Searching for block 641976 in cache
+15 12:55:52.896 DEBUG: Searching for block 641977 in cache
+15 12:55:52.896 DEBUG: Searching for block 641978 in cache
+15 12:55:52.896 DEBUG: Searching for block 641979 in cache
+15 12:55:52.896 DEBUG: Searching for block 641980 in cache
+15 12:55:52.896 DEBUG: Searching for block 641981 in cache
+15 12:55:52.896 DEBUG: Searching for block 641982 in cache
+15 12:55:52.896 DEBUG: Searching for block 641983 in cache
+15 12:55:52.896 DEBUG: Searching for block 641984 in cache
+15 12:55:52.896 DEBUG: Searching for block 641985 in cache
+15 12:55:52.896 DEBUG: Searching for block 641986 in cache
+15 12:55:52.896 DEBUG: Searching for block 641987 in cache
+15 12:55:52.896 DEBUG: Searching for block 641988 in cache
+15 12:55:52.896 DEBUG: Searching for block 641989 in cache
+15 12:55:52.896 DEBUG: Searching for block 641990 in cache
+15 12:55:52.896 DEBUG: Searching for block 641991 in cache
+15 12:55:52.896 DEBUG: Searching for block 641992 in cache
+15 12:55:52.896 DEBUG: Searching for block 641993 in cache
+15 12:55:52.896 DEBUG: Searching for block 641994 in cache
+15 12:55:52.896 DEBUG: Searching for block 641995 in cache
+15 12:55:52.896 DEBUG: Searching for block 641996 in cache
+15 12:55:52.896 DEBUG: Searching for block 641997 in cache
+15 12:55:52.896 DEBUG: Searching for block 641998 in cache
+15 12:55:52.896 DEBUG: Searching for block 641999 in cache
+15 12:55:52.896 DEBUG: Searching for block 642000 in cache
+15 12:55:52.896 DEBUG: Searching for block 642001 in cache
+15 12:55:52.896 DEBUG: Searching for block 642002 in cache
+15 12:55:52.896 DEBUG: Searching for block 642003 in cache
+15 12:55:52.896 DEBUG: Searching for block 642004 in cache
+15 12:55:52.896 DEBUG: Searching for block 642005 in cache
+15 12:55:52.896 DEBUG: Searching for block 642006 in cache
+15 12:55:52.896 DEBUG: Searching for block 642007 in cache
+15 12:55:52.896 DEBUG: Searching for block 642008 in cache
+15 12:55:52.896 DEBUG: Searching for block 642009 in cache
+15 12:55:52.896 DEBUG: Searching for block 642010 in cache
+15 12:55:52.896 DEBUG: Searching for block 642011 in cache
+15 12:55:52.896 DEBUG: Searching for block 642012 in cache
+15 12:55:52.896 DEBUG: Searching for block 642013 in cache
+15 12:55:52.896 DEBUG: Searching for block 642014 in cache
+15 12:55:52.896 DEBUG: Searching for block 642015 in cache
+15 12:55:52.896 DEBUG: Searching for block 642016 in cache
+15 12:55:52.896 DEBUG: Searching for block 642017 in cache
+15 12:55:52.896 DEBUG: Searching for block 642018 in cache
+15 12:55:52.896 DEBUG: Searching for block 642019 in cache
+15 12:55:52.896 DEBUG: Searching for block 642020 in cache
+15 12:55:52.896 DEBUG: Searching for block 642021 in cache
+15 12:55:52.896 DEBUG: Searching for block 642022 in cache
+15 12:55:52.896 DEBUG: Searching for block 642023 in cache
+15 12:55:52.896 DEBUG: Searching for block 642024 in cache
+15 12:55:52.896 DEBUG: Searching for block 642025 in cache
+15 12:55:52.896 DEBUG: Searching for block 642026 in cache
+15 12:55:52.896 DEBUG: Searching for block 642027 in cache
+15 12:55:52.896 DEBUG: Searching for block 642028 in cache
+15 12:55:52.896 DEBUG: Searching for block 642029 in cache
+15 12:55:52.896 DEBUG: Searching for block 642030 in cache
+15 12:55:52.896 DEBUG: Searching for block 642031 in cache
+15 12:55:52.896 DEBUG: Searching for block 642032 in cache
+15 12:55:52.896 DEBUG: Searching for block 642033 in cache
+15 12:55:52.896 DEBUG: Searching for block 642034 in cache
+15 12:55:52.896 DEBUG: Searching for block 642035 in cache
+15 12:55:52.896 DEBUG: Searching for block 642036 in cache
+15 12:55:52.896 DEBUG: Searching for block 642037 in cache
+15 12:55:52.896 DEBUG: Searching for block 642038 in cache
+15 12:55:52.896 DEBUG: Searching for block 642039 in cache
+15 12:55:52.896 DEBUG: Searching for block 642040 in cache
+15 12:55:52.896 DEBUG: Searching for block 642041 in cache
+15 12:55:52.896 DEBUG: Searching for block 642042 in cache
+15 12:55:52.896 DEBUG: Searching for block 642043 in cache
+15 12:55:52.896 DEBUG: Searching for block 642044 in cache
+15 12:55:52.896 DEBUG: Searching for block 642045 in cache
+15 12:55:52.896 DEBUG: Searching for block 642046 in cache
+15 12:55:52.896 DEBUG: Searching for block 642047 in cache
+15 12:55:52.896 DEBUG: Searching for block 642048 in cache
+15 12:55:52.896 DEBUG: Searching for block 642049 in cache
+15 12:55:52.896 DEBUG: Searching for block 642050 in cache
+15 12:55:52.896 DEBUG: Searching for block 642051 in cache
+15 12:55:52.896 DEBUG: Searching for block 642052 in cache
+15 12:55:52.896 DEBUG: Searching for block 642053 in cache
+15 12:55:52.896 DEBUG: Searching for block 642054 in cache
+15 12:55:52.896 DEBUG: Searching for block 642055 in cache
+15 12:55:52.896 DEBUG: Searching for block 642056 in cache
+15 12:55:52.896 DEBUG: Searching for block 642057 in cache
+15 12:55:52.896 DEBUG: Searching for block 642058 in cache
+15 12:55:52.896 DEBUG: Searching for block 642059 in cache
+15 12:55:52.896 DEBUG: Searching for block 642060 in cache
+15 12:55:52.896 DEBUG: Searching for block 642061 in cache
+15 12:55:52.896 DEBUG: Searching for block 642062 in cache
+15 12:55:52.896 DEBUG: Searching for block 642063 in cache
+15 12:55:52.896 DEBUG: Searching for block 642064 in cache
+15 12:55:52.896 DEBUG: Searching for block 642065 in cache
+15 12:55:52.896 DEBUG: Searching for block 642066 in cache
+15 12:55:52.896 DEBUG: Searching for block 642067 in cache
+15 12:55:52.896 DEBUG: Searching for block 642068 in cache
+15 12:55:52.896 DEBUG: Searching for block 642069 in cache
+15 12:55:52.896 DEBUG: Searching for block 642070 in cache
+15 12:55:52.896 DEBUG: Searching for block 642071 in cache
+15 12:55:52.896 DEBUG: Searching for block 642072 in cache
+15 12:55:52.896 DEBUG: Searching for block 642073 in cache
+15 12:55:52.896 DEBUG: Searching for block 642074 in cache
+15 12:55:52.896 DEBUG: Searching for block 642075 in cache
+15 12:55:52.896 DEBUG: Searching for block 642076 in cache
+15 12:55:52.896 DEBUG: Searching for block 642077 in cache
+15 12:55:52.896 DEBUG: Searching for block 642078 in cache
+15 12:55:52.896 DEBUG: Searching for block 642079 in cache
+15 12:55:52.896 DEBUG: Searching for block 642080 in cache
+15 12:55:52.896 DEBUG: Searching for block 642081 in cache
+15 12:55:52.896 DEBUG: Searching for block 642082 in cache
+15 12:55:52.896 DEBUG: Searching for block 642083 in cache
+15 12:55:52.896 DEBUG: Searching for block 642084 in cache
+15 12:55:52.896 DEBUG: Searching for block 642085 in cache
+15 12:55:52.896 DEBUG: Searching for block 642086 in cache
+15 12:55:52.896 DEBUG: Searching for block 642087 in cache
+15 12:55:52.896 DEBUG: Searching for block 642088 in cache
+15 12:55:52.896 DEBUG: Searching for block 642089 in cache
+15 12:55:52.896 DEBUG: Searching for block 642090 in cache
+15 12:55:52.896 DEBUG: Searching for block 642091 in cache
+15 12:55:52.896 DEBUG: Searching for block 642092 in cache
+15 12:55:52.896 DEBUG: Searching for block 642093 in cache
+15 12:55:52.896 DEBUG: Searching for block 642094 in cache
+15 12:55:52.896 DEBUG: Searching for block 642095 in cache
+15 12:55:52.896 DEBUG: Searching for block 642096 in cache
+15 12:55:52.896 DEBUG: Searching for block 642097 in cache
+15 12:55:52.896 DEBUG: Searching for block 642098 in cache
+15 12:55:52.896 DEBUG: Searching for block 642099 in cache
+15 12:55:52.896 DEBUG: Searching for block 642100 in cache
+15 12:55:52.896 DEBUG: Searching for block 642101 in cache
+15 12:55:52.896 DEBUG: Searching for block 642102 in cache
+15 12:55:52.896 DEBUG: Searching for block 642103 in cache
+15 12:55:52.896 DEBUG: Searching for block 642104 in cache
+15 12:55:52.896 DEBUG: Searching for block 642105 in cache
+15 12:55:52.896 DEBUG: Searching for block 642106 in cache
+15 12:55:52.896 DEBUG: Searching for block 642107 in cache
+15 12:55:52.896 DEBUG: Searching for block 642108 in cache
+15 12:55:52.896 DEBUG: Searching for block 642109 in cache
+15 12:55:52.896 DEBUG: Searching for block 642110 in cache
+15 12:55:52.896 DEBUG: Searching for block 642111 in cache
+15 12:55:52.896 DEBUG: Searching for block 642112 in cache
+15 12:55:52.896 DEBUG: Searching for block 642113 in cache
+15 12:55:52.896 DEBUG: Searching for block 642114 in cache
+15 12:55:52.896 DEBUG: Searching for block 642115 in cache
+15 12:55:52.896 DEBUG: Searching for block 642116 in cache
+15 12:55:52.896 DEBUG: Searching for block 642117 in cache
+15 12:55:52.896 DEBUG: Searching for block 642118 in cache
+15 12:55:52.896 DEBUG: Searching for block 642119 in cache
+15 12:55:52.896 DEBUG: Searching for block 642120 in cache
+15 12:55:52.896 DEBUG: Searching for block 642121 in cache
+15 12:55:52.896 DEBUG: Searching for block 642122 in cache
+15 12:55:52.896 DEBUG: Searching for block 642123 in cache
+15 12:55:52.896 DEBUG: Searching for block 642124 in cache
+15 12:55:52.896 DEBUG: Searching for block 642125 in cache
+15 12:55:52.896 DEBUG: Searching for block 642126 in cache
+15 12:55:52.896 DEBUG: Searching for block 642127 in cache
+15 12:55:52.896 DEBUG: Searching for block 642128 in cache
+15 12:55:52.896 DEBUG: Searching for block 642129 in cache
+15 12:55:52.896 DEBUG: Searching for block 642130 in cache
+15 12:55:52.896 DEBUG: Searching for block 642131 in cache
+15 12:55:52.896 DEBUG: Searching for block 642132 in cache
+15 12:55:52.896 DEBUG: Searching for block 642133 in cache
+15 12:55:52.896 DEBUG: Searching for block 642134 in cache
+15 12:55:52.896 DEBUG: Searching for block 642135 in cache
+15 12:55:52.896 DEBUG: Searching for block 642136 in cache
+15 12:55:52.896 DEBUG: Searching for block 642137 in cache
+15 12:55:52.896 DEBUG: Searching for block 642138 in cache
+15 12:55:52.896 DEBUG: Searching for block 642139 in cache
+15 12:55:52.896 DEBUG: Searching for block 642140 in cache
+15 12:55:52.896 DEBUG: Searching for block 642141 in cache
+15 12:55:52.896 DEBUG: Searching for block 642142 in cache
+15 12:55:52.896 DEBUG: Searching for block 642143 in cache
+15 12:55:52.896 DEBUG: Searching for block 642144 in cache
+15 12:55:52.896 DEBUG: Searching for block 642145 in cache
+15 12:55:52.896 DEBUG: Searching for block 642146 in cache
+15 12:55:52.896 DEBUG: Searching for block 642147 in cache
+15 12:55:52.896 DEBUG: Searching for block 642148 in cache
+15 12:55:52.896 DEBUG: Searching for block 642149 in cache
+15 12:55:52.896 DEBUG: Searching for block 642150 in cache
+15 12:55:52.896 DEBUG: Searching for block 642151 in cache
+15 12:55:52.896 DEBUG: Searching for block 642152 in cache
+15 12:55:52.896 DEBUG: Searching for block 642153 in cache
+15 12:55:52.896 DEBUG: Searching for block 642154 in cache
+15 12:55:52.896 DEBUG: Searching for block 642155 in cache
+15 12:55:52.896 DEBUG: Searching for block 642156 in cache
+15 12:55:52.896 DEBUG: Searching for block 642157 in cache
+15 12:55:52.896 DEBUG: Searching for block 642158 in cache
+15 12:55:52.896 DEBUG: Searching for block 642159 in cache
+15 12:55:52.896 DEBUG: Searching for block 642160 in cache
+15 12:55:52.896 DEBUG: Searching for block 642161 in cache
+15 12:55:52.896 DEBUG: Searching for block 642162 in cache
+15 12:55:52.896 DEBUG: Searching for block 642163 in cache
+15 12:55:52.896 DEBUG: Searching for block 642164 in cache
+15 12:55:52.896 DEBUG: Searching for block 642165 in cache
+15 12:55:52.896 DEBUG: Searching for block 642166 in cache
+15 12:55:52.896 DEBUG: Searching for block 642167 in cache
+15 12:55:52.896 DEBUG: Searching for block 642168 in cache
+15 12:55:52.896 DEBUG: Searching for block 642169 in cache
+15 12:55:52.896 DEBUG: Searching for block 642170 in cache
+15 12:55:52.896 DEBUG: Searching for block 642171 in cache
+15 12:55:52.896 DEBUG: Searching for block 642172 in cache
+15 12:55:52.896 DEBUG: Searching for block 642173 in cache
+15 12:55:52.896 DEBUG: Searching for block 642174 in cache
+15 12:55:52.896 DEBUG: Searching for block 642175 in cache
+15 12:55:52.896 DEBUG: Searching for block 642176 in cache
+15 12:55:52.896 DEBUG: Searching for block 642177 in cache
+15 12:55:52.896 DEBUG: Searching for block 642178 in cache
+15 12:55:52.896 DEBUG: Searching for block 642179 in cache
+15 12:55:52.896 DEBUG: Searching for block 642180 in cache
+15 12:55:52.896 DEBUG: Searching for block 642181 in cache
+15 12:55:52.896 DEBUG: Searching for block 642182 in cache
+15 12:55:52.897 DEBUG: Searching for block 642183 in cache
+15 12:55:52.897 DEBUG: Searching for block 642184 in cache
+15 12:55:52.897 DEBUG: Searching for block 642185 in cache
+15 12:55:52.897 DEBUG: Searching for block 642186 in cache
+15 12:55:52.897 DEBUG: Searching for block 642187 in cache
+15 12:55:52.897 DEBUG: Searching for block 642188 in cache
+15 12:55:52.897 DEBUG: Searching for block 642189 in cache
+15 12:55:52.897 DEBUG: Searching for block 642190 in cache
+15 12:55:52.897 DEBUG: Searching for block 642191 in cache
+15 12:55:52.897 DEBUG: Searching for block 642192 in cache
+15 12:55:52.897 DEBUG: Searching for block 642193 in cache
+15 12:55:52.897 DEBUG: Searching for block 642194 in cache
+15 12:55:52.897 DEBUG: Searching for block 642195 in cache
+15 12:55:52.897 DEBUG: Searching for block 642196 in cache
+15 12:55:52.897 DEBUG: Searching for block 642197 in cache
+15 12:55:52.897 DEBUG: Searching for block 642198 in cache
+15 12:55:52.897 DEBUG: Searching for block 642199 in cache
+15 12:55:52.897 DEBUG: Searching for block 642200 in cache
+15 12:55:52.897 DEBUG: Searching for block 642201 in cache
+15 12:55:52.897 DEBUG: Searching for block 642202 in cache
+15 12:55:52.897 DEBUG: Searching for block 642203 in cache
+15 12:55:52.897 DEBUG: Searching for block 642204 in cache
+15 12:55:52.897 DEBUG: Searching for block 642205 in cache
+15 12:55:52.897 DEBUG: Searching for block 642206 in cache
+15 12:55:52.897 DEBUG: Searching for block 642207 in cache
+15 12:55:52.897 DEBUG: Searching for block 642208 in cache
+15 12:55:52.897 DEBUG: Searching for block 642209 in cache
+15 12:55:52.897 DEBUG: Searching for block 642210 in cache
+15 12:55:52.897 DEBUG: Searching for block 642211 in cache
+15 12:55:52.897 DEBUG: Searching for block 642212 in cache
+15 12:55:52.897 DEBUG: Searching for block 642213 in cache
+15 12:55:52.897 DEBUG: Searching for block 642214 in cache
+15 12:55:52.897 DEBUG: Searching for block 642215 in cache
+15 12:55:52.897 DEBUG: Searching for block 642216 in cache
+15 12:55:52.897 DEBUG: Searching for block 642217 in cache
+15 12:55:52.897 DEBUG: Searching for block 642218 in cache
+15 12:55:52.897 DEBUG: Searching for block 642219 in cache
+15 12:55:52.897 DEBUG: Searching for block 642220 in cache
+15 12:55:52.897 DEBUG: Searching for block 642221 in cache
+15 12:55:52.897 DEBUG: Searching for block 642222 in cache
+15 12:55:52.897 DEBUG: Searching for block 642223 in cache
+15 12:55:52.897 DEBUG: Searching for block 642224 in cache
+15 12:55:52.897 DEBUG: Searching for block 642225 in cache
+15 12:55:52.897 DEBUG: Searching for block 642226 in cache
+15 12:55:52.897 DEBUG: Searching for block 642227 in cache
+15 12:55:52.897 DEBUG: Searching for block 642228 in cache
+15 12:55:52.897 DEBUG: Searching for block 642229 in cache
+15 12:55:52.897 DEBUG: Searching for block 642230 in cache
+15 12:55:52.897 DEBUG: Searching for block 642231 in cache
+15 12:55:52.897 DEBUG: Searching for block 642232 in cache
+15 12:55:52.897 DEBUG: Searching for block 642233 in cache
+15 12:55:52.897 DEBUG: Searching for block 642234 in cache
+15 12:55:52.897 DEBUG: Searching for block 642235 in cache
+15 12:55:52.897 DEBUG: Searching for block 642236 in cache
+15 12:55:52.897 DEBUG: Searching for block 642237 in cache
+15 12:55:52.897 DEBUG: Searching for block 642238 in cache
+15 12:55:52.897 DEBUG: Searching for block 642239 in cache
+15 12:55:52.897 DEBUG: Searching for block 642240 in cache
+15 12:55:52.897 DEBUG: Searching for block 642241 in cache
+15 12:55:52.897 DEBUG: Searching for block 642242 in cache
+15 12:55:52.897 DEBUG: Searching for block 642243 in cache
+15 12:55:52.897 DEBUG: Searching for block 642244 in cache
+15 12:55:52.897 DEBUG: Searching for block 642245 in cache
+15 12:55:52.897 DEBUG: Searching for block 642246 in cache
+15 12:55:52.897 DEBUG: Searching for block 642247 in cache
+15 12:55:52.897 DEBUG: Searching for block 642248 in cache
+15 12:55:52.897 DEBUG: Searching for block 642249 in cache
+15 12:55:52.897 DEBUG: Searching for block 642250 in cache
+15 12:55:52.897 DEBUG: Searching for block 642251 in cache
+15 12:55:52.897 DEBUG: Searching for block 642252 in cache
+15 12:55:52.897 DEBUG: Searching for block 642253 in cache
+15 12:55:52.897 DEBUG: Searching for block 642254 in cache
+15 12:55:52.897 DEBUG: Searching for block 642255 in cache
+15 12:55:52.897 DEBUG: Searching for block 642256 in cache
+15 12:55:52.897 DEBUG: Searching for block 642257 in cache
+15 12:55:52.897 DEBUG: Searching for block 642258 in cache
+15 12:55:52.897 DEBUG: Searching for block 642259 in cache
+15 12:55:52.897 DEBUG: Searching for block 642260 in cache
+15 12:55:52.897 DEBUG: Searching for block 642261 in cache
+15 12:55:52.897 DEBUG: Searching for block 642262 in cache
+15 12:55:52.897 DEBUG: Searching for block 642263 in cache
+15 12:55:52.897 DEBUG: Searching for block 642264 in cache
+15 12:55:52.897 DEBUG: Searching for block 642265 in cache
+15 12:55:52.897 DEBUG: Searching for block 642266 in cache
+15 12:55:52.897 DEBUG: Searching for block 642267 in cache
+15 12:55:52.897 DEBUG: Searching for block 642268 in cache
+15 12:55:52.897 DEBUG: Searching for block 642269 in cache
+15 12:55:52.897 DEBUG: Searching for block 642270 in cache
+15 12:55:52.897 DEBUG: Searching for block 642271 in cache
+15 12:55:52.897 DEBUG: Searching for block 642272 in cache
+15 12:55:52.897 DEBUG: Searching for block 642273 in cache
+15 12:55:52.897 DEBUG: Searching for block 642274 in cache
+15 12:55:52.897 DEBUG: Searching for block 642275 in cache
+15 12:55:52.897 DEBUG: Searching for block 642276 in cache
+15 12:55:52.897 DEBUG: Searching for block 642277 in cache
+15 12:55:52.897 DEBUG: Searching for block 642278 in cache
+15 12:55:52.897 DEBUG: Searching for block 642279 in cache
+15 12:55:52.897 DEBUG: Searching for block 642280 in cache
+15 12:55:52.897 DEBUG: Searching for block 642281 in cache
+15 12:55:52.897 DEBUG: Searching for block 642282 in cache
+15 12:55:52.897 DEBUG: Searching for block 642283 in cache
+15 12:55:52.897 DEBUG: Searching for block 642284 in cache
+15 12:55:52.897 DEBUG: Searching for block 642285 in cache
+15 12:55:52.897 DEBUG: Searching for block 642286 in cache
+15 12:55:52.897 DEBUG: Searching for block 642287 in cache
+15 12:55:52.897 DEBUG: Searching for block 642288 in cache
+15 12:55:52.897 DEBUG: Searching for block 642289 in cache
+15 12:55:52.897 DEBUG: Searching for block 642290 in cache
+15 12:55:52.897 DEBUG: Searching for block 642291 in cache
+15 12:55:52.897 DEBUG: Searching for block 642292 in cache
+15 12:55:52.897 DEBUG: Searching for block 642293 in cache
+15 12:55:52.897 DEBUG: Searching for block 642294 in cache
+15 12:55:52.897 DEBUG: Searching for block 642295 in cache
+15 12:55:52.897 DEBUG: Searching for block 642296 in cache
+15 12:55:52.897 DEBUG: Searching for block 642297 in cache
+15 12:55:52.897 DEBUG: Searching for block 642298 in cache
+15 12:55:52.897 DEBUG: Searching for block 642299 in cache
+15 12:55:52.897 DEBUG: Searching for block 642300 in cache
+15 12:55:52.897 DEBUG: Searching for block 642301 in cache
+15 12:55:52.897 DEBUG: Searching for block 642302 in cache
+15 12:55:52.897 DEBUG: Searching for block 642303 in cache
+15 12:55:52.897 DEBUG: Searching for block 642304 in cache
+15 12:55:52.897 DEBUG: Searching for block 642305 in cache
+15 12:55:52.897 DEBUG: Searching for block 642306 in cache
+15 12:55:52.897 DEBUG: Searching for block 642307 in cache
+15 12:55:52.897 DEBUG: Searching for block 642308 in cache
+15 12:55:52.897 DEBUG: Searching for block 642309 in cache
+15 12:55:52.897 DEBUG: Searching for block 642310 in cache
+15 12:55:52.897 DEBUG: Searching for block 642311 in cache
+15 12:55:52.897 DEBUG: Searching for block 642312 in cache
+15 12:55:52.897 DEBUG: Searching for block 642313 in cache
+15 12:55:52.897 DEBUG: Searching for block 642314 in cache
+15 12:55:52.897 DEBUG: Searching for block 642315 in cache
+15 12:55:52.897 DEBUG: Searching for block 642316 in cache
+15 12:55:52.897 DEBUG: Searching for block 642317 in cache
+15 12:55:52.897 DEBUG: Searching for block 642318 in cache
+15 12:55:52.897 DEBUG: Searching for block 642319 in cache
+15 12:55:52.897 DEBUG: Searching for block 642320 in cache
+15 12:55:52.897 DEBUG: Searching for block 642321 in cache
+15 12:55:52.897 DEBUG: Searching for block 642322 in cache
+15 12:55:52.897 DEBUG: Searching for block 642323 in cache
+15 12:55:52.897 DEBUG: Searching for block 642324 in cache
+15 12:55:52.897 DEBUG: Searching for block 642325 in cache
+15 12:55:52.897 DEBUG: Searching for block 642326 in cache
+15 12:55:52.897 DEBUG: Searching for block 642327 in cache
+15 12:55:52.897 DEBUG: Searching for block 642328 in cache
+15 12:55:52.897 DEBUG: Searching for block 642329 in cache
+15 12:55:52.897 DEBUG: Searching for block 642330 in cache
+15 12:55:52.897 DEBUG: Searching for block 642331 in cache
+15 12:55:52.897 DEBUG: Searching for block 642332 in cache
+15 12:55:52.897 DEBUG: Searching for block 642333 in cache
+15 12:55:52.897 DEBUG: Searching for block 642334 in cache
+15 12:55:52.897 DEBUG: Searching for block 642335 in cache
+15 12:55:52.897 DEBUG: Searching for block 642336 in cache
+15 12:55:52.897 DEBUG: Searching for block 642337 in cache
+15 12:55:52.897 DEBUG: Searching for block 642338 in cache
+15 12:55:52.897 DEBUG: Searching for block 642339 in cache
+15 12:55:52.897 DEBUG: Searching for block 642340 in cache
+15 12:55:52.897 DEBUG: Searching for block 642341 in cache
+15 12:55:52.897 DEBUG: Searching for block 642342 in cache
+15 12:55:52.897 DEBUG: Searching for block 642343 in cache
+15 12:55:52.897 DEBUG: Searching for block 642344 in cache
+15 12:55:52.897 DEBUG: Searching for block 642345 in cache
+15 12:55:52.897 DEBUG: Searching for block 642346 in cache
+15 12:55:52.897 DEBUG: Searching for block 642347 in cache
+15 12:55:52.897 DEBUG: Searching for block 642348 in cache
+15 12:55:52.897 DEBUG: Searching for block 642349 in cache
+15 12:55:52.897 DEBUG: Searching for block 642350 in cache
+15 12:55:52.897 DEBUG: Searching for block 642351 in cache
+15 12:55:52.897 DEBUG: Searching for block 642352 in cache
+15 12:55:52.897 DEBUG: Searching for block 642353 in cache
+15 12:55:52.897 DEBUG: Searching for block 642354 in cache
+15 12:55:52.897 DEBUG: Searching for block 642355 in cache
+15 12:55:52.897 DEBUG: Searching for block 642356 in cache
+15 12:55:52.897 DEBUG: Searching for block 642357 in cache
+15 12:55:52.897 DEBUG: Searching for block 642358 in cache
+15 12:55:52.897 DEBUG: Searching for block 642359 in cache
+15 12:55:52.897 DEBUG: Searching for block 642360 in cache
+15 12:55:52.897 DEBUG: Searching for block 642361 in cache
+15 12:55:52.897 DEBUG: Searching for block 642362 in cache
+15 12:55:52.897 DEBUG: Searching for block 642363 in cache
+15 12:55:52.897 DEBUG: Searching for block 642364 in cache
+15 12:55:52.897 DEBUG: Searching for block 642365 in cache
+15 12:55:52.897 DEBUG: Searching for block 642366 in cache
+15 12:55:52.897 DEBUG: Searching for block 642367 in cache
+15 12:55:52.897 DEBUG: Searching for block 642368 in cache
+15 12:55:52.897 DEBUG: Searching for block 642369 in cache
+15 12:55:52.897 DEBUG: Searching for block 642370 in cache
+15 12:55:52.897 DEBUG: Searching for block 642371 in cache
+15 12:55:52.897 DEBUG: Searching for block 642372 in cache
+15 12:55:52.897 DEBUG: Searching for block 642373 in cache
+15 12:55:52.897 DEBUG: Searching for block 642374 in cache
+15 12:55:52.897 DEBUG: Searching for block 642375 in cache
+15 12:55:52.897 DEBUG: Searching for block 642376 in cache
+15 12:55:52.897 DEBUG: Searching for block 642377 in cache
+15 12:55:52.897 DEBUG: Searching for block 642378 in cache
+15 12:55:52.897 DEBUG: Searching for block 642379 in cache
+15 12:55:52.897 DEBUG: Searching for block 642380 in cache
+15 12:55:52.897 DEBUG: Searching for block 642381 in cache
+15 12:55:52.897 DEBUG: Searching for block 642382 in cache
+15 12:55:52.897 DEBUG: Searching for block 642383 in cache
+15 12:55:52.897 DEBUG: Searching for block 642384 in cache
+15 12:55:52.897 DEBUG: Searching for block 642385 in cache
+15 12:55:52.897 DEBUG: Searching for block 642386 in cache
+15 12:55:52.897 DEBUG: Searching for block 642387 in cache
+15 12:55:52.897 DEBUG: Searching for block 642388 in cache
+15 12:55:52.897 DEBUG: Searching for block 642389 in cache
+15 12:55:52.897 DEBUG: Searching for block 642390 in cache
+15 12:55:52.897 DEBUG: Searching for block 642391 in cache
+15 12:55:52.897 DEBUG: Searching for block 642392 in cache
+15 12:55:52.897 DEBUG: Searching for block 642393 in cache
+15 12:55:52.897 DEBUG: Searching for block 642394 in cache
+15 12:55:52.897 DEBUG: Searching for block 642395 in cache
+15 12:55:52.897 DEBUG: Searching for block 642396 in cache
+15 12:55:52.897 DEBUG: Searching for block 642397 in cache
+15 12:55:52.897 DEBUG: Searching for block 642398 in cache
+15 12:55:52.897 DEBUG: Searching for block 642399 in cache
+15 12:55:52.897 DEBUG: Searching for block 642400 in cache
+15 12:55:52.897 DEBUG: Searching for block 642401 in cache
+15 12:55:52.897 DEBUG: Searching for block 642402 in cache
+15 12:55:52.897 DEBUG: Searching for block 642403 in cache
+15 12:55:52.897 DEBUG: Searching for block 642404 in cache
+15 12:55:52.897 DEBUG: Searching for block 642405 in cache
+15 12:55:52.897 DEBUG: Searching for block 642406 in cache
+15 12:55:52.897 DEBUG: Searching for block 642407 in cache
+15 12:55:52.897 DEBUG: Searching for block 642408 in cache
+15 12:55:52.897 DEBUG: Searching for block 642409 in cache
+15 12:55:52.897 DEBUG: Searching for block 642410 in cache
+15 12:55:52.897 DEBUG: Searching for block 642411 in cache
+15 12:55:52.897 DEBUG: Searching for block 642412 in cache
+15 12:55:52.897 DEBUG: Searching for block 642413 in cache
+15 12:55:52.897 DEBUG: Searching for block 642414 in cache
+15 12:55:52.897 DEBUG: Searching for block 642415 in cache
+15 12:55:52.897 DEBUG: Searching for block 642416 in cache
+15 12:55:52.897 DEBUG: Searching for block 642417 in cache
+15 12:55:52.897 DEBUG: Searching for block 642418 in cache
+15 12:55:52.897 DEBUG: Searching for block 642419 in cache
+15 12:55:52.897 DEBUG: Searching for block 642420 in cache
+15 12:55:52.897 DEBUG: Searching for block 642421 in cache
+15 12:55:52.897 DEBUG: Searching for block 642422 in cache
+15 12:55:52.897 DEBUG: Searching for block 642423 in cache
+15 12:55:52.897 DEBUG: Searching for block 642424 in cache
+15 12:55:52.897 DEBUG: Searching for block 642425 in cache
+15 12:55:52.897 DEBUG: Searching for block 642426 in cache
+15 12:55:52.897 DEBUG: Searching for block 642427 in cache
+15 12:55:52.897 DEBUG: Searching for block 642428 in cache
+15 12:55:52.897 DEBUG: Searching for block 642429 in cache
+15 12:55:52.897 DEBUG: Searching for block 642430 in cache
+15 12:55:52.897 DEBUG: Searching for block 642431 in cache
+15 12:55:52.897 DEBUG: Searching for block 642432 in cache
+15 12:55:52.897 DEBUG: Searching for block 642433 in cache
+15 12:55:52.897 DEBUG: Searching for block 642434 in cache
+15 12:55:52.897 DEBUG: Searching for block 642435 in cache
+15 12:55:52.897 DEBUG: Searching for block 642436 in cache
+15 12:55:52.897 DEBUG: Searching for block 642437 in cache
+15 12:55:52.897 DEBUG: Searching for block 642438 in cache
+15 12:55:52.897 DEBUG: Searching for block 642439 in cache
+15 12:55:52.897 DEBUG: Searching for block 642440 in cache
+15 12:55:52.897 DEBUG: Searching for block 642441 in cache
+15 12:55:52.897 DEBUG: Searching for block 642442 in cache
+15 12:55:52.897 DEBUG: Searching for block 642443 in cache
+15 12:55:52.897 DEBUG: Searching for block 642444 in cache
+15 12:55:52.897 DEBUG: Searching for block 642445 in cache
+15 12:55:52.897 DEBUG: Searching for block 642446 in cache
+15 12:55:52.897 DEBUG: Searching for block 642447 in cache
+15 12:55:52.897 DEBUG: Searching for block 642448 in cache
+15 12:55:52.897 DEBUG: Searching for block 642449 in cache
+15 12:55:52.897 DEBUG: Searching for block 642450 in cache
+15 12:55:52.897 DEBUG: Searching for block 642451 in cache
+15 12:55:52.897 DEBUG: Searching for block 642452 in cache
+15 12:55:52.897 DEBUG: Searching for block 642453 in cache
+15 12:55:52.897 DEBUG: Searching for block 642454 in cache
+15 12:55:52.897 DEBUG: Searching for block 642455 in cache
+15 12:55:52.897 DEBUG: Searching for block 642456 in cache
+15 12:55:52.897 DEBUG: Searching for block 642457 in cache
+15 12:55:52.897 DEBUG: Searching for block 642458 in cache
+15 12:55:52.897 DEBUG: Searching for block 642459 in cache
+15 12:55:52.897 DEBUG: Searching for block 642460 in cache
+15 12:55:52.897 DEBUG: Searching for block 642461 in cache
+15 12:55:52.897 DEBUG: Searching for block 642462 in cache
+15 12:55:52.897 DEBUG: Searching for block 642463 in cache
+15 12:55:52.897 DEBUG: Searching for block 642464 in cache
+15 12:55:52.897 DEBUG: Searching for block 642465 in cache
+15 12:55:52.897 DEBUG: Searching for block 642466 in cache
+15 12:55:52.897 DEBUG: Searching for block 642467 in cache
+15 12:55:52.897 DEBUG: Searching for block 642468 in cache
+15 12:55:52.897 DEBUG: Searching for block 642469 in cache
+15 12:55:52.897 DEBUG: Searching for block 642470 in cache
+15 12:55:52.897 DEBUG: Searching for block 642471 in cache
+15 12:55:52.897 DEBUG: Searching for block 642472 in cache
+15 12:55:52.897 DEBUG: Searching for block 642473 in cache
+15 12:55:52.897 DEBUG: Searching for block 642474 in cache
+15 12:55:52.897 DEBUG: Searching for block 642475 in cache
+15 12:55:52.897 DEBUG: Searching for block 642476 in cache
+15 12:55:52.897 DEBUG: Searching for block 642477 in cache
+15 12:55:52.897 DEBUG: Searching for block 642478 in cache
+15 12:55:52.897 DEBUG: Searching for block 642479 in cache
+15 12:55:52.897 DEBUG: Searching for block 642480 in cache
+15 12:55:52.897 DEBUG: Searching for block 642481 in cache
+15 12:55:52.897 DEBUG: Searching for block 642482 in cache
+15 12:55:52.897 DEBUG: Searching for block 642483 in cache
+15 12:55:52.897 DEBUG: Searching for block 642484 in cache
+15 12:55:52.897 DEBUG: Searching for block 642485 in cache
+15 12:55:52.897 DEBUG: Searching for block 642486 in cache
+15 12:55:52.897 DEBUG: Searching for block 642487 in cache
+15 12:55:52.897 DEBUG: Searching for block 642488 in cache
+15 12:55:52.897 DEBUG: Searching for block 642489 in cache
+15 12:55:52.897 DEBUG: Searching for block 642490 in cache
+15 12:55:52.897 DEBUG: Searching for block 642491 in cache
+15 12:55:52.897 DEBUG: Searching for block 642492 in cache
+15 12:55:52.897 DEBUG: Searching for block 642493 in cache
+15 12:55:52.897 DEBUG: Searching for block 642494 in cache
+15 12:55:52.897 DEBUG: Searching for block 642495 in cache
+15 12:55:52.897 DEBUG: Searching for block 642496 in cache
+15 12:55:52.897 DEBUG: Searching for block 642497 in cache
+15 12:55:52.897 DEBUG: Searching for block 642498 in cache
+15 12:55:52.897 DEBUG: Searching for block 642499 in cache
+15 12:55:52.897 DEBUG: Searching for block 642500 in cache
+15 12:55:52.897 DEBUG: Searching for block 642501 in cache
+15 12:55:52.897 DEBUG: Searching for block 642502 in cache
+15 12:55:52.897 DEBUG: Searching for block 642503 in cache
+15 12:55:52.897 DEBUG: Searching for block 642504 in cache
+15 12:55:52.897 DEBUG: Searching for block 642505 in cache
+15 12:55:52.897 DEBUG: Searching for block 642506 in cache
+15 12:55:52.897 DEBUG: Searching for block 642507 in cache
+15 12:55:52.898 DEBUG: Searching for block 642508 in cache
+15 12:55:52.898 DEBUG: Searching for block 642509 in cache
+15 12:55:52.898 DEBUG: Searching for block 642510 in cache
+15 12:55:52.898 DEBUG: Searching for block 642511 in cache
+15 12:55:52.898 DEBUG: Searching for block 642512 in cache
+15 12:55:52.898 DEBUG: Searching for block 642513 in cache
+15 12:55:52.898 DEBUG: Searching for block 642514 in cache
+15 12:55:52.898 DEBUG: Searching for block 642515 in cache
+15 12:55:52.898 DEBUG: Searching for block 642516 in cache
+15 12:55:52.898 DEBUG: Searching for block 642517 in cache
+15 12:55:52.898 DEBUG: Searching for block 642518 in cache
+15 12:55:52.898 DEBUG: Searching for block 642519 in cache
+15 12:55:52.898 DEBUG: Searching for block 642520 in cache
+15 12:55:52.898 DEBUG: Searching for block 642521 in cache
+15 12:55:52.898 DEBUG: Searching for block 642522 in cache
+15 12:55:52.898 DEBUG: Searching for block 642523 in cache
+15 12:55:52.898 DEBUG: Searching for block 642524 in cache
+15 12:55:52.898 DEBUG: Searching for block 642525 in cache
+15 12:55:52.898 DEBUG: Searching for block 642526 in cache
+15 12:55:52.898 DEBUG: Searching for block 642527 in cache
+15 12:55:52.898 DEBUG: Searching for block 642528 in cache
+15 12:55:52.898 DEBUG: Searching for block 642529 in cache
+15 12:55:52.898 DEBUG: Searching for block 642530 in cache
+15 12:55:52.898 DEBUG: Searching for block 642531 in cache
+15 12:55:52.898 DEBUG: Searching for block 642532 in cache
+15 12:55:52.898 DEBUG: Searching for block 642533 in cache
+15 12:55:52.898 DEBUG: Searching for block 642534 in cache
+15 12:55:52.898 DEBUG: Searching for block 642535 in cache
+15 12:55:52.898 INFO: Killing Juno process...
+15 12:55:52.898 DEBUG: Spawning kill -s INT 31762
+15 12:55:53.358 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:53.358 INFO: Juno Killed
+15 12:55:53.358 DEBUG: Received error (as expected): error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:53.362 DEBUG: Got blocks with transaction counts: [(642264, 75), (642263, 95), (642070, 97), (642281, 109), (642265, 111), (642258, 112), (642266, 112), (642261, 122), (642262, 123), (642260, 127), (642267, 133), (642286, 134), (642044, 149), (642042, 150), (642269, 153), (642037, 155), (642043, 156), (642069, 156), (642036, 158), (642272, 159), (642271, 162), (642301, 168), (642268, 175), (642011, 179), (642193, 180), (642287, 181), (642300, 181), (642034, 182), (641975, 183), (642035, 185), (642064, 186), (642532, 186), (641972, 187), (642066, 187), (642046, 188), (642282, 188), (642428, 189), (642484, 190), (642041, 191), (641973, 193), (642276, 193), (642068, 195), (642283, 195), (642008, 196), (642530, 197), (642005, 198), (642338, 198), (642238, 203), (642047, 205), (642342, 205), (642004, 206), (642009, 206), (642067, 206), (642126, 206), (642302, 206), (642517, 206), (642073, 208), (642246, 208), (641993, 211), (642275, 213), (642031, 214), (642253, 214), (642270, 214), (642065, 215), (642033, 217), (641991, 218), (641995, 218), (642255, 218), (642375, 220), (641971, 223), (642048, 223), (642299, 223), (642334, 223), (642100, 226), (642477, 226), (642239, 227), (642324, 227), (641990, 228), (642032, 228), (642125, 228), (642290, 228), (642371, 228), (642091, 229), (642396, 229), (642531, 230), (642312, 231), (642339, 231), (642040, 232), (642280, 232), (642412, 232), (642410, 233), (642235, 234), (642305, 234), (642333, 235), (642119, 236), (642086, 238), (642279, 239), (642409, 239), (642479, 239), (642259, 240), (642361, 241), (642249, 242), (642288, 243), (642376, 243), (642120, 244), (642116, 245), (641992, 246), (642089, 246), (642135, 247), (642313, 247), (642092, 248), (642304, 248), (642328, 248), (642028, 249), (642377, 249), (642364, 250), (642330, 251), (642351, 251), (642013, 252), (642184, 253), (642335, 253), (642104, 254), (642099, 255), (642513, 255), (642115, 256), (642502, 257), (642006, 258), (642017, 258), (642297, 258), (642480, 258), (642192, 259), (642350, 259), (642053, 261), (642226, 261), (642049, 262), (642225, 262), (642349, 262), (642029, 264), (641996, 265), (642117, 265), (642506, 265), (642027, 266), (642345, 266), (642408, 266), (642090, 268), (642219, 268), (642085, 269), (642252, 269), (642337, 270), (642030, 271), (642124, 271), (642507, 271), (642136, 272), (642245, 272), (642273, 272), (642431, 272), (642528, 273), (641998, 274), (642045, 274), (642123, 274), (642240, 274), (642407, 274), (642251, 275), (642298, 276), (642058, 277), (642122, 277), (642289, 277), (642326, 277), (642414, 277), (642415, 277), (642508, 277), (642097, 278), (642137, 278), (642237, 278), (642352, 278), (642306, 279), (642514, 279), (642026, 280), (642233, 280), (642320, 280), (642353, 280), (642498, 280), (642016, 281), (642195, 281), (642354, 281), (641977, 282), (642025, 282), (642185, 282), (642254, 282), (642095, 283), (642012, 284), (642318, 284), (642007, 285), (642106, 285), (642243, 285), (642397, 285), (642399, 285), (642489, 285), (642533, 285), (642175, 286), (641994, 287), (642515, 287), (641984, 288), (642121, 288), (642247, 288), (642309, 288), (642402, 288), (642183, 289), (642241, 289), (642285, 289), (642050, 290), (642227, 290), (642327, 290), (642346, 290), (642464, 290), (642467, 290), (642078, 291), (642134, 291), (642250, 291), (642284, 291), (642436, 291), (642188, 292), (642194, 292), (642222, 292), (642452, 293), (642018, 294), (642061, 294), (641978, 295), (642024, 295), (641986, 296), (642142, 296), (642165, 296), (642500, 296), (642101, 297), (642212, 297), (642209, 298), (642218, 298), (642293, 298), (642418, 298), (641970, 299), (642010, 299), (642081, 299), (642059, 300), (642325, 300), (642403, 300), (642112, 301), (642331, 301), (642083, 302), (642236, 302), (642111, 304), (642321, 304), (642343, 304), (642420, 305), (642370, 306), (642074, 307), (642248, 307), (642478, 307), (642503, 307), (642020, 308), (642323, 309), (642457, 309), (642521, 309), (642523, 309), (642190, 310), (642381, 310), (642088, 311), (642141, 311), (642460, 311), (642389, 312), (642519, 312), (642316, 313), (642493, 313), (642118, 314), (642056, 315), (642108, 315), (642242, 315), (642419, 315), (642518, 315), (641988, 316), (642449, 316), (642220, 318), (642291, 318), (642417, 319), (642096, 320), (642113, 320), (642204, 320), (642496, 320), (642003, 321), (642132, 321), (642052, 322), (642210, 322), (642317, 323), (642372, 323), (642416, 324), (642504, 324), (642109, 325), (641997, 326), (642093, 326), (642215, 326), (642014, 327), (642072, 327), (642217, 327), (642344, 327), (642520, 327), (642529, 327), (642178, 328), (642443, 328), (642244, 329), (642332, 329), (642463, 329), (642413, 330), (642105, 331), (642348, 331), (642427, 331), (642497, 331), (642444, 332), (642022, 333), (642156, 333), (642355, 333), (642157, 334), (642465, 334), (642146, 335), (642486, 335), (642383, 336), (642411, 336), (642148, 337), (642206, 337), (642094, 338), (642143, 338), (642426, 338), (642522, 338), (642535, 338), (642336, 339), (642087, 340), (642189, 340), (642391, 340), (642490, 340), (642216, 341), (642423, 341), (642054, 342), (642114, 342), (642171, 342), (642229, 342), (642278, 342), (642303, 342), (642392, 342), (642453, 342), (642164, 343), (642202, 343), (642456, 343), (642208, 344), (642404, 344), (642492, 344), (642131, 345), (642140, 346), (642499, 346), (642534, 346), (642133, 347), (642440, 347), (642481, 347), (642394, 348), (642450, 348), (642319, 349), (642340, 349), (642395, 350), (642398, 350), (642451, 350), (642485, 350), (642079, 351), (642228, 352), (642292, 352), (642084, 353), (642437, 353), (642491, 353), (642205, 354), (642363, 354), (642374, 354), (642021, 355), (642168, 355), (642181, 355), (642203, 355), (642442, 355), (642509, 355), (641976, 356), (642358, 356), (642468, 356), (642107, 357), (642155, 357), (641987, 359), (642201, 359), (642429, 359), (642213, 360), (642314, 360), (642329, 361), (642186, 363), (642421, 363), (642406, 367), (642232, 368), (642322, 368), (642356, 368), (642425, 368), (642296, 369), (642432, 369), (642002, 371), (642221, 372), (642187, 373), (642207, 373), (642231, 373), (642516, 373), (641989, 374), (642023, 374), (642102, 374), (642130, 374), (642170, 375), (642384, 375), (642471, 375), (642476, 375), (642110, 376), (642224, 376), (642373, 376), (642341, 377), (642462, 379), (642167, 381), (642150, 382), (642470, 382), (642139, 383), (642000, 385), (642176, 385), (642494, 385), (642015, 386), (642149, 386), (642495, 386), (642174, 387), (642311, 387), (642388, 387), (642482, 387), (642487, 387), (642525, 387), (642019, 388), (642211, 388), (642422, 388), (642400, 390), (642488, 390), (642152, 391), (642505, 391), (642076, 392), (642160, 392), (642310, 392), (642483, 392), (642075, 394), (642177, 394), (642214, 394), (641983, 395), (642475, 396), (642138, 397), (642359, 397), (642230, 398), (642474, 398), (641999, 399), (642144, 399), (642191, 399), (642501, 399), (642512, 400), (642223, 401), (642347, 403), (642469, 405), (642172, 406), (642169, 407), (642055, 408), (642295, 408), (642360, 408), (642510, 408), (642524, 408), (642103, 410), (642197, 410), (642234, 410), (642257, 410), (642277, 411), (642001, 412), (642038, 412), (642082, 412), (642179, 412), (642256, 413), (641981, 414), (642196, 414), (642315, 414), (642527, 414), (642357, 415), (642147, 416), (642401, 416), (642199, 418), (642385, 418), (642307, 419), (642438, 420), (642060, 422), (642098, 422), (642180, 422), (642154, 424), (642308, 424), (642127, 425), (642386, 425), (642435, 426), (642473, 426), (642145, 427), (642365, 427), (642448, 428), (642294, 432), (642378, 434), (642057, 436), (642405, 436), (642382, 437), (642461, 437), (642182, 438), (642455, 441), (642198, 443), (642446, 443), (642153, 445), (642173, 445), (642447, 445), (642472, 445), (642458, 448), (642433, 450), (642362, 451), (641980, 454), (642366, 454), (642439, 454), (642379, 457), (642039, 458), (642390, 460), (642367, 462), (642441, 462), (641985, 463), (642128, 470), (642051, 472), (642424, 472), (642454, 474), (642511, 474), (641982, 475), (642445, 477), (642393, 482), (642459, 494), (642380, 495), (642161, 496), (642200, 498), (642063, 506), (642526, 507), (642387, 512), (642368, 518), (641979, 522), (642080, 522), (642369, 524), (642151, 527), (642274, 527), (642163, 529), (642434, 532), (642129, 541), (642466, 548), (642166, 550), (641974, 568), (642071, 576), (642077, 593), (642430, 632), (642162, 636), (642158, 651), (642159, 684), (642062, 709)]
+asdfasdfasdf
+15 12:55:53.363 INFO: Tracing block 642264 with Native. It has 75 transactions
+15 12:55:53.363 DEBUG: try_block_trace. block: 642264	branch: Base	path: ./dump/trace-642264-Base.json
+15 12:55:53.363 DEBUG: Running memoized call with path: ./dump/trace-642264-Base.json
+15 12:55:53.363 DEBUG: Trying to read from cache file: ./dump/trace-642264-Base.json
+15 12:55:53.634 DEBUG: Read from cache file: ./dump/trace-642264-Base.json
+15 12:55:53.711 DEBUG: try_block_trace. block: 642264	branch: Native	path: ./dump/trace-642264-Native.json
+15 12:55:53.711 DEBUG: Running memoized call with path: ./dump/trace-642264-Native.json
+15 12:55:53.711 DEBUG: Trying to read from cache file: ./dump/trace-642264-Native.json
+15 12:55:53.731 DEBUG: Read from cache file: ./dump/trace-642264-Native.json
+15 12:55:53.731 INFO: Failed to trace block with Native, got Ok(TraceBlockReport { block_num: 642264, post_response: None, result: Crash { error: "error sending request for url (http://localhost:6060/): connection closed before message completed" } })
+skipping simulates for now...
+asdfasdfasdf
+15 12:55:53.733 INFO: Tracing block 642263 with Native. It has 95 transactions
+15 12:55:53.733 DEBUG: try_block_trace. block: 642263	branch: Base	path: ./dump/trace-642263-Base.json
+15 12:55:53.733 DEBUG: Running memoized call with path: ./dump/trace-642263-Base.json
+15 12:55:53.733 DEBUG: Trying to read from cache file: ./dump/trace-642263-Base.json
+15 12:55:53.935 DEBUG: Read from cache file: ./dump/trace-642263-Base.json
+15 12:55:53.988 DEBUG: try_block_trace. block: 642263	branch: Native	path: ./dump/trace-642263-Native.json
+15 12:55:53.988 DEBUG: Running memoized call with path: ./dump/trace-642263-Native.json
+15 12:55:53.988 DEBUG: Trying to read from cache file: ./dump/trace-642263-Native.json
+15 12:55:54.015 DEBUG: Read from cache file: ./dump/trace-642263-Native.json
+15 12:55:54.015 INFO: Failed to trace block with Native, got Ok(TraceBlockReport { block_num: 642263, post_response: None, result: Crash { error: "error sending request for url (http://localhost:6060/): connection closed before message completed" } })
+skipping simulates for now...
+asdfasdfasdf
+15 12:55:54.017 INFO: Tracing block 642070 with Native. It has 97 transactions
+15 12:55:54.017 DEBUG: try_block_trace. block: 642070	branch: Base	path: ./dump/trace-642070-Base.json
+15 12:55:54.017 DEBUG: Running memoized call with path: ./dump/trace-642070-Base.json
+15 12:55:54.017 DEBUG: Trying to read from cache file: ./dump/trace-642070-Base.json
+15 12:55:54.287 DEBUG: Read from cache file: ./dump/trace-642070-Base.json
+15 12:55:54.342 DEBUG: try_block_trace. block: 642070	branch: Native	path: ./dump/trace-642070-Native.json
+15 12:55:54.342 DEBUG: Running memoized call with path: ./dump/trace-642070-Native.json
+15 12:55:54.342 DEBUG: Trying to read from cache file: ./dump/trace-642070-Native.json
+15 12:55:54.343 DEBUG: Attempt to get cached object from cache file failed: Reading cache file: './dump/trace-642070-Native.json'
+
+Caused by:
+    No such file or directory (os error 2)
+15 12:55:54.343 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:54.343 INFO: Couldn't contact Juno. Re-spawning...
+15 12:55:54.343 DEBUG: Spawning fresh Juno process as none was present or responding
+15 12:55:54.344 INFO: Spawned Native juno with id 31793
+15 12:55:54.444 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:54.444 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:54.544 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:54.545 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:54.645 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:54.646 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:54.746 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:54.746 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:54.846 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:54.847 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:54.947 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:54.947 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:55.048 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:55.048 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:55.148 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:55.149 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:55.249 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:55.249 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:55.350 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:55.350 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:55.450 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:55.451 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:55.551 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:55.551 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:55.652 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:55.652 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:55.752 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:55.753 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:55.853 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:55.854 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:55.954 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:55.954 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:56.054 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:56.055 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:56.155 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:56.155 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:56.256 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:56.256 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:56.356 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:56.357 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:56.457 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:56.457 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:56.557 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:56.558 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:56.658 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:56.659 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:56.759 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:56.759 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:56.860 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:56.860 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:56.960 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:56.961 DEBUG: Juno is not contactable, retrying. Error: error sending request for url (http://localhost:6060/): error trying to connect: tcp connect error: Connection refused (os error 111)
+15 12:55:57.061 DEBUG: starting new connection: http://localhost:6060/
+15 12:55:57.062 INFO: Juno is alive. Contactable after 2600ms with block number: 642573
+15 12:55:57.063 DEBUG: Internal juno already contactable with block number: 642573
+15 12:55:57.063 INFO: Tracing block 642070

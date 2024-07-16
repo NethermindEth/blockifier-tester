@@ -1,0 +1,576 @@
+
+       _                    
+      | |                   
+      | |_   _ _ __   ___   
+  _   | | | | | '_ \ / _ \  
+ | |__| | |_| | | | | (_) |  
+  \____/ \__,_|_| |_|\___/ v0.11.4-21-g9dea4031,
+
+Juno is a Go implementation of a Starknet full-node client created by Nethermind.
+
+14:11:18.729 15/07/2024 -04:00	[34mINFO[0m	node/node.go:170	Sync is disabled
+14:11:18.752 15/07/2024 -04:00	[33mWARN[0m	node/node.go:252	Ethereum node address not found; will not verify against L1
+14:11:18.752 15/07/2024 -04:00	[33mWARN[0m	node/node.go:266	Failed to parse Juno version, will not warn about new releases	{"version": "v0.11.4-21-g9dea4031,"}
+14:11:19.712 15/07/2024 -04:00	[34mINFO[0m	node/node.go:362	Shutting down Juno...
+
+       _                    
+      | |                   
+      | |_   _ _ __   ___   
+  _   | | | | | '_ \ / _ \  
+ | |__| | |_| | | | | (_) |  
+  \____/ \__,_|_| |_|\___/ v0.11.4-21-g9dea4031,
+
+Juno is a Go implementation of a Starknet full-node client created by Nethermind.
+
+14:11:23.984 15/07/2024 -04:00	[34mINFO[0m	node/node.go:170	Sync is disabled
+14:11:23.984 15/07/2024 -04:00	[33mWARN[0m	node/node.go:252	Ethereum node address not found; will not verify against L1
+14:11:23.984 15/07/2024 -04:00	[33mWARN[0m	node/node.go:266	Failed to parse Juno version, will not warn about new releases	{"version": "v0.11.4-21-g9dea4031,"}
+00 -> get_class_hash_at 0x041e4544106ed84a0276c5e8ae5436af6a568c19317205f9509f77da4d556e3c (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x041e4544106ed84a0276c5e8ae5436af6a568c19317205f9509f77da4d556e3c (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x029927c8af6bccf3f6fda035981e765a7bdbf18a2dc0d630494f8758aa908e2b (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x29927c8af6bccf3f6fda035981e765a7bdbf18a2dc0d630494f8758aa908e2b Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x029927c8af6bccf3f6fda035981e765a7bdbf18a2dc0d630494f8758aa908e2b (Rust Juno State Reader)
+00 -> get_class_hash_at 0x0669beb3700534197ba033787089810a0aef2b2ee67fcaa0ace5b42cf7ecf6f1 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x0669beb3700534197ba033787089810a0aef2b2ee67fcaa0ace5b42cf7ecf6f1 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x0012632d8ccd328e96c0e4c5f8fba2107d5fc759952bdf840a4b9aa06d7e8a96 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x12632d8ccd328e96c0e4c5f8fba2107d5fc759952bdf840a4b9aa06d7e8a96 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x0012632d8ccd328e96c0e4c5f8fba2107d5fc759952bdf840a4b9aa06d7e8a96 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x00ba3037d968790ac486f70acaa9a1cab10cf5843bb85c986624b4d0e5a82e74 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x00ba3037d968790ac486f70acaa9a1cab10cf5843bb85c986624b4d0e5a82e74 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x00fc88bdc66787a461db2fe106937047e94eaed5bd9f718675b0ef29386888d7 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Cairo Zero class. Hash: 0xfc88bdc66787a461db2fe106937047e94eaed5bd9f718675b0ef29386888d7 Version: 0
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x00fc88bdc66787a461db2fe106937047e94eaed5bd9f718675b0ef29386888d7 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x0683852789848dea686fcfb66aaebf6477d83b25d8894aae73b15ff19b765bf0 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x0683852789848dea686fcfb66aaebf6477d83b25d8894aae73b15ff19b765bf0 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x05807986d79d4ba7e8729baaad831399979ac5ef9dd516508e0c27cfaae62620 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Cairo Zero class. Hash: 0x5807986d79d4ba7e8729baaad831399979ac5ef9dd516508e0c27cfaae62620 Version: 0
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x05807986d79d4ba7e8729baaad831399979ac5ef9dd516508e0c27cfaae62620 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x07b05e8dc9c770b72befcf09599132093cf9e57becb2d1b3e89514e1f9bdf0ab (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x07b05e8dc9c770b72befcf09599132093cf9e57becb2d1b3e89514e1f9bdf0ab (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x0322e6fc040c1985e5239d79838736a09f9f8cdce5db3336770c8c97f93c3a61 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Cairo Zero class. Hash: 0x322e6fc040c1985e5239d79838736a09f9f8cdce5db3336770c8c97f93c3a61 Version: 0
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x0322e6fc040c1985e5239d79838736a09f9f8cdce5db3336770c8c97f93c3a61 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x00000005dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x00000005dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x03e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x03e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be (Rust Juno State Reader)
+00 -> get_class_hash_at 0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x07f3777c99f3700505ea966676aac4a0d692c2a9f5e667f4c606b51ca1dd3420 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x7f3777c99f3700505ea966676aac4a0d692c2a9f5e667f4c606b51ca1dd3420 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x07f3777c99f3700505ea966676aac4a0d692c2a9f5e667f4c606b51ca1dd3420 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x073f6addc9339de9822cab4dac8c9431779c09077f02ba7bc36904ea342dd9eb (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x073f6addc9339de9822cab4dac8c9431779c09077f02ba7bc36904ea342dd9eb (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x03c12aacab71a40d75783f87c921fb003fe1effd5c4042363eb623f3fcfa7ba6 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Cairo Zero class. Hash: 0x3c12aacab71a40d75783f87c921fb003fe1effd5c4042363eb623f3fcfa7ba6 Version: 0
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x03c12aacab71a40d75783f87c921fb003fe1effd5c4042363eb623f3fcfa7ba6 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x07c2e1e733f28daa23e78be3a4f6c724c0ab06af65f6a95b5e0545215f1abc1b (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x07c2e1e733f28daa23e78be3a4f6c724c0ab06af65f6a95b5e0545215f1abc1b (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x06afa2f21a611f8b4a77ef681a9eb0c7cd6e52aa918e7f8b4b8142b4ca1bde49 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x6afa2f21a611f8b4a77ef681a9eb0c7cd6e52aa918e7f8b4b8142b4ca1bde49 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x06afa2f21a611f8b4a77ef681a9eb0c7cd6e52aa918e7f8b4b8142b4ca1bde49 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x059a943ca214c10234b9a3b61c558ac20c005127d183b86a99a8f3c60a08b4ff (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x059a943ca214c10234b9a3b61c558ac20c005127d183b86a99a8f3c60a08b4ff (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x069273566b9fe6cb2fffed3d5a81366c2e62d1d01a16f23bf82ddd8f564bda66 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Cairo Zero class. Hash: 0x69273566b9fe6cb2fffed3d5a81366c2e62d1d01a16f23bf82ddd8f564bda66 Version: 0
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x069273566b9fe6cb2fffed3d5a81366c2e62d1d01a16f23bf82ddd8f564bda66 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x066037c083c33330a8460a65e4748ceec275bbf5f28aa71b686cbc0010e12597 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x066037c083c33330a8460a65e4748ceec275bbf5f28aa71b686cbc0010e12597 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x0491480f21299223b9ce770f23a2c383437f9fbf57abc2ac952e9af8cdb12c97 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x0491480f21299223b9ce770f23a2c383437f9fbf57abc2ac952e9af8cdb12c97 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x063d69ae657bd2f40337c39bf35a870ac27ddf91e6623c2f52529db4c1619a51 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x063d69ae657bd2f40337c39bf35a870ac27ddf91e6623c2f52529db4c1619a51 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x024e9b0d6bc79e111e6872bb1ada2a874c25712cf08dfc5bcf0de008a7cca55f (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x024e9b0d6bc79e111e6872bb1ada2a874c25712cf08dfc5bcf0de008a7cca55f (Rust Juno State Reader)
+00 -> get_class_hash_at 0x0348cc417fc877a7868a66510e8e0d0f3f351f5e6b0886a86b652fcb30a3d1fb (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x0348cc417fc877a7868a66510e8e0d0f3f351f5e6b0886a86b652fcb30a3d1fb (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x079561bce61f39a0dfab9413cee86f6cfe7d9112b96abce545c6e929b20081eb (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x79561bce61f39a0dfab9413cee86f6cfe7d9112b96abce545c6e929b20081eb Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x079561bce61f39a0dfab9413cee86f6cfe7d9112b96abce545c6e929b20081eb (Rust Juno State Reader)
+00 -> get_class_hash_at 0x035778d24792bbebcf7651146896df5f787641af9e2a3db06480a637fbc9fff8 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x035778d24792bbebcf7651146896df5f787641af9e2a3db06480a637fbc9fff8 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x001258eae3eae5002125bebf062d611a772e8aea3a1879b64a19f363ebd00947 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x001258eae3eae5002125bebf062d611a772e8aea3a1879b64a19f363ebd00947 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x0292be6baee291a148006db984f200dbdb34b12fb2136c70bfe88649c12d934b (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x0292be6baee291a148006db984f200dbdb34b12fb2136c70bfe88649c12d934b (Rust Juno State Reader)
+00 -> get_class_hash_at 0x04b036839a8769c04144cc47415c64b083a2b26e4a7daa53c07f6042a0d35792 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x04b036839a8769c04144cc47415c64b083a2b26e4a7daa53c07f6042a0d35792 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x044debfe17e4d9a5a1e226dabaf286e72c9cc36abbe71c5b847e669da4503893 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x044debfe17e4d9a5a1e226dabaf286e72c9cc36abbe71c5b847e669da4503893 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x033478650b3b71be225cbad55fda8a590022eea17be3212d0ccbf3d364b1e448 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Cairo Zero class. Hash: 0x33478650b3b71be225cbad55fda8a590022eea17be3212d0ccbf3d364b1e448 Version: 0
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x033478650b3b71be225cbad55fda8a590022eea17be3212d0ccbf3d364b1e448 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x057146f6409deb4c9fa12866915dd952aa07c1eb2752e451d7f3b042086bdeb8 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x057146f6409deb4c9fa12866915dd952aa07c1eb2752e451d7f3b042086bdeb8 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x03454df602367830febe19a1b36ad737040e66dee66ce944211f6757ef3eb679 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Cairo Zero class. Hash: 0x3454df602367830febe19a1b36ad737040e66dee66ce944211f6757ef3eb679 Version: 0
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x03454df602367830febe19a1b36ad737040e66dee66ce944211f6757ef3eb679 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x005c4676bcb21454659479b3cd0129884d914df9c9b922c1c649696d2e058d70 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x005c4676bcb21454659479b3cd0129884d914df9c9b922c1c649696d2e058d70 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x04f18ffc850cdfa223a530d7246d3c6fc12a5969e0aa5d4a88f470f5fe6c46e9 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x04f18ffc850cdfa223a530d7246d3c6fc12a5969e0aa5d4a88f470f5fe6c46e9 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x05b7d301fa769274f20e89222169c0fad4d846c366440afc160aafadd6f88f0c (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x05b7d301fa769274f20e89222169c0fad4d846c366440afc160aafadd6f88f0c (Rust Juno State Reader)
+00 -> get_class_hash_at 0x036b68238f3a90639d062669fdec08c4d0bdd09826b1b6d24ef49de6d8141eaa (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x036b68238f3a90639d062669fdec08c4d0bdd09826b1b6d24ef49de6d8141eaa (Rust Juno State Reader)
+00 -> get_class_hash_at 0x05f296e1b9f4cf1ab452c218e72e02a8713cee98921dad2d3b5706235e128ee4 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x05f296e1b9f4cf1ab452c218e72e02a8713cee98921dad2d3b5706235e128ee4 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x05dcd26c25d9d8fd9fc860038dcb6e4d835e524eb8a85213a8cda5b7fff845f6 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x05dcd26c25d9d8fd9fc860038dcb6e4d835e524eb8a85213a8cda5b7fff845f6 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x0514bd7ee8c97d4286bd481c54aa0793e43edbfb7e1ab9784c4b30469dcf9313 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x0514bd7ee8c97d4286bd481c54aa0793e43edbfb7e1ab9784c4b30469dcf9313 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x0453c4c996f1047d9370f824d68145bd5e7ce12d00437140ad02181e1d11dc83 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x0453c4c996f1047d9370f824d68145bd5e7ce12d00437140ad02181e1d11dc83 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x05eb6de9c7461b3270d029f00046c8a10d27d4f4a4c931a4ea9769c72ef4edbb (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x05eb6de9c7461b3270d029f00046c8a10d27d4f4a4c931a4ea9769c72ef4edbb (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x0386d92966f0908ded021f3959610dc52a605922387e0847df45832c046a79bd (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x386d92966f0908ded021f3959610dc52a605922387e0847df45832c046a79bd Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x0386d92966f0908ded021f3959610dc52a605922387e0847df45832c046a79bd (Rust Juno State Reader)
+00 -> get_class_hash_at 0x009377fdde350e01e0397820ea83ed3b4f05df30bfb8cf8055d62cafa1b2106a (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x009377fdde350e01e0397820ea83ed3b4f05df30bfb8cf8055d62cafa1b2106a (Rust Juno State Reader)
+00 -> get_class_hash_at 0x040f5a6b7a6d3c472c12ca31ae6250b462c6d35bbdae17bd52f6c6ca065e30cf (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x040f5a6b7a6d3c472c12ca31ae6250b462c6d35bbdae17bd52f6c6ca065e30cf (Rust Juno State Reader)
+00 -> get_class_hash_at 0x06714fc78773c0ab8f8d7668ba77da713333473f18da47595249d9b8ade2d8d4 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x06714fc78773c0ab8f8d7668ba77da713333473f18da47595249d9b8ade2d8d4 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x017913e3921aac1eb817d3a9455b97a45220b2660bbb47c01c946f2401bff234 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x17913e3921aac1eb817d3a9455b97a45220b2660bbb47c01c946f2401bff234 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x017913e3921aac1eb817d3a9455b97a45220b2660bbb47c01c946f2401bff234 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x02a85bd616f912537c50a49a4076db02c00b29b2cdc8a197ce92ed1837fa875b (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x02a85bd616f912537c50a49a4076db02c00b29b2cdc8a197ce92ed1837fa875b (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x01e36e19e57bd8956e59c4ae0604de92e0bbf648efbf697467c2bfb2de92a953 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x1e36e19e57bd8956e59c4ae0604de92e0bbf648efbf697467c2bfb2de92a953 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x01e36e19e57bd8956e59c4ae0604de92e0bbf648efbf697467c2bfb2de92a953 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x04ad3c1dc8413453db314497945b6903e1c766495a1e60492d44da9c2a986e4b (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x4ad3c1dc8413453db314497945b6903e1c766495a1e60492d44da9c2a986e4b Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x04ad3c1dc8413453db314497945b6903e1c766495a1e60492d44da9c2a986e4b (Rust Juno State Reader)
+00 -> get_class_hash_at 0x0142af5b6c97f02cac9c91be1ea9895d855c5842825cb2180673796e54d73dc5 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x0142af5b6c97f02cac9c91be1ea9895d855c5842825cb2180673796e54d73dc5 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x067a34ff63ec38d0ccb2817c6d3f01e8b0c4792c77845feb43571092dcf5ebb5 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x067a34ff63ec38d0ccb2817c6d3f01e8b0c4792c77845feb43571092dcf5ebb5 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x07d717fb27c9856ea10068d864465a2a8f9f669f4f78013967de06149c09b9af (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x07d717fb27c9856ea10068d864465a2a8f9f669f4f78013967de06149c09b9af (Rust Juno State Reader)
+00 -> get_class_hash_at 0x02a3a9d7bcecc6d3121e3b6180b73c7e8f4c5f81c35a90c8dd457a70a842b723 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x02a3a9d7bcecc6d3121e3b6180b73c7e8f4c5f81c35a90c8dd457a70a842b723 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x01fecadfe7cda2487c66291f2970a629be8eecdcb006ba4e71d1428c2b7605c7 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x01fecadfe7cda2487c66291f2970a629be8eecdcb006ba4e71d1428c2b7605c7 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x026c5994c2462770bbf940552c5824fb0e0920e2a8a5ce1180042da1b3e489db (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x026c5994c2462770bbf940552c5824fb0e0920e2a8a5ce1180042da1b3e489db (Rust Juno State Reader)
+00 -> get_class_hash_at 0x07251df014dd17af661c36e2e2bb76403b0ab131eeca9fb6ab2b0c712ff3ae89 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x07251df014dd17af661c36e2e2bb76403b0ab131eeca9fb6ab2b0c712ff3ae89 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x007470a072c189f8d11ff33b55de3e7ee9a8484363115156885eb5b5b4d3f512 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x7470a072c189f8d11ff33b55de3e7ee9a8484363115156885eb5b5b4d3f512 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x007470a072c189f8d11ff33b55de3e7ee9a8484363115156885eb5b5b4d3f512 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x03bf034a52550ab247e356609495bdc1c1f92ae036f02a06803e87aeaff2b0c9 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x03bf034a52550ab247e356609495bdc1c1f92ae036f02a06803e87aeaff2b0c9 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x027a615153748a9a9d4a02fc25b8d8101db25f848917deab030f09f29fc99465 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x27a615153748a9a9d4a02fc25b8d8101db25f848917deab030f09f29fc99465 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x027a615153748a9a9d4a02fc25b8d8101db25f848917deab030f09f29fc99465 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x00dad44c139a476c7a17fc8141e6db680e9abc9f56fe249a105094c44382c2fd (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x00dad44c139a476c7a17fc8141e6db680e9abc9f56fe249a105094c44382c2fd (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x026fe8ea36ec7703569cfe4693b05102940bf122647c4dbf0abc0bb919ce27bd (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Cairo Zero class. Hash: 0x26fe8ea36ec7703569cfe4693b05102940bf122647c4dbf0abc0bb919ce27bd Version: 0
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x026fe8ea36ec7703569cfe4693b05102940bf122647c4dbf0abc0bb919ce27bd (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x02580632f25bbee45da5a1a1ef49d03a984f78dde4019069aa9f25aac06f941a (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Cairo Zero class. Hash: 0x2580632f25bbee45da5a1a1ef49d03a984f78dde4019069aa9f25aac06f941a Version: 0
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x02580632f25bbee45da5a1a1ef49d03a984f78dde4019069aa9f25aac06f941a (Rust Juno State Reader)
+00 -> get_class_hash_at 0x041fd22b238fa21cfcf5dd45a8548974d8263b3a531a60388411c5e230f97023 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x041fd22b238fa21cfcf5dd45a8548974d8263b3a531a60388411c5e230f97023 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x07197021c108b0cc57ae354f5ad02222c4b3d7344664e6dd602a0e2298595434 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Cairo Zero class. Hash: 0x7197021c108b0cc57ae354f5ad02222c4b3d7344664e6dd602a0e2298595434 Version: 0
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x07197021c108b0cc57ae354f5ad02222c4b3d7344664e6dd602a0e2298595434 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x064e7d628b1b2aa04a35fe6610b005689e8b591058f7f92bf4eb234e67cf403b (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Cairo Zero class. Hash: 0x64e7d628b1b2aa04a35fe6610b005689e8b591058f7f92bf4eb234e67cf403b Version: 0
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x064e7d628b1b2aa04a35fe6610b005689e8b591058f7f92bf4eb234e67cf403b (Rust Juno State Reader)
+00 -> get_class_hash_at 0x02ed66297d146ecd91595c3174da61c1397e8b7fcecf25d423b1ba6717b0ece9 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x02ed66297d146ecd91595c3174da61c1397e8b7fcecf25d423b1ba6717b0ece9 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x07b5cd6a6949cc1730f89d795f2442f6ab431ea6c9a5be00685d50f97433c5eb (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Cairo Zero class. Hash: 0x7b5cd6a6949cc1730f89d795f2442f6ab431ea6c9a5be00685d50f97433c5eb Version: 0
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x07b5cd6a6949cc1730f89d795f2442f6ab431ea6c9a5be00685d50f97433c5eb (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x02b39bc3f4c1fd5bef8b7d21504c44e0da59cf27b350551b13d913da52e40d3b (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Cairo Zero class. Hash: 0x2b39bc3f4c1fd5bef8b7d21504c44e0da59cf27b350551b13d913da52e40d3b Version: 0
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x02b39bc3f4c1fd5bef8b7d21504c44e0da59cf27b350551b13d913da52e40d3b (Rust Juno State Reader)
+00 -> get_class_hash_at 0x076ab6d039cc98a81aea01f2b84621267dc1a99dee0412de098b4e412eb7b99f (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x076ab6d039cc98a81aea01f2b84621267dc1a99dee0412de098b4e412eb7b99f (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x03ccfa05fd89edc505f133d72cc01dd5564e3a20e99f63d2259d174ccd6de5f4 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x3ccfa05fd89edc505f133d72cc01dd5564e3a20e99f63d2259d174ccd6de5f4 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x03ccfa05fd89edc505f133d72cc01dd5564e3a20e99f63d2259d174ccd6de5f4 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x01c0a36e26a8f822e0d81f20a5a562b16a8f8a3dfd99801367dd2aea8f1a87a2 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x01c0a36e26a8f822e0d81f20a5a562b16a8f8a3dfd99801367dd2aea8f1a87a2 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x0055373ed0e387ba6117b7bf65fa4a67af582f8de4e2a20cc75669d26ddb2df3 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Cairo Zero class. Hash: 0x55373ed0e387ba6117b7bf65fa4a67af582f8de4e2a20cc75669d26ddb2df3 Version: 0
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x0055373ed0e387ba6117b7bf65fa4a67af582f8de4e2a20cc75669d26ddb2df3 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x07a6f98c03379b9513ca84cca1373ff452a7462a3b61598f0af5bb27ad7f76d1 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x07a6f98c03379b9513ca84cca1373ff452a7462a3b61598f0af5bb27ad7f76d1 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x0514718bb56ed2a8607554c7d393c2ffd73cbab971c120b00a2ce27cc58dd1c1 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Cairo Zero class. Hash: 0x514718bb56ed2a8607554c7d393c2ffd73cbab971c120b00a2ce27cc58dd1c1 Version: 0
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x0514718bb56ed2a8607554c7d393c2ffd73cbab971c120b00a2ce27cc58dd1c1 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x04ad445ffb6294d1394b3f6a5610642d37c702eaaa47346b680c6af2f102192e (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x04ad445ffb6294d1394b3f6a5610642d37c702eaaa47346b680c6af2f102192e (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x0231adde42526bad434ca2eb983efdd64472638702f87f97e6e3c084f264e06f (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Cairo Zero class. Hash: 0x231adde42526bad434ca2eb983efdd64472638702f87f97e6e3c084f264e06f Version: 0
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x0231adde42526bad434ca2eb983efdd64472638702f87f97e6e3c084f264e06f (Rust Juno State Reader)
+00 -> get_class_hash_at 0x05b4dffb9dc50ddc08d485dd27df537db42629ecdc56b2ecd1176fbd594c898e (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x05b4dffb9dc50ddc08d485dd27df537db42629ecdc56b2ecd1176fbd594c898e (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x001cd312972f470826cd3f74d5ebfde8b981f5414fdc8ad73b5228a3f96f856d (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x1cd312972f470826cd3f74d5ebfde8b981f5414fdc8ad73b5228a3f96f856d Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x001cd312972f470826cd3f74d5ebfde8b981f5414fdc8ad73b5228a3f96f856d (Rust Juno State Reader)
+00 -> get_class_hash_at 0x02721f5ab785ae5e13b276ca9d41e859b7b150440a288a7826ba5e27dd05e08e (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x02721f5ab785ae5e13b276ca9d41e859b7b150440a288a7826ba5e27dd05e08e (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x006c77d54bfca18537162f6a2c67db81783c6c414edb68a1117b56b1e48b9ec8 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x6c77d54bfca18537162f6a2c67db81783c6c414edb68a1117b56b1e48b9ec8 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x006c77d54bfca18537162f6a2c67db81783c6c414edb68a1117b56b1e48b9ec8 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x07eee624919fae668387d0d34d86d67795e5c919bc994841581144977ef21c32 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x07eee624919fae668387d0d34d86d67795e5c919bc994841581144977ef21c32 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x061896d5d084965aafc7375a336ceaaaa4d95c9802e362c41e9a7f1a8330a195 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x61896d5d084965aafc7375a336ceaaaa4d95c9802e362c41e9a7f1a8330a195 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x061896d5d084965aafc7375a336ceaaaa4d95c9802e362c41e9a7f1a8330a195 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x06cbc110394329a1beb059b1da3a36e3042280f4c8cab1a1d10618e4822649ce (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x06cbc110394329a1beb059b1da3a36e3042280f4c8cab1a1d10618e4822649ce (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x00aef408ec73c83edbc42d00af164ae8073404aa665b9895041c705c871809f9 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0xaef408ec73c83edbc42d00af164ae8073404aa665b9895041c705c871809f9 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x00aef408ec73c83edbc42d00af164ae8073404aa665b9895041c705c871809f9 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x0172bb6ee75c828f39785943f0862a19c17e4adbb9f64d2c380c59b067596262 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x0172bb6ee75c828f39785943f0862a19c17e4adbb9f64d2c380c59b067596262 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x041dac7690326d73c71d319bd73712c6cdbe0a472aa23002d84a738bb4322564 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x41dac7690326d73c71d319bd73712c6cdbe0a472aa23002d84a738bb4322564 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x041dac7690326d73c71d319bd73712c6cdbe0a472aa23002d84a738bb4322564 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x07eee1f6b208fd3578958f868dc5d62b3edcb0e0a79d3978b114880d5dc906d9 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x07eee1f6b208fd3578958f868dc5d62b3edcb0e0a79d3978b114880d5dc906d9 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x04534a00ce710a5648313bd542d8643f096990078b53388fc8afbd0ad08c7423 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x4534a00ce710a5648313bd542d8643f096990078b53388fc8afbd0ad08c7423 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x04534a00ce710a5648313bd542d8643f096990078b53388fc8afbd0ad08c7423 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x0352e14b9bdc0138e48b55d45914b059f0388284c77a23a97776e6197852f050 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x0352e14b9bdc0138e48b55d45914b059f0388284c77a23a97776e6197852f050 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x072ccf820489b6a1ec30cfd68d045ef24929373284921bf199c00dbb6baf6971 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x72ccf820489b6a1ec30cfd68d045ef24929373284921bf199c00dbb6baf6971 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x072ccf820489b6a1ec30cfd68d045ef24929373284921bf199c00dbb6baf6971 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x06720b763aac6608ceba3f9069bebb0f990cd96b26071b3fa2a2109940f90db2 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x06720b763aac6608ceba3f9069bebb0f990cd96b26071b3fa2a2109940f90db2 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x04b97896abf7f4f55d6f87056573f78b3e6e923cb8bcd4270bf036e4eafc2d1e (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x4b97896abf7f4f55d6f87056573f78b3e6e923cb8bcd4270bf036e4eafc2d1e Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x04b97896abf7f4f55d6f87056573f78b3e6e923cb8bcd4270bf036e4eafc2d1e (Rust Juno State Reader)
+00 -> get_class_hash_at 0x068400056dccee818caa7e8a2c305f9a60d255145bac22d6c5c9bf9e2e046b71 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x068400056dccee818caa7e8a2c305f9a60d255145bac22d6c5c9bf9e2e046b71 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x04f9849485e35f4a1c57d69b297feda94e743151f788202a6d731173babf4aec (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x4f9849485e35f4a1c57d69b297feda94e743151f788202a6d731173babf4aec Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x04f9849485e35f4a1c57d69b297feda94e743151f788202a6d731173babf4aec (Rust Juno State Reader)
+00 -> get_class_hash_at 0x013154dd79977c4ce007f0c6e2235c45060a804ebdfbf828d35518fe277b525a (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x013154dd79977c4ce007f0c6e2235c45060a804ebdfbf828d35518fe277b525a (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x0192fb0efed6926e141953f6bff9c5efeca6987aaa54aa04f016dfbbca2b7cea (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x192fb0efed6926e141953f6bff9c5efeca6987aaa54aa04f016dfbbca2b7cea Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x0192fb0efed6926e141953f6bff9c5efeca6987aaa54aa04f016dfbbca2b7cea (Rust Juno State Reader)
+00 -> get_class_hash_at 0x01114c7103e12c2b2ecbd3a2472ba9c48ddcbf702b1c242dd570057e26212111 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x01114c7103e12c2b2ecbd3a2472ba9c48ddcbf702b1c242dd570057e26212111 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x008fade1a36f2bfcaa55b53c96dfb615e8e60110b87765cf449d09b6e0397b17 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x8fade1a36f2bfcaa55b53c96dfb615e8e60110b87765cf449d09b6e0397b17 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x008fade1a36f2bfcaa55b53c96dfb615e8e60110b87765cf449d09b6e0397b17 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x01faead8dd84e358d84095c2b8ec1f10e2cbe1444ff86b24d0bc84b499df7e14 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x01faead8dd84e358d84095c2b8ec1f10e2cbe1444ff86b24d0bc84b499df7e14 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x07caae8dfefea5954bac5e92c5aa1804893183799684553c2ad1c7fba61faca9 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x7caae8dfefea5954bac5e92c5aa1804893183799684553c2ad1c7fba61faca9 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x07caae8dfefea5954bac5e92c5aa1804893183799684553c2ad1c7fba61faca9 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x0631c2f9043db0d45576045fdd3e417f81dcb0ae0bdcdcfa415c88b4cd7fc56b (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x0631c2f9043db0d45576045fdd3e417f81dcb0ae0bdcdcfa415c88b4cd7fc56b (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x00816dd0297efc55dc1e7559020a3a825e81ef734b558f03c83325d4da7e6253 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x816dd0297efc55dc1e7559020a3a825e81ef734b558f03c83325d4da7e6253 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x00816dd0297efc55dc1e7559020a3a825e81ef734b558f03c83325d4da7e6253 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x03fe2b97c1fd336e750087d68b9b867997fd64a2661ff3ca5a7c771641e8e7ac (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x03fe2b97c1fd336e750087d68b9b867997fd64a2661ff3ca5a7c771641e8e7ac (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x05ffbcfeb50d200a0677c48a129a11245a3fc519d1d98d76882d1c9a1b19c6ed (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x5ffbcfeb50d200a0677c48a129a11245a3fc519d1d98d76882d1c9a1b19c6ed Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x05ffbcfeb50d200a0677c48a129a11245a3fc519d1d98d76882d1c9a1b19c6ed (Rust Juno State Reader)
+00 -> get_class_hash_at 0x04270219d365d6b017231b52e92b3fb5d7c8378b05e9abc97724537a80e93b0f (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x04270219d365d6b017231b52e92b3fb5d7c8378b05e9abc97724537a80e93b0f (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x05ee939756c1a60b029c594da00e637bf5923bf04a86ff163e877e899c0840eb (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Cairo Zero class. Hash: 0x5ee939756c1a60b029c594da00e637bf5923bf04a86ff163e877e899c0840eb Version: 0
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x05ee939756c1a60b029c594da00e637bf5923bf04a86ff163e877e899c0840eb (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x05b9f8d0d8f1794053114f4180d1c4dd98a7a1dd1721a850edea299a7e2397b9 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x5b9f8d0d8f1794053114f4180d1c4dd98a7a1dd1721a850edea299a7e2397b9 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x05b9f8d0d8f1794053114f4180d1c4dd98a7a1dd1721a850edea299a7e2397b9 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x06844145a2a7e4cf07eb49923f2565cb7700601bfcc8140a2685d886da6e7e20 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x6844145a2a7e4cf07eb49923f2565cb7700601bfcc8140a2685d886da6e7e20 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x06844145a2a7e4cf07eb49923f2565cb7700601bfcc8140a2685d886da6e7e20 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x02026a3eff4d5e6aa3db666cb834253342dc1ec06b69e95ccab81d7dd2a0886d (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x02026a3eff4d5e6aa3db666cb834253342dc1ec06b69e95ccab81d7dd2a0886d (Rust Juno State Reader)
+00 -> get_class_hash_at 0x00585c32b625999e6e5e78645ff8df7a9001cf5cf3eb6b80ccdd16cb64bd3a34 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x00585c32b625999e6e5e78645ff8df7a9001cf5cf3eb6b80ccdd16cb64bd3a34 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x073fc0a8c1fae1b2b42762cc0cc79337e57aa438e6bab44aab2c46733f5f0405 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x73fc0a8c1fae1b2b42762cc0cc79337e57aa438e6bab44aab2c46733f5f0405 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x073fc0a8c1fae1b2b42762cc0cc79337e57aa438e6bab44aab2c46733f5f0405 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x06707675cd7dd9256667eca8284e46f4546711ee0054bc2dd02f0ce572056cf4 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x06707675cd7dd9256667eca8284e46f4546711ee0054bc2dd02f0ce572056cf4 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x01a736d6ed154502257f02b1ccdf4d9d1089f80811cd6acad48e6b6a9d1f2003 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x1a736d6ed154502257f02b1ccdf4d9d1089f80811cd6acad48e6b6a9d1f2003 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x01a736d6ed154502257f02b1ccdf4d9d1089f80811cd6acad48e6b6a9d1f2003 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x024a55b928496ef83468fdb9a5430fe031ac386b8f62f5c2eb7dd20ef7237415 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x024a55b928496ef83468fdb9a5430fe031ac386b8f62f5c2eb7dd20ef7237415 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x0306288971002bd7906e3a607d504dfb28dcbdc7655a115984e567dce3b67e8f (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x306288971002bd7906e3a607d504dfb28dcbdc7655a115984e567dce3b67e8f Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x0306288971002bd7906e3a607d504dfb28dcbdc7655a115984e567dce3b67e8f (Rust Juno State Reader)
+00 -> get_class_hash_at 0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x019252b1deef483477c4d30cfcc3e5ed9c82fafea44669c182a45a01b4fdb97a (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x019252b1deef483477c4d30cfcc3e5ed9c82fafea44669c182a45a01b4fdb97a (Rust Juno State Reader)
+00 -> get_class_hash_at 0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x0360f9786a6595137f84f2d6931aaec09ceec476a94a98dcad2bb092c6c06701 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x0360f9786a6595137f84f2d6931aaec09ceec476a94a98dcad2bb092c6c06701 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x05726725e9507c3586cc0516449e2c74d9b201ab2747752bb0251aaa263c9a26 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x05726725e9507c3586cc0516449e2c74d9b201ab2747752bb0251aaa263c9a26 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x066733193503019e4e9472f598ff32f15951a0ddb8fb5001f0beaa8bd1fb6840 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x066733193503019e4e9472f598ff32f15951a0ddb8fb5001f0beaa8bd1fb6840 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x01c381df6357df3693eff7a541a676a100375859ee1cfaf23e12586ad09dbd04 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x01c381df6357df3693eff7a541a676a100375859ee1cfaf23e12586ad09dbd04 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x07ae43abf704f4981094a4f3457d1abe6b176844f6cdfbb39c0544a635ef56b0 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x07ae43abf704f4981094a4f3457d1abe6b176844f6cdfbb39c0544a635ef56b0 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x05801bdad32f343035fb242e98d1e9371ae85bc1543962fedea16c59b35bd19b (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x05801bdad32f343035fb242e98d1e9371ae85bc1543962fedea16c59b35bd19b (Rust Juno State Reader)
+00 -> get_class_hash_at 0x041a708cf109737a50baa6cbeb9adf0bf8d97112dc6cc80c7a458cbad35328b0 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x041a708cf109737a50baa6cbeb9adf0bf8d97112dc6cc80c7a458cbad35328b0 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x04d40d37ebc80a65ba700773cf47d5b8cb86b906588a2185690c9b14a6664a3c (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x04d40d37ebc80a65ba700773cf47d5b8cb86b906588a2185690c9b14a6664a3c (Rust Juno State Reader)
+00 -> get_class_hash_at 0x039e4f0384e423930d29c850e9dcb288387e517a9c74c345638dd81a9b4a6e8b (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x039e4f0384e423930d29c850e9dcb288387e517a9c74c345638dd81a9b4a6e8b (Rust Juno State Reader)
+00 -> get_class_hash_at 0x02503c0dde2488efa3f4fd0d4cbf16924e75c6c69365d73fb32968d25eb58233 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x02503c0dde2488efa3f4fd0d4cbf16924e75c6c69365d73fb32968d25eb58233 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x07cecccbfa263721bb64c19892ccdc658ad08ea80e90fb8f78ff06446a62c3cc (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x07cecccbfa263721bb64c19892ccdc658ad08ea80e90fb8f78ff06446a62c3cc (Rust Juno State Reader)
+00 -> get_class_hash_at 0x03dfb1801cc3afb9a1ea8bbd52ea2a1d18b7ab724ed948f2f37f55b4e71631c6 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x03dfb1801cc3afb9a1ea8bbd52ea2a1d18b7ab724ed948f2f37f55b4e71631c6 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x06a6171b9a74643a17a7ad7040f669f570d9c98ad04b05c7418bdc99c686860e (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x06a6171b9a74643a17a7ad7040f669f570d9c98ad04b05c7418bdc99c686860e (Rust Juno State Reader)
+00 -> get_class_hash_at 0x00c318445d5a5096e2ad086452d5c97f65a9d28cafe343345e0fa70da0841295 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x00c318445d5a5096e2ad086452d5c97f65a9d28cafe343345e0fa70da0841295 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x07d932bada070262a966bf3bdbd41fecf4d69d9c00c03e674d92d69b2dc7a022 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x7d932bada070262a966bf3bdbd41fecf4d69d9c00c03e674d92d69b2dc7a022 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x07d932bada070262a966bf3bdbd41fecf4d69d9c00c03e674d92d69b2dc7a022 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x04d94a9b86d12e61351865c0c1cf7ad8aaa02f45fc6dfddc54869b5de6705e87 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x04d94a9b86d12e61351865c0c1cf7ad8aaa02f45fc6dfddc54869b5de6705e87 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x01831f0668217db340ae63aa0f798aad6d58f81d30fef06f775f69d24e41b363 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x1831f0668217db340ae63aa0f798aad6d58f81d30fef06f775f69d24e41b363 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x01831f0668217db340ae63aa0f798aad6d58f81d30fef06f775f69d24e41b363 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x062fb96c61e263915577532a4509028782b64d6b987a0bbb7df9278f50ed04a5 (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x62fb96c61e263915577532a4509028782b64d6b987a0bbb7df9278f50ed04a5 Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x062fb96c61e263915577532a4509028782b64d6b987a0bbb7df9278f50ed04a5 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x01deb50cc6f0535bbdc61427d12d40ccc836726a9fecfd4845c6e8fd1d87f590 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x01deb50cc6f0535bbdc61427d12d40ccc836726a9fecfd4845c6e8fd1d87f590 (Rust Juno State Reader)
+00 -> get_class_hash_at 0x0350a4e72fe6aa34876a1cf9ed47731ed84d74e6c38e69ca761a32f93a726fc1 (Rust Juno State Reader)
+01-> Success get_class_hash_at 0x0350a4e72fe6aa34876a1cf9ed47731ed84d74e6c38e69ca761a32f93a726fc1 (Rust Juno State Reader)
+00 -> get_compiled_contract_class 0x05b3656430eebda05c8b2722a7e13206d2afb49dcca0be85b545b90f35a3728d (Rust Juno State Reader)
+00 -> Executing JunoStateGetCompiledClass(Go)
+Attempting to marshalClassInfo
+Marshalling Sierra class. Hash: 0x5b3656430eebda05c8b2722a7e13206d2afb49dcca0be85b545b90f35a3728d Version: 1
+
+01 -> Completed JunoStateGetCompiledClass(Go) -> SUCCESS
+01b -> Success(?) get_compiled_contract_class 0x05b3656430eebda05c8b2722a7e13206d2afb49dcca0be85b545b90f35a3728d (Rust Juno State Reader)

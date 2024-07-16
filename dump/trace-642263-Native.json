@@ -1,0 +1,9 @@
+{
+  "block_num": 642263,
+  "post_response": null,
+  "result": {
+    "Crash": {
+      "error": "error sending request for url (http://localhost:6060/): connection closed before message completed"
+    }
+  }
+}
