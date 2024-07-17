@@ -2,6 +2,7 @@ use std::{fmt::Display, fs::OpenOptions};
 
 use log::{debug, info};
 
+use crate::block_tracer::TraceBlockReport;
 use itertools::Itertools;
 use num_bigint::BigUint;
 use serde::Serialize;
@@ -17,7 +18,6 @@ use starknet::{
     },
     providers::Provider,
 };
-use crate::block_tracer::TraceBlockReport;
 
 use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
 
@@ -28,10 +28,6 @@ pub enum SimulationStrategy {
     Pessimistic,
 }
 pub trait TransactionSimulator {
-    async fn get_expected_transaction_result(
-        &mut self,
-        tx_hash: FieldElement,
-    ) -> Result<TransactionResult, ManagerError>;
     async fn get_transactions_to_simulate(
         &mut self,
         block: &MaybePendingBlockWithTxs,
@@ -63,28 +59,25 @@ pub trait TransactionSimulator {
 }
 
 impl TransactionSimulator for JunoManager {
-    async fn get_expected_transaction_result(
-        &mut self,
-        tx_hash: FieldElement,
-    ) -> Result<TransactionResult, ManagerError> {
-        debug!("Getting receipt for Tx 0x{}", hash_to_hex(&tx_hash));
-        self.ensure_usable().await?;
-        let result = self
-            .rpc_client
-            .get_transaction_receipt(tx_hash)
-            .await?
-            .into();
-        Ok(result)
-    }
-
     async fn get_transactions_to_simulate(
         &mut self,
         block: &MaybePendingBlockWithTxs,
     ) -> Result<Vec<TransactionToSimulate>, ManagerError> {
+        // Make sure it is usable just at the beginning since the RPC call
+        // shouldn't crash the node ever (Native unrelated)
+        self.ensure_usable().await?;
+
         let mut result = vec![];
-        for transaction in block.transactions() {
+        let max_transaction = block.transactions().len();
+        for (i, transaction) in block.transactions().iter().enumerate() {
             let tx_hash = get_block_transaction_hash(transaction);
-            let expected_result = self.get_expected_transaction_result(tx_hash).await?;
+            debug!("({}/{max_transaction}) Receipt for {tx_hash}...", i + 1);
+            let expected_result = self
+                .rpc_client
+                .get_transaction_receipt(tx_hash)
+                .await?
+                .into();
+
             result.push(TransactionToSimulate {
                 tx: block_transaction_to_broadcasted_transaction(transaction)?,
                 hash: tx_hash,

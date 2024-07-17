@@ -4,13 +4,14 @@ use anyhow::Context;
 use log::{debug, info, warn};
 use starknet::core::types::BlockId;
 
-use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
+use crate::juno_manager::{JunoManager, ManagerError};
 
 /// returns a list of (block number, transaction count), sorted by ascending transaction count
 /// draws from and updates ./cache/block_tx_counts if necessary
 /// block_start: inclusive lower bound
 /// block_end: exclusive upper bound
 pub async fn get_sorted_blocks_with_tx_count(
+    juno_manager: &mut JunoManager,
     block_start: u64,
     block_end: u64,
 ) -> Result<Vec<(u64, u64)>, ManagerError> {
@@ -27,9 +28,7 @@ pub async fn get_sorted_blocks_with_tx_count(
     cache_data.sort_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
 
     let mut result = vec![];
-    let mut juno_manager = JunoManager::new(JunoBranch::Native)
-        .await
-        .expect("Failed to start native juno");
+    juno_manager.ensure_usable().await?;
 
     // For each block, use its cached result if present, and if not then ask juno and add it to the cache data
     for block_num in block_start..block_end {
@@ -46,9 +45,6 @@ pub async fn get_sorted_blocks_with_tx_count(
             }
         }
     }
-
-    // Give juno a graceful shutdown period now that we're done with it
-    juno_manager.ensure_dead().await?;
 
     // Write the data back to the cache, including any new results found from juno
     if let Err(err) = write_block_tx_counts_cache(cache_path, &cache_data).await {

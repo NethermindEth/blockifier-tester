@@ -27,16 +27,6 @@ use trace_comparison::generate_block_comparison;
 use transaction_simulator::{log_block_report, SimulationStrategy, TransactionSimulator};
 use transaction_tracer::TraceResult;
 
-async fn try_native_block_trace(block_number: u64) -> Result<TraceBlockReport, ManagerError> {
-    let mut juno_manager = JunoManager::new(JunoBranch::Native).await?;
-    juno_manager.trace_block(block_number).await
-}
-
-async fn try_base_block_trace(block_number: u64) -> Result<TraceBlockReport, ManagerError> {
-    let mut juno_manager = JunoManager::new(JunoBranch::Base).await?;
-    juno_manager.trace_block(block_number).await
-}
-
 // Creates a file in ./results/err-{`block_number`}.json with the failure reason
 async fn log_trace_crash(block_number: u64, err: ManagerError) {
     let mut log_file = OpenOptions::new()
@@ -100,10 +90,12 @@ async fn execute_traces(
     end_block: u64,
     should_run_known: bool,
     simulation_flags: Vec<SimulationFlag>,
-) {
-    let blocks_with_tx_count = get_sorted_blocks_with_tx_count(start_block, end_block)
-        .await
-        .unwrap();
+) -> Result<(), ManagerError> {
+    let mut base_juno = JunoManager::new(JunoBranch::Base).await?;
+    let blocks_with_tx_count =
+        get_sorted_blocks_with_tx_count(&mut base_juno, start_block, end_block)
+            .await
+            .unwrap();
 
     for (block_number, tx_count) in blocks_with_tx_count {
         if !should_run_known && results_exist_for_block(block_number) {
@@ -111,24 +103,28 @@ async fn execute_traces(
             continue;
         }
 
-        info!("Tracing block {block_number} with Base. It has {tx_count} transactions");
-        let base_result = try_base_block_trace(block_number).await;
-        match base_result {
+        info!("TRACING block {block_number} with Base. It has {tx_count} transactions");
+        // First branch is a succesful block trace with Base
+        // Second branch is an unexpected crash by Juno/Blockifier/nNative
+        match base_juno.trace_block(block_number).await {
             Ok(base_report) => {
                 if base_report.result != TraceResult::Success {
                     // todo: prettier handling, but low prio.
-                    panic!("Tracing with base juno is always expected to work. Check your base juno bin and config");
+                    let trace = serde_json::to_string_pretty(&base_report)
+                        .unwrap_or(format!("Serialization failed!\n{base_report:?}"));
+                    panic!("Tracing with base juno is always expected to work. Check your base juno bin and config. Error:\n{}",trace);
                 }
-
                 log_base_trace(block_number, &base_report).await;
 
-                info!("Tracing block {block_number} with Native. It has {tx_count} transactions");
-                let native_result = try_native_block_trace(block_number).await;
+                info!("Switching from Base Juno to Native Juno");
+                base_juno.ensure_dead().await?;
+                let mut native_juno = JunoManager::new(JunoBranch::Native).await?;
 
+                info!("TRACING block {block_number} with Native. It has {tx_count} transactions");
                 // First branch is succesful block trace with Native
                 // Second branch is an unhandled crash by the blockifier/native during tracing
                 // Third branch is an unexpected crash by Juno Manager
-                match native_result {
+                match native_juno.trace_block(block_number).await {
                     Ok(native_report) if native_report.result == TraceResult::Success => {
                         info!("SUCCESS tracing block with native");
                         if let Err(e) = write_transactions_dependencies(
@@ -144,9 +140,12 @@ async fn execute_traces(
                         // When tracing a block with native fails, the next step is performing a
                         // binary search over the transactions searching for the one that crashes
                         info!("Failed to trace block with Native, got {native_report:?}");
-                        info!("Simulating block {block_number} with Native. It has {tx_count} transactions");
-                        let mut juno_manager = JunoManager::new(JunoBranch::Native).await.unwrap();
-                        let result = juno_manager
+                        info!("SIMULATING block {block_number} with Native. It has {tx_count} transactions");
+
+                        // We make sure Natve Juno get properly killed before proceeding.
+                        native_juno.ensure_dead().await?;
+                        native_juno.ensure_usable().await?;
+                        let result = native_juno
                             .simulate_block(
                                 block_number,
                                 SimulationStrategy::Binary,
@@ -180,6 +179,8 @@ async fn execute_traces(
             }
         }
     }
+
+    Ok(())
 }
 
 async fn prepare_directories() {
@@ -192,7 +193,7 @@ async fn prepare_directories() {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), ManagerError> {
     setup_env_logger();
     prepare_directories().await;
 
@@ -216,13 +217,15 @@ async fn main() {
         Commands::Block { block_num } => {
             let start_block = block_num;
             let end_block = block_num + 1;
-            execute_traces(start_block, end_block, run_known, simulation_flags).await;
+            execute_traces(start_block, end_block, run_known, simulation_flags).await?;
         }
         Commands::Range {
             start_block_num,
             end_block_num,
         } => {
-            execute_traces(start_block_num, end_block_num, run_known, simulation_flags).await;
+            execute_traces(start_block_num, end_block_num, run_known, simulation_flags).await?;
         }
     }
+
+    Ok(())
 }
