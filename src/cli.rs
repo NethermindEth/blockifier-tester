@@ -11,9 +11,12 @@ pub struct Cli {
     /// Enables `SKIP_VALIDATE` mode for simulating transactions.
     #[clap(long)]
     pub skip_validate: bool,
-    /// Forces action even if an output file (block- or trace-) already exists for block
+    /// Forces the comparison between base and native if this already exists.
     #[clap(long)]
-    pub run_known: bool,
+    pub redo_comp: bool,
+    /// Forces the tracing of a block with base juno if this already exists.
+    #[clap(long)]
+    pub redo_base_trace: bool,
 }
 
 #[derive(Debug, Subcommand)]

@@ -1,8 +1,7 @@
-use std::{fmt::Display, fs::OpenOptions};
+use std::fmt::Display;
 
 use log::{debug, info};
 
-use crate::block_tracer::TraceBlockReport;
 use itertools::Itertools;
 use num_bigint::BigUint;
 use serde::Serialize;
@@ -19,6 +18,7 @@ use starknet::{
     providers::Provider,
 };
 
+use crate::io::log_crash_report;
 use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
 
 #[allow(dead_code)]
@@ -337,33 +337,6 @@ impl SimulationReport {
     }
 }
 
-pub fn log_block_report(block_number: u64, report: Vec<SimulationReport>) {
-    info!("Log report for block {block_number}");
-    let block_file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(format!("./results/block-{}.json", block_number))
-        .expect("Failed to open log file");
-
-    serde_json::to_writer_pretty(block_file, &report)
-        .unwrap_or_else(|_| panic!("failed to write block: {block_number}"));
-}
-
-pub async fn log_base_trace(block_number: u64, trace: &TraceBlockReport) {
-    info!("Log trace for block {block_number}");
-
-    let block_file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(format!("./results/base/trace-{block_number}.json"))
-        .expect("Failed to open log file");
-
-    serde_json::to_writer_pretty(block_file, &trace)
-        .unwrap_or_else(|_| panic!("failed to write block: {block_number}"));
-}
-
 pub struct TransactionToSimulate {
     tx: BroadcastedTransaction,
     hash: FieldElement,
@@ -497,14 +470,14 @@ pub async fn simulate_main() -> Result<(), ManagerError> {
     let block_report = juno_manager
         .simulate_block(block_number, SimulationStrategy::Optimistic, &[])
         .await?;
-    log_block_report(block_number, block_report);
+    log_crash_report(block_number, block_report);
     info!("//Done {block_number}");
 
     for block_number in 645000..645100 {
         let block_report = juno_manager
             .simulate_block(block_number, SimulationStrategy::Binary, &[])
             .await?;
-        log_block_report(block_number, block_report);
+        log_crash_report(block_number, block_report);
         info!("//Done {block_number}");
     }
     Ok(())
