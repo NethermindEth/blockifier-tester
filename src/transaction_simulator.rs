@@ -37,7 +37,7 @@ pub trait TransactionSimulator {
         block_number: u64,
         strategy: SimulationStrategy,
         simulation_flags: &[SimulationFlag],
-    ) -> Result<Vec<SimulationReport>, ManagerError>;
+        ) -> Result<BlockSimulationReport, ManagerError>;
     async fn binary_repeat_simulate_until_success(
         &mut self,
         block_id: BlockId,
@@ -92,7 +92,7 @@ impl TransactionSimulator for JunoManager {
         block_number: u64,
         strategy: SimulationStrategy,
         simulation_flags: &[SimulationFlag],
-    ) -> Result<Vec<SimulationReport>, ManagerError> {
+    ) -> Result<BlockSimulationReport, ManagerError> {
         info!("Getting block {block_number} with txns");
         let block = self
             .get_block_with_txs(BlockId::Number(block_number))
@@ -146,7 +146,11 @@ impl TransactionSimulator for JunoManager {
             });
         }
 
-        Ok(report)
+        Ok(BlockSimulationReport {
+            simulated_reports: report,
+            simulated_transactions: simulation_results,
+            transactions_list: transactions,
+        })
     }
 
     // Try all transactions and count down until they all work
@@ -315,9 +319,15 @@ fn hash_to_hex(h: &FieldElement) -> String {
 #[derive(Debug, Serialize)]
 pub struct SimulationReport {
     #[serde(serialize_with = "hex_serialize")]
-    tx_hash: FieldElement,
+    pub tx_hash: FieldElement,
     expected_result: TransactionResult,
     simulated_result: TransactionResult,
+}
+
+pub struct BlockSimulationReport {
+    pub simulated_reports: Vec<SimulationReport>,
+    pub simulated_transactions: Vec<SimulatedTransaction>,
+    pub transactions_list: Vec<TransactionToSimulate>,
 }
 
 impl Display for SimulationReport {
@@ -337,7 +347,7 @@ impl SimulationReport {
     }
 }
 
-pub fn log_block_report(block_number: u64, report: Vec<SimulationReport>) {
+pub fn log_block_report(block_number: u64, report: BlockSimulationReport) {
     info!("Log report for block {block_number}");
     let block_file = OpenOptions::new()
         .create(true)
@@ -346,7 +356,7 @@ pub fn log_block_report(block_number: u64, report: Vec<SimulationReport>) {
         .open(format!("./results/block-{}.json", block_number))
         .expect("Failed to open log file");
 
-    serde_json::to_writer_pretty(block_file, &report)
+    serde_json::to_writer_pretty(block_file, &report.simulated_reports)
         .unwrap_or_else(|_| panic!("failed to write block: {block_number}"));
 }
 
@@ -366,7 +376,7 @@ pub async fn log_base_trace(block_number: u64, trace: &TraceBlockReport) {
 
 pub struct TransactionToSimulate {
     tx: BroadcastedTransaction,
-    hash: FieldElement,
+    pub hash: FieldElement,
     expected_result: TransactionResult,
 }
 

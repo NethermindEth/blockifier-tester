@@ -8,7 +8,6 @@ mod transaction_simulator;
 mod transaction_tracer;
 
 use crate::cli::{Cli, Commands};
-use crate::graph::write_transactions_dependencies;
 use crate::transaction_simulator::log_base_trace;
 use block_tracer::{BlockTracer, TraceBlockReport};
 use cache::get_sorted_blocks_with_tx_count;
@@ -16,15 +15,19 @@ use chrono::Local;
 use clap::Parser;
 use core::panic;
 use env_logger::Env;
+use graph::DependencyMap;
+use itertools::Itertools;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
 use log::{error, info, warn};
-use starknet::core::types::SimulationFlag;
+use starknet::core::types::{FieldElement, SimulationFlag, TransactionTraceWithHash};
+use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncWriteExt, BufWriter};
 use trace_comparison::generate_block_comparison;
-use transaction_simulator::{log_block_report, SimulationStrategy, TransactionSimulator};
+use transaction_simulator::BlockSimulationReport;
+use transaction_simulator::{SimulationStrategy, TransactionSimulator};
 use transaction_tracer::TraceResult;
 
 // Creates a file in ./results/err-{`block_number`}.json with the failure reason
@@ -66,6 +69,24 @@ async fn log_trace_comparison(
     writer.flush().await.unwrap();
 }
 
+async fn log_block_report_with_dependencies(block_number: u64, report: serde_json::Value) {
+    info!("Log report for block {block_number}");
+    let block_file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(format!("./results/block-{}.json", block_number))
+        .await
+        .expect("Failed to open log file");
+
+    let mut buffer = Vec::new();
+    serde_json::to_writer_pretty(&mut buffer, &report).unwrap();
+
+    let mut writer = BufWriter::new(block_file);
+    writer.write_all(&buffer).await.unwrap();
+    writer.flush().await.unwrap();
+}
+
 fn setup_env_logger() {
     env_logger::Builder::from_env(Env::default().filter_or("LOG_LEVEL", "debug"))
         .format(|buf, record| {
@@ -78,6 +99,59 @@ fn setup_env_logger() {
             )
         })
         .init();
+}
+
+fn add_report_dependencies(
+    report: &transaction_simulator::SimulationReport,
+    dependencies: Option<(DependencyMap, DependencyMap)>,
+) -> serde_json::Value {
+    // let map = serde_json::Map::new();
+    let mut obj = serde_json::value::to_value(report).unwrap();
+    if let serde_json::Value::Object(ref mut map) = obj {
+        let values = if let Some((contracts, storage)) = dependencies {
+            (
+                serde_json::to_value(contracts[&report.tx_hash].clone()).unwrap(),
+                serde_json::to_value(storage[&report.tx_hash].clone()).unwrap(),
+            )
+        } else {
+            (
+                serde_json::to_value("Unknown").unwrap(),
+                serde_json::to_value("Unknown").unwrap(),
+            )
+        };
+        map.insert("contract_dependencies".to_string(), values.0);
+        map.insert("storage_dependencies".to_string(), values.1);
+    }
+    obj
+}
+
+fn add_dependencies(report: transaction_simulator::BlockSimulationReport) -> serde_json::Value {
+    let dependencies = get_dependencies(&report);
+    let mut values = Vec::<serde_json::Value>::new();
+    for transaction_report in &report.simulated_reports {
+        let next_value = add_report_dependencies(transaction_report, Some(dependencies.clone()));
+        values.push(next_value);
+    }
+
+    serde_json::value::to_value(values).unwrap()
+}
+
+fn get_dependencies(
+    simulation_report: &BlockSimulationReport,
+) -> (
+    HashMap<FieldElement, Vec<String>>,
+    HashMap<FieldElement, Vec<String>>,
+) {
+    let transaction_traces_with_hashes = simulation_report
+        .transactions_list
+        .iter()
+        .zip(simulation_report.simulated_transactions.iter())
+        .map(|(to_simulate, simulated)| TransactionTraceWithHash {
+            transaction_hash: to_simulate.hash,
+            trace_root: simulated.transaction_trace.clone(),
+        })
+        .collect_vec();
+    graph::get_dependencies(transaction_traces_with_hashes.iter())
 }
 
 fn results_exist_for_block(block: u64) -> bool {
@@ -127,13 +201,6 @@ async fn execute_traces(
                 match native_juno.trace_block(block_number).await {
                     Ok(native_report) if native_report.result == TraceResult::Success => {
                         info!("SUCCESS tracing block with native");
-                        if let Err(e) = write_transactions_dependencies(
-                            block_number,
-                            "native",
-                            native_report.post_response.as_ref().unwrap().iter(),
-                        ) {
-                            warn!("Error writing transaction dependencies: {e:?}");
-                        }
                         log_trace_comparison(block_number, base_report, native_report).await;
                     }
                     Ok(native_report) => {
@@ -156,13 +223,21 @@ async fn execute_traces(
                         match result {
                             // Note that this doesn't compare the reasons for failure or the result on a success
                             Ok(result) => {
-                                let successes =
-                                    result.iter().filter(|result| result.is_correct()).count();
+                                let successes = result
+                                    .simulated_reports
+                                    .iter()
+                                    .filter(|result| result.is_correct())
+                                    .count();
                                 info!(
                                     "Completed block {block_number} with {successes}/{} successes",
-                                    result.len()
+                                    result.simulated_reports.len()
                                 );
-                                log_block_report(block_number, result);
+                                let reports_with_dependencies = add_dependencies(result);
+                                log_block_report_with_dependencies(
+                                    block_number,
+                                    reports_with_dependencies,
+                                )
+                                .await;
                             }
                             Err(err) => error!("Error simulating transactions: {}", err),
                         };
