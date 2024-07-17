@@ -71,7 +71,11 @@ impl TransactionSimulator for JunoManager {
         let max_transaction = block.transactions().len();
         for (i, transaction) in block.transactions().iter().enumerate() {
             let tx_hash = get_block_transaction_hash(transaction);
-            debug!("({}/{max_transaction}) Receipt for {tx_hash}...", i + 1);
+            debug!(
+                "({}/{max_transaction}) Receipt for 0x{}...",
+                i + 1,
+                hash_to_hex(&tx_hash)
+            );
             let expected_result = self
                 .rpc_client
                 .get_transaction_receipt(tx_hash)
