@@ -66,7 +66,8 @@ async fn execute_traces(
         }
 
         info!("TRACING block {block_number} with Base. It has {tx_count} transactions");
-        let base_trace_result = if redo_traces || !base_trace_path(block_number).exists() {
+        let using_cached_trace = !redo_traces && base_trace_path(block_number).exists();
+        let base_trace_result = if !using_cached_trace {
             base_juno.trace_block(block_number).await
         } else {
             Ok(read_base_trace(block_number).await)
@@ -82,7 +83,9 @@ async fn execute_traces(
                         .unwrap_or(format!("Serialization failed!\n{base_report:?}"));
                     panic!("Tracing with base juno is always expected to work. Check your base juno bin and config. Error:\n{}",trace);
                 }
-                log_base_trace(block_number, &base_report).await;
+                if !using_cached_trace {
+                    log_base_trace(block_number, &base_report).await;
+                }
 
                 info!("Switching from Base Juno to Native Juno");
                 base_juno.ensure_dead().await?;

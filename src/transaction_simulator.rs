@@ -72,7 +72,7 @@ impl TransactionSimulator for JunoManager {
         for (i, transaction) in block.transactions().iter().enumerate() {
             let tx_hash = get_block_transaction_hash(transaction);
             debug!(
-                "({}/{max_transaction}) Receipt for 0x{}...",
+                "({}/{max_transaction}) Receipt for 0x{}",
                 i + 1,
                 hash_to_hex(&tx_hash)
             );
