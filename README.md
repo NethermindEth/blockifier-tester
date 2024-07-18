@@ -91,8 +91,8 @@ or
 target/cprof/juno_compare_traces range 610508 611000
 ```
 
-The tester once it runs a block, it won't re-running it again unless the `--run-known` flag is used.
-There are some extra options like this for each of these commands. Please be sure to execute `--help` to know about them:
+Once the tester has traced a block, it will store the output in `./results/<name>.json` and it won't re-do it again unless explicetly told with the `redo-comp` flag.
+The tool has many other options like this, please run the CLI with `--help` to get detailed information of all the commands and options.
 
 ```bash
 target/cprof/juno_compare_traces --help
@@ -104,7 +104,7 @@ target/cprof/juno_compare_traces --help
 
 ### Logging
 
-The tool will log it's execution. Currently it default to `debug`, but you can set any of the other logging profiles (i.e. `info`, `warn` and `error`) setting the `LOG_LEVEL` variable.
+The tool will log it's execution. Currently it defaults to `debug`, but you can set any of the other logging profiles (i.e. `info`, `warn` and `error`) setting the `LOG_LEVEL` variable.
 
 ```
 LOG_LEVEL=info juno_compare_traces range 610508 611000

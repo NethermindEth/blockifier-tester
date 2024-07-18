@@ -1,5 +1,5 @@
 use log::debug;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use starknet::{
     core::types::{BlockId, TransactionTraceWithHash},
     providers::Provider,
@@ -10,7 +10,7 @@ use crate::{
     transaction_tracer::TraceResult,
 };
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TraceBlockReport {
     pub block_num: u64,
     pub post_response: Option<Vec<TransactionTraceWithHash>>,
