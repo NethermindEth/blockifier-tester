@@ -6,9 +6,10 @@ mod juno_manager;
 mod trace_comparison;
 mod transaction_simulator;
 mod transaction_tracer;
+mod utils;
 
 use crate::cli::{Cli, Commands};
-use crate::transaction_simulator::log_base_trace;
+use anyhow::Context;
 use block_tracer::{BlockTracer, TraceBlockReport};
 use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
@@ -18,7 +19,7 @@ use env_logger::Env;
 use graph::DependencyMap;
 use itertools::Itertools;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use starknet::core::types::{FieldElement, SimulationFlag, TransactionTraceWithHash};
 use std::collections::HashMap;
 use std::io::Write;
@@ -29,62 +30,26 @@ use trace_comparison::generate_block_comparison;
 use transaction_simulator::BlockSimulationReport;
 use transaction_simulator::{SimulationStrategy, TransactionSimulator};
 use transaction_tracer::TraceResult;
+use utils::try_write_to_file;
 
-// Creates a file in ./results/err-{`block_number`}.json with the failure reason
-async fn log_trace_crash(block_number: u64, err: ManagerError) {
-    let mut log_file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(format!("./results/err-{block_number}.json"))
-        .await
-        .expect("Failed to open log file");
-    if let Err(write_err) = log_file.write_all(format!("{err:?}").as_bytes()).await {
-        warn!("Failed to write err with error: '{write_err}'");
-    }
-}
-
-// Creates a file in ./results/trace-{`block_number`}.json with the a full trace comparison between
-// base blockifier and native blockifier results
-async fn log_trace_comparison(
+async fn try_block_trace(
     block_number: u64,
-    native_report: TraceBlockReport,
-    base_report: TraceBlockReport,
-) {
-    let comparison = generate_block_comparison(base_report, native_report);
-
-    let mut buffer = Vec::new();
-    serde_json::to_writer_pretty(&mut buffer, &comparison).unwrap();
-
-    let log_file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(format!("./results/trace-{block_number}.json"))
-        .await
-        .expect("Failed to open log file");
-
-    let mut writer = BufWriter::new(log_file);
-    writer.write_all(&buffer).await.unwrap();
-    writer.flush().await.unwrap();
-}
-
-async fn log_block_report_with_dependencies(block_number: u64, report: serde_json::Value) {
-    info!("Log report for block {block_number}");
-    let block_file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(format!("./results/block-{}.json", block_number))
-        .await
-        .expect("Failed to open log file");
-
-    let mut buffer = Vec::new();
-    serde_json::to_writer_pretty(&mut buffer, &report).unwrap();
-
-    let mut writer = BufWriter::new(block_file);
-    writer.write_all(&buffer).await.unwrap();
-    writer.flush().await.unwrap();
+    juno_manager: & mut JunoManager,
+) -> Result<TraceBlockReport, anyhow::Error> {
+    let path = format!("./dump/trace-{block_number}-{}.json", juno_manager.branch);
+    debug!(
+        "try_block_trace. block: {block_number}\tbranch: {}\tpath: {}",
+        juno_manager.branch,
+        path.as_str()
+    );
+    let cache_path = Path::new(&path);
+    utils::memoized_call(cache_path, || async {
+        juno_manager
+            .trace_block(block_number)
+            .await
+            .map_err(|err| anyhow::anyhow!(err))
+    })
+    .await
 }
 
 fn setup_env_logger() {
@@ -180,7 +145,7 @@ async fn execute_traces(
         info!("TRACING block {block_number} with Base. It has {tx_count} transactions");
         // First branch is a succesful block trace with Base
         // Second branch is an unexpected crash by Juno/Blockifier/nNative
-        match base_juno.trace_block(block_number).await {
+        match try_block_trace(block_number, &mut base_juno).await {
             Ok(base_report) => {
                 if base_report.result != TraceResult::Success {
                     // todo: prettier handling, but low prio.
@@ -188,7 +153,6 @@ async fn execute_traces(
                         .unwrap_or(format!("Serialization failed!\n{base_report:?}"));
                     panic!("Tracing with base juno is always expected to work. Check your base juno bin and config. Error:\n{}",trace);
                 }
-                log_base_trace(block_number, &base_report).await;
 
                 info!("Switching from Base Juno to Native Juno");
                 base_juno.ensure_dead().await?;
@@ -201,7 +165,16 @@ async fn execute_traces(
                 match native_juno.trace_block(block_number).await {
                     Ok(native_report) if native_report.result == TraceResult::Success => {
                         info!("SUCCESS tracing block with native");
-                        log_trace_comparison(block_number, base_report, native_report).await;
+
+                        let compare_trace_path = format!("results/trace-{block_number}.json");
+                        let comparison = generate_block_comparison(base_report, native_report);
+                        let _ =
+                            try_write_to_file(Path::new(compare_trace_path.as_str()), &comparison)
+                                .await
+                                .context(format!("Writing comparison to log: {compare_trace_path}"))
+                                .inspect_err(|write_err| {
+                                    warn!("Failed to log comparison. Write error: {write_err:?}")
+                                });
                     }
                     Ok(native_report) => {
                         // When tracing a block with native fails, the next step is performing a
@@ -220,6 +193,8 @@ async fn execute_traces(
                             )
                             .await;
 
+                        let simulate_block_path = format!("./results/block-{}.json", block_number);
+                        let simulate_block_path = Path::new(simulate_block_path.as_str());
                         match result {
                             // Note that this doesn't compare the reasons for failure or the result on a success
                             Ok(result) => {
@@ -233,24 +208,54 @@ async fn execute_traces(
                                     result.simulated_reports.len()
                                 );
                                 let reports_with_dependencies = add_dependencies(result);
-                                log_block_report_with_dependencies(
-                                    block_number,
-                                    reports_with_dependencies,
+                                let _ = utils::try_write_to_file(
+                                    simulate_block_path,
+                                    &reports_with_dependencies,
                                 )
-                                .await;
+                                .await
+                                .inspect_err(|write_err| {
+                                    warn!(
+                                    "failed to write block simulation. Write error: {write_err:?}"
+                                )
+                                });
                             }
-                            Err(err) => error!("Error simulating transactions: {}", err),
+                            Err(err) => {
+                                let err_string = format!("{err:?}");
+                                warn!("Error simulating transactions: {}", err_string);
+                                let _ = utils::try_write_to_file(
+                                    simulate_block_path,
+                                    &err_string.as_str(),
+                                )
+                                .await
+                                .inspect_err(|write_err| {
+                                    warn!("failed to write error. Write error: {write_err:?}")
+                                });
+                            }
                         };
                     }
                     Err(err) => {
                         warn!("{err:?}");
-                        log_trace_crash(block_number, err).await;
+                        let err_log_path = format!("results/err-{block_number}.json");
+                        let err_string = format!("{err:?}");
+                        let _ = utils::try_write_to_file(Path::new(&err_log_path), &err_string)
+                            .await
+                            .context(format!("Writing error to log: {err_log_path}"))
+                            .inspect_err(|write_err| {
+                                warn!("Failed to log error. Write error: {write_err:?}")
+                            });
                     }
                 };
             }
             Err(err) => {
                 warn!("{err:?}");
-                log_trace_crash(block_number, err).await;
+                let err_log_path = format!("results/err-{block_number}.json");
+                let err_string = format!("{err:?}");
+                let _ = utils::try_write_to_file(Path::new(&err_log_path), &err_string)
+                    .await
+                    .context(format!("Writing error to log: {err_log_path}"))
+                    .inspect_err(|write_err| {
+                        warn!("Failed to log error. Write error: {write_err:?}")
+                    });
             }
         }
     }

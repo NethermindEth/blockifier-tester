@@ -2,7 +2,7 @@ use crate::graph;
 
 use itertools::Itertools;
 use log::debug;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use starknet::{
     core::types::{BlockId, FieldElement, TransactionTraceWithHash},
     providers::Provider,
@@ -13,14 +13,14 @@ use crate::{
     transaction_tracer::TraceResult,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TransactionTraceReport {
     pub trace: TransactionTraceWithHash,
     pub contract_dependencies: Vec<String>,
     pub storage_dependencies: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TraceBlockReport {
     pub block_num: u64,
     pub post_response: Option<Vec<TransactionTraceReport>>,
