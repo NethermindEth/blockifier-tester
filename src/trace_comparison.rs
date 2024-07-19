@@ -123,7 +123,7 @@ fn compare_json_arrays(arr_1: Vec<Value>, arr_2: Vec<Value>) -> Value {
         return ComparisonResult::new_different(Value::Array(arr_1), Value::Array(arr_2)).into();
     }
 
-    if arr_1.is_empty() && arr_1.is_empty() {
+    if arr_1.is_empty() && arr_2.is_empty() {
         return ComparisonResult::new_same().into();
     }
 
@@ -353,20 +353,54 @@ mod tests {
                   {
                     "contract_dependencies": {
                       "base": [],
-                      "comparison": "Different",
+                      "comparison": DIFFERENT,
                       "native": [
                         "0x11d75966a7514052309ce01f62e6d48f2be6158254d22d306e71a3ad07d5c62"
                       ]
                     },
                     "storage_dependencies": {
                       "base": [],
-                      "comparison": "Different",
+                      "comparison": DIFFERENT,
                       "native": [
                         "0x11d75966a7514052309ce01f62e6d48f2be6158254d22d306e71a3ad07d5c62"
                       ]
                     }
                   }
                 ]
+              }
+            )
+        );
+    }
+
+    #[test]
+    fn test_both_empty_list() {
+        let base = json!(
+          {
+            "key_1": "a",
+            "storage_dependencies": []
+          }
+        );
+
+        let native = json!(
+          {
+            "key_1": "b",
+            "storage_dependencies": []
+          }
+        );
+
+
+        let result = compare_jsons(base, native);
+
+        assert_eq!(
+            result,
+            json!(
+              {
+                "key_1": {
+                  "base" : "a",
+                  "comparison": DIFFERENT,
+                  "native" : "b",
+                },
+                "storage_dependencies": SAME
               }
             )
         );
