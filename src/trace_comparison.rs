@@ -123,6 +123,10 @@ fn compare_json_arrays(arr_1: Vec<Value>, arr_2: Vec<Value>) -> Value {
         return ComparisonResult::new_different(Value::Array(arr_1), Value::Array(arr_2)).into();
     }
 
+    if arr_1.is_empty() && arr_1.is_empty() {
+        return ComparisonResult::new_same().into();
+    }
+
     let output: Vec<Value> = arr_1
         .into_iter()
         .zip(arr_2)
@@ -158,6 +162,12 @@ fn clean_json_object(obj: Map<String, Value>) -> Value {
 }
 
 fn clean_json_array(arr: Vec<Value>) -> Value {
+    if arr.is_empty() {
+        // Don't count empty arrays as all same.
+        // An empty array is a different value.
+        return Value::Array(arr);
+    }
+
     let cleaned_arr: Vec<Value> = arr.into_iter().map(clean_json_value).collect();
     let all_same = cleaned_arr.iter().all(value_is_same);
 
@@ -301,6 +311,63 @@ mod tests {
                     "base": ["value1", "value2"],
                     "native": ["value1", "value2", "value3"],
                 }
+            )
+        );
+    }
+
+    #[test]
+    fn test_different_empty_list() {
+        let native = json!(
+          {
+            "post_response": [
+              {
+                "contract_dependencies": [
+                  "0x11d75966a7514052309ce01f62e6d48f2be6158254d22d306e71a3ad07d5c62"
+                ],
+                "storage_dependencies": [
+                  "0x11d75966a7514052309ce01f62e6d48f2be6158254d22d306e71a3ad07d5c62"
+                ]
+              }
+            ]
+          }
+        );
+
+        let base = json!(
+          {
+            "post_response": [
+              {
+                "contract_dependencies": [],
+                "storage_dependencies": []
+              }
+            ]
+          }
+        );
+
+        let result = compare_jsons(base, native);
+
+        assert_eq!(
+            result,
+            json!(
+              {
+                "post_response": [
+                  {
+                    "contract_dependencies": {
+                      "base": [],
+                      "comparison": "Different",
+                      "native": [
+                        "0x11d75966a7514052309ce01f62e6d48f2be6158254d22d306e71a3ad07d5c62"
+                      ]
+                    },
+                    "storage_dependencies": {
+                      "base": [],
+                      "comparison": "Different",
+                      "native": [
+                        "0x11d75966a7514052309ce01f62e6d48f2be6158254d22d306e71a3ad07d5c62"
+                      ]
+                    }
+                  }
+                ]
+              }
             )
         );
     }
