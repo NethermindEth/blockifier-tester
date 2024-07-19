@@ -36,7 +36,10 @@ fn get_state_diff_addresses(
 }
 
 #[allow(dead_code)]
-fn read_block_transactions(block_number: u64, branch: &str) -> Vec<TransactionTraceWithHash> {
+fn read_block_transactions(
+    block_number: u64,
+    branch: &str,
+) -> Result<Vec<TransactionTraceWithHash>, anyhow::Error> {
     let path_str = &format!("./dump/trace-{block_number}-{branch}.json");
     let path = Path::new(path_str);
 
@@ -44,9 +47,8 @@ fn read_block_transactions(block_number: u64, branch: &str) -> Vec<TransactionTr
         .read(true)
         .write(false)
         .open(path)
-        .context(path.to_str().unwrap().to_string())
-        .expect("Failed to open log file");
-    serde_json::from_reader(log_file).expect("failed to read comparison file")
+        .context(path.to_str().unwrap().to_string())?;
+    Ok(serde_json::from_reader(log_file).expect("failed to read comparison file"))
 }
 
 /// Used for building dependency graphs for transactions.
@@ -174,7 +176,8 @@ impl TransactionDiffStore {
     }
 }
 
-pub fn write_transactions_dependencies<'a, T>(
+#[allow(dead_code)]
+pub fn write_transaction_dependencies<'a, T>(
     block_num: u64,
     branch: &str,
     transactions: T,
@@ -218,12 +221,28 @@ pub fn log_graph(path: &Path, graph: Graph<FieldElement, i32>) -> Result<(), any
     Ok(())
 }
 
-#[allow(dead_code)]
-pub fn make_graphs_from_file(
-    block_num: u64,
-    branch: &str,
-) -> (Graph<FieldElement, i32>, Graph<FieldElement, i32>) {
-    make_graphs(read_block_transactions(block_num, branch).iter())
+pub type DependencyMap = HashMap<FieldElement, Vec<String>>;
+
+/// Get hashmap of dependencies for transactions.
+///
+/// Returns: Tuple of Hashmaps with `transaction_hash` as keys and `Vec` of `transaction_hash` hex strings as values.
+/// The first hashmap contains contract dependencies. The second hashmap contains storage dependencies.
+///
+/// Hashmap keys: A `transaction_hash` for each transaction in `block_transactions`.
+///
+/// Hashmap values: A list of `transaction_hash`s for each transaction depended on by the transaction of the corresponding key.
+/// For example, the key value pair: `(4, [1, 2])` implies that transaction 4 depends on transactions 1 and 2.
+pub fn get_dependencies<'a, T>(
+    block_transactions: T,
+) -> (
+    DependencyMap,
+    DependencyMap,
+)
+where
+    T: Iterator<Item = &'a TransactionTraceWithHash>,
+{
+    let (contract_graph, storage_graph) = make_graphs(block_transactions);
+    (graph_to_map(contract_graph), graph_to_map(storage_graph))
 }
 
 fn make_graphs<'a, T>(block_transactions: T) -> (Graph<FieldElement, i32>, Graph<FieldElement, i32>)
@@ -243,6 +262,22 @@ where
 }
 
 /// For each node in the graph, maps the node to all values from a DFS traversal of the node.
+fn graph_to_map(graph: Graph<FieldElement, i32>) -> HashMap<FieldElement, Vec<String>> {
+    let mut table = HashMap::<FieldElement, Vec<String>>::new();
+    for start_node in graph.node_indices() {
+        let key = graph[start_node];
+        // Note: The first node in each DFS is always the start_node, so it is skipped for the hash value.
+        let row = Dfs::new(&graph, start_node)
+            .iter(&graph)
+            .skip(1)
+            .map(|node| felt_to_hex(&graph[node], true))
+            .collect_vec();
+        table.entry(key).or_insert(row);
+    }
+    table
+}
+
+/// For each node in the graph, creates vector with all values from a DFS traversal of the node.
 fn graph_to_vecs(graph: Graph<FieldElement, i32>) -> Vec<Vec<String>> {
     let mut table = vec![];
     for start_node in graph.node_indices() {
@@ -334,7 +369,7 @@ mod tests {
 
         fn state_diff(storage_diffs: Vec<ContractStorageDiffItem>) -> StateDiff {
             StateDiff {
-                storage_diffs: storage_diffs,
+                storage_diffs,
                 deprecated_declared_classes: vec![],
                 declared_classes: vec![],
                 deployed_contracts: vec![],
@@ -388,10 +423,8 @@ mod tests {
                             key: key.into(),
                             value: FieldElement::from(0_u32),
                         })
-                        .into_iter()
                         .collect_vec(),
                 })
-                .into_iter()
                 .collect_vec();
 
             let state_diff = Self::state_diff(diffs);

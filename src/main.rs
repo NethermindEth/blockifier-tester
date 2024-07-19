@@ -1,6 +1,7 @@
 mod block_tracer;
 mod cache;
 mod cli;
+mod dependencies;
 mod graph;
 mod io;
 mod juno_manager;
@@ -9,7 +10,6 @@ mod transaction_simulator;
 mod transaction_tracer;
 
 use crate::cli::{Cli, Commands};
-use crate::graph::write_transactions_dependencies;
 use crate::io::{
     base_trace_path, crashed_comparison_path, log_base_trace, log_comparison_report,
     log_crash_report, log_unexpected_error_report, read_base_trace, succesful_comparison_path,
@@ -19,6 +19,7 @@ use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
 use clap::Parser;
 use core::panic;
+use dependencies::simulation_report_dependencies;
 use env_logger::Env;
 use io::prepare_directories;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
@@ -98,7 +99,7 @@ async fn execute_traces(
                 match native_juno.trace_block(block_number).await {
                     Ok(native_report) if native_report.result == TraceResult::Success => {
                         info!("SUCCESS tracing block with native");
-                        if let Err(e) = write_transactions_dependencies(
+                        if let Err(e) = graph::write_transaction_dependencies(
                             block_number,
                             "native",
                             native_report.post_response.as_ref().unwrap().iter(),
@@ -128,13 +129,18 @@ async fn execute_traces(
                         match result {
                             // Note that this doesn't compare the reasons for failure or the result on a success
                             Ok(result) => {
-                                let successes =
-                                    result.iter().filter(|result| result.is_correct()).count();
+                                let successes = result
+                                    .simulated_reports
+                                    .iter()
+                                    .filter(|result| result.is_correct())
+                                    .count();
                                 info!(
                                     "Completed block {block_number} with {successes}/{} successes",
-                                    result.len()
+                                    result.simulated_reports.len()
                                 );
-                                log_crash_report(block_number, result);
+                                let reports_with_dependencies =
+                                    simulation_report_dependencies(&result);
+                                log_crash_report(block_number, reports_with_dependencies);
                             }
                             Err(err) => error!("Error simulating transactions: {}", err),
                         };

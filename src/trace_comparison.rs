@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
-use crate::block_tracer::TraceBlockReport;
+use crate::{block_tracer::TraceBlockReport, dependencies::block_report_with_dependencies};
 
 const SAME: &str = "Same";
 const EMPTY: &str = "Empty";
@@ -63,7 +63,7 @@ impl From<ComparisonResult> for Value {
 fn trace_block_report_to_json(report: TraceBlockReport) -> Value {
     json!({
         "block_num": report.block_num,
-        "post_response": serde_json::value::to_value(report.post_response.unwrap_or_default()).unwrap(),
+        "post_response": block_report_with_dependencies(&report)
     })
 }
 
