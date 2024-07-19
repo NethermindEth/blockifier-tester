@@ -9,7 +9,6 @@ use log::{debug, info, warn};
 
 use crate::{
     block_tracer::TraceBlockReport, juno_manager::ManagerError,
-    transaction_simulator::SimulationReport,
 };
 
 pub fn succesful_comparison_path(block_num: u64) -> PathBuf {
@@ -47,7 +46,7 @@ pub async fn log_comparison_report(block_number: u64, comparison: Value) {
     writer.flush().await.unwrap();
 }
 
-pub fn log_crash_report(block_number: u64, report: Vec<SimulationReport>) {
+pub fn log_crash_report(block_number: u64, report: serde_json::Value) {
     info!("Log report for block {block_number}");
     let block_file = OpenOptions::new()
         .create(true)

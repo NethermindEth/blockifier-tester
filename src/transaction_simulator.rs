@@ -18,8 +18,7 @@ use starknet::{
     providers::Provider,
 };
 
-use crate::io::log_crash_report;
-use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
+use crate::juno_manager::{JunoManager, ManagerError};
 
 #[allow(dead_code)]
 pub enum SimulationStrategy {
@@ -37,7 +36,7 @@ pub trait TransactionSimulator {
         block_number: u64,
         strategy: SimulationStrategy,
         simulation_flags: &[SimulationFlag],
-    ) -> Result<Vec<SimulationReport>, ManagerError>;
+        ) -> Result<BlockSimulationReport, ManagerError>;
     async fn binary_repeat_simulate_until_success(
         &mut self,
         block_id: BlockId,
@@ -96,7 +95,7 @@ impl TransactionSimulator for JunoManager {
         block_number: u64,
         strategy: SimulationStrategy,
         simulation_flags: &[SimulationFlag],
-    ) -> Result<Vec<SimulationReport>, ManagerError> {
+    ) -> Result<BlockSimulationReport, ManagerError> {
         info!("Getting block {block_number} with txns");
         let block = self
             .get_block_with_txs(BlockId::Number(block_number))
@@ -150,7 +149,11 @@ impl TransactionSimulator for JunoManager {
             });
         }
 
-        Ok(report)
+        Ok(BlockSimulationReport {
+            simulated_reports: report,
+            simulated_transactions: simulation_results,
+            transactions_list: transactions,
+        })
     }
 
     // Try all transactions and count down until they all work
@@ -316,10 +319,16 @@ fn hash_to_hex(h: &FieldElement) -> String {
     BigUint::from_bytes_be(&h.to_bytes_be()).to_str_radix(16)
 }
 
+pub struct BlockSimulationReport {
+    pub simulated_reports: Vec<SimulationReport>,
+    pub simulated_transactions: Vec<SimulatedTransaction>,
+    pub transactions_list: Vec<TransactionToSimulate>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct SimulationReport {
     #[serde(serialize_with = "hex_serialize")]
-    tx_hash: FieldElement,
+    pub tx_hash: FieldElement,
     expected_result: TransactionResult,
     simulated_result: TransactionResult,
 }
@@ -343,7 +352,7 @@ impl SimulationReport {
 
 pub struct TransactionToSimulate {
     tx: BroadcastedTransaction,
-    hash: FieldElement,
+    pub hash: FieldElement,
     expected_result: TransactionResult,
 }
 
@@ -465,24 +474,4 @@ fn get_simulated_transaction_result(transaction: &SimulatedTransaction) -> Trans
         TransactionTrace::L1Handler(_) => TransactionResult::L1Handler,
         TransactionTrace::Declare(_) => TransactionResult::Declare,
     }
-}
-
-#[allow(dead_code)]
-pub async fn simulate_main() -> Result<(), ManagerError> {
-    let block_number = 610026;
-    let mut juno_manager = JunoManager::new(JunoBranch::Native).await?;
-    let block_report = juno_manager
-        .simulate_block(block_number, SimulationStrategy::Optimistic, &[])
-        .await?;
-    log_crash_report(block_number, block_report);
-    info!("//Done {block_number}");
-
-    for block_number in 645000..645100 {
-        let block_report = juno_manager
-            .simulate_block(block_number, SimulationStrategy::Binary, &[])
-            .await?;
-        log_crash_report(block_number, block_report);
-        info!("//Done {block_number}");
-    }
-    Ok(())
 }
