@@ -77,12 +77,14 @@ fn normalize_state_diff(trace: &mut TransactionTraceWithHash) {
     match &mut trace.trace_root {
         TransactionTrace::Invoke(trace) => {
             if let Some(state_diff) = &mut trace.state_diff {
-                state_diff.storage_diffs.sort_by(|lhs, rhs| lhs.address.cmp(&rhs.address));
+                state_diff
+                    .storage_diffs
+                    .sort_by(|lhs, rhs| lhs.address.cmp(&rhs.address));
             }
-        },
-        TransactionTrace::DeployAccount(_) => {},
-        TransactionTrace::L1Handler(_) => {},
-        TransactionTrace::Declare(_) => {},
+        }
+        TransactionTrace::DeployAccount(_) => {}
+        TransactionTrace::L1Handler(_) => {}
+        TransactionTrace::Declare(_) => {}
     }
 }
 
@@ -121,21 +123,42 @@ fn compare_json_objects(obj_1: Map<String, Value>, mut obj_2: Map<String, Value>
         if key_1 == "revert_reason" {
             match obj_2.remove(&key_1) {
                 Some(val_2) => {
-                    if let (Value::String(str_1), Value::String(str_2)) = (val_1, val_2) {
-                        let lines_1 = str_1.split("\n");
-                        let lines_2 = str_2.split("\n");
-                        .filter(|s| s.starts_with("Error message:"))
+                    match (val_1, val_2) {
+                        (Value::String(str_1), Value::String(str_2)) => {
+                            let lines_1 = str_1.split("\n");
+                            let lines_2 = str_2.split("\n");
+                            println!("1:");
+                            lines_1.for_each(|l| println!("{l}"));
+                            lines_2.for_each(|l| println!("{l}"));
+                            // .filter(|s| s.starts_with("Error message:"))
+                            todo!();
+                        }
+                        (x, y) => {
+                            println!("{:?}", x);
+                            println!("{:?}", y);
+                        }
                     }
-                    println!("{:?}", val_1);
-                    println!("{:?}", val_2);
                     todo!();
                     // output.insert(key_1, compare_json_values(val_1, val_2))
-                },
+                }
                 None => output.insert(
                     key_1,
                     ComparisonResult::new_different_base_only(val_1).into(),
                 ),
             };
+        } else if key_1 == "storage_diffs" {
+            match obj_2.remove(&key_1) {
+                Some(val_2) => {
+                    let (val_1, val_2) = process_storage_diffs(val_1, val_2);
+                    output.insert(key_1, compare_json_values(val_1, val_2));
+                }
+                None => {
+                    output.insert(
+                        key_1,
+                        ComparisonResult::new_different_base_only(val_1).into(),
+                    );
+                }
+            }
         } else {
             match obj_2.remove(&key_1) {
                 Some(val_2) => output.insert(key_1, compare_json_values(val_1, val_2)),
@@ -145,7 +168,6 @@ fn compare_json_objects(obj_1: Map<String, Value>, mut obj_2: Map<String, Value>
                 ),
             };
         }
-        
     }
 
     for (key_2, val_2) in obj_2 {
@@ -156,6 +178,83 @@ fn compare_json_objects(obj_1: Map<String, Value>, mut obj_2: Map<String, Value>
     }
 
     Value::Object(output)
+}
+
+fn process_storage_diffs(base_diff: Value, native_diff: Value) -> (Value, Value) {
+    match (base_diff, native_diff) {
+        (Value::Array(base_diffs), Value::Array(native_diffs)) => {
+            let mut addresses = vec![];
+            for diff in base_diffs.iter().chain(native_diffs.iter()) {
+                if let Value::Object(diff) = diff {
+                    match diff.get("address") {
+                        Some(address) => {
+                            if !addresses.contains(&address) {
+                                addresses.push(address);
+                            }
+                        }
+                        None => panic!("No address in storage diff"),
+                    }
+                } else {
+                    panic!("Found non-object element in storage_diffs");
+                }
+            }
+
+            let (base, native): (Vec<Value>, Vec<Value>) = addresses.into_iter().map(|address| {
+                let diff_base = base_diffs
+                    .iter()
+                    .find(|diff_1| diff_1.get("address") == Some(address));
+                let diff_native = native_diffs
+                    .iter()
+                    .find(|diff_2| diff_2.get("address") == Some(address));
+                let (base_storage_entries, native_storage_entries) = match (diff_base, diff_native) {
+                    (Some(Value::Object(diff_base)), Some(Value::Object(diff_native))) => {
+                        let base_storage_entries = diff_base.get("storage_entries").unwrap();
+                        let native_storage_entries = diff_native.get("storage_entries").unwrap();
+                        match (base_storage_entries, native_storage_entries) {
+                            (Value::Array(base_storage_entries), Value::Array(native_storage_entries)) => {
+                                let mut keys = vec![];
+                                for entry in base_storage_entries.iter().chain(native_storage_entries.iter()) {
+                                    match entry.get("key") {
+                                        Some(key) => {
+                                            if !keys.contains(&key) {
+                                                keys.push(key);
+                                            }
+                                        }
+                                        None => panic!("No key in storage diff entry"),
+                                    }
+                                }
+
+                                let (base_entries, native_entries): (Vec<&Value>, Vec<&Value>) = keys.into_iter().map(|key| {(
+                                    base_storage_entries.iter().find(|e| e.get("key") == Some(key)).unwrap_or(&Value::Null),
+                                    native_storage_entries.iter().find(|e| e.get("key") == Some(key)).unwrap_or(&Value::Null)
+                                )}).unzip();
+
+                                (base_entries, native_entries)
+                            }
+                            _ => panic!("storage entries not arrays")
+                        }
+                    }
+                    (None, None) => todo!("none, none"),
+                    (None, Some(_)) => todo!("base none"),
+                    (Some(_), None) => todo!("native none"),
+                    (x, y) => todo!("Not objects"),
+                };
+                let mut base = Map::new();
+                let mut native = Map::new();
+                base.insert("address".to_string(), address.clone());
+                native.insert("address".to_string(), address.clone());
+                base.insert("storage_entries".to_string(), Value::Array(base_storage_entries.into_iter().cloned().collect_vec()));
+                native.insert("storage_entries".to_string(), Value::Array(native_storage_entries.into_iter().cloned().collect_vec()));
+                (Value::Object(base), Value::Object(native))
+            }).unzip();
+            (Value::Array(base), Value::Array(native))
+        }
+        (x, y) => {
+            println!("{:?}", x);
+            println!("{:?}", y);
+            panic!();
+        }
+    }
 }
 
 fn compare_json_arrays(arr_1: Vec<Value>, arr_2: Vec<Value>) -> Value {
