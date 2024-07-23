@@ -1,7 +1,12 @@
+use std::cmp::{max, min};
+
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
-use crate::{block_tracer::TraceBlockReport, dependencies::block_report_with_dependencies};
+use crate::{
+    block_tracer::TraceBlockReport, dependencies::block_report_with_dependencies,
+    dependencies::dependencies_to_json, graph,
+};
 
 const SAME: &str = "Same";
 const EMPTY: &str = "Empty";
@@ -10,6 +15,7 @@ const DIFFERENT: &str = "Different";
 #[derive(Serialize, Deserialize)]
 pub enum ComparisonResult {
     Same,
+    Both(Value),
     Different {
         base: Option<Value>,
         native: Option<Value>,
@@ -50,6 +56,7 @@ impl ComparisonResult {
                 "base": base.unwrap_or(Value::String(EMPTY.into())),
                 "native": native.unwrap_or(Value::String(EMPTY.into())),
             }),
+            ComparisonResult::Both(value) => json!({"Both": value}),
         }
     }
 }
@@ -67,19 +74,62 @@ fn trace_block_report_to_json(report: TraceBlockReport) -> Value {
     })
 }
 
-// Take two JSONs and compare each (key, value) recursively.
-// It will consume the two JSON as well.
-// Store the resutls in an output JSON.
+fn diff_or_both(left : Value, right : Value) -> ComparisonResult {
+  if left == right {
+    ComparisonResult::Both(left)
+  } else {
+    ComparisonResult::Different { base: Some(left), native: Some(right) }
+  }
+}
+
 pub fn generate_block_comparison(
     base_report: TraceBlockReport,
     native_report: TraceBlockReport,
 ) -> Value {
-    compare_jsons(
-        trace_block_report_to_json(base_report),
-        trace_block_report_to_json(native_report),
-    )
+    let post_response = if let (Some(base_transactions), Some(native_transactions)) =
+        (base_report.post_response, native_report.post_response)
+    {
+        let mut transaction_comparisons = Vec::<Value>::new();
+
+        let base_dependencies = graph::get_dependencies(base_transactions.iter());
+        let native_dependencies = graph::get_dependencies(native_transactions.iter());
+        if base_dependencies != native_dependencies {
+          todo!("dependencies don't match!");
+        }
+
+        for transaction_index in 0..min(base_transactions.len(), native_transactions.len()) {
+            let base_transaction = &base_transactions[transaction_index];
+            let native_transaction = &native_transactions[transaction_index];
+            if base_transaction.transaction_hash != native_transaction.transaction_hash {
+                todo!("base and native transactions do not line up!");
+            }
+            let transaction = base_transaction.transaction_hash;
+
+            transaction_comparisons.push(json!({
+              "transaction_hash" : base_transaction.transaction_hash,
+              "contract_dependencies" : dependencies_to_json(transaction, Some(&base_dependencies.0)),
+              "storage_dependencies" : dependencies_to_json(transaction, Some(&base_dependencies.1)),
+              "body" : compare_jsons(serde_json::to_value(base_transaction).unwrap(), serde_json::to_value(native_transaction).unwrap()),
+            }));
+        }
+
+        Value::from(transaction_comparisons)
+    } else {
+        // Either base_report or native_report have no post_response.
+        // todo!("handle None in generate block comparison");
+        Value::from("todo")
+    };
+
+    json!({
+        "block_num": diff_or_both(base_report.block_num.into(), native_report.block_num.into()),
+        "post_response": post_response
+    })
 }
 
+
+// Take two JSONs and compare each (key, value) recursively.
+// It will consume the two JSON as well.
+// Store the resutls in an output JSON.
 pub fn compare_jsons(json_1: Value, json_2: Value) -> Value {
     let output = compare_json_values(json_1, json_2);
     clean_json_value(output)
@@ -387,7 +437,6 @@ mod tests {
             "storage_dependencies": []
           }
         );
-
 
         let result = compare_jsons(base, native);
 
