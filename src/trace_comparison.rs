@@ -46,9 +46,10 @@ impl ComparisonResult {
         match self {
             ComparisonResult::Same => json!(SAME),
             ComparisonResult::Different { base, native } => json!({
-                "comparison": DIFFERENT,
-                "base": base.unwrap_or(Value::String(EMPTY.into())),
-                "native": native.unwrap_or(Value::String(EMPTY.into())),
+                DIFFERENT:{
+                    "base": base.unwrap_or(Value::String(EMPTY.into())),
+                    "native": native.unwrap_or(Value::String(EMPTY.into())),
+                }
             }),
         }
     }
@@ -89,7 +90,7 @@ fn compare_json_values(val_1: Value, val_2: Value) -> Value {
     match (val_1, val_2) {
         (Value::Object(obj_1), Value::Object(obj_2)) => compare_json_objects(obj_1, obj_2),
         (Value::Array(arr_1), Value::Array(arr_2)) => compare_json_arrays(arr_1, arr_2),
-        (val_1, val_2) if val_1 == val_2 => ComparisonResult::Same.into(),
+        (val_1, val_2) if val_1 == val_2 => ComparisonResult::new_same().into(),
         (val_1, val_2) => ComparisonResult::new_different(val_1, val_2).into(),
     }
 }
@@ -237,9 +238,10 @@ mod tests {
             result,
             json!({
                 "key1": {
-                    "comparison": DIFFERENT,
-                    "base": "value1",
-                    "native": "value1-2",
+                    DIFFERENT: {
+                        "base": "value1",
+                        "native": "value1-2",
+                    }
                 }
             })
         );
@@ -261,14 +263,16 @@ mod tests {
             result,
             json!({
                 "key1": {
-                    "comparison": DIFFERENT,
-                    "base": "value1",
-                    "native": EMPTY,
+                    DIFFERENT: {
+                        "base": "value1",
+                        "native": EMPTY
+                    }
                 },
                 "key2": {
-                    "comparison": DIFFERENT,
-                    "base": EMPTY,
-                    "native": "value2",
+                     DIFFERENT: {
+                        "base": EMPTY,
+                        "native": "value2"
+                     }
                 }
             })
         );
@@ -287,9 +291,10 @@ mod tests {
             json!([
                 "Same",
                 {
-                    "comparison": DIFFERENT,
-                    "base": "value2",
-                    "native": "value2-2",
+                    DIFFERENT: {
+                        "base": "value2",
+                        "native": "value2-2",
+                    }
                 }
             ])
         );
@@ -307,9 +312,10 @@ mod tests {
             result,
             json!(
                 {
-                    "comparison": DIFFERENT,
-                    "base": ["value1", "value2"],
-                    "native": ["value1", "value2", "value3"],
+                     DIFFERENT: {
+                        "base": ["value1", "value2"],
+                        "native": ["value1", "value2", "value3"],
+                     }
                 }
             )
         );
@@ -352,18 +358,20 @@ mod tests {
                 "post_response": [
                   {
                     "contract_dependencies": {
-                      "base": [],
-                      "comparison": DIFFERENT,
-                      "native": [
-                        "0x11d75966a7514052309ce01f62e6d48f2be6158254d22d306e71a3ad07d5c62"
-                      ]
+                      DIFFERENT: {
+                        "base": [],
+                        "native": [
+                            "0x11d75966a7514052309ce01f62e6d48f2be6158254d22d306e71a3ad07d5c62"
+                        ]
+                      }
                     },
                     "storage_dependencies": {
-                      "base": [],
-                      "comparison": DIFFERENT,
-                      "native": [
-                        "0x11d75966a7514052309ce01f62e6d48f2be6158254d22d306e71a3ad07d5c62"
-                      ]
+                      DIFFERENT: {
+                        "base": [],
+                        "native": [
+                          "0x11d75966a7514052309ce01f62e6d48f2be6158254d22d306e71a3ad07d5c62"
+                        ]
+                      }
                     }
                   }
                 ]
@@ -388,7 +396,6 @@ mod tests {
           }
         );
 
-
         let result = compare_jsons(base, native);
 
         assert_eq!(
@@ -396,9 +403,10 @@ mod tests {
             json!(
               {
                 "key_1": {
-                  "base" : "a",
-                  "comparison": DIFFERENT,
-                  "native" : "b",
+                  DIFFERENT: {
+                    "base" : "a",
+                    "native" : "b",
+                  }
                 },
                 "storage_dependencies": SAME
               }
