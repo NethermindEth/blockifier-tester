@@ -1,0 +1,12 @@
+{
+  "post_response": [
+    {
+      "contract_dependencies": [
+        "0x11d75966a7514052309ce01f62e6d48f2be6158254d22d306e71a3ad07d5c62"
+      ],
+      "storage_dependencies": [
+        "0x11d75966a7514052309ce01f62e6d48f2be6158254d22d306e71a3ad07d5c62"
+      ]
+    }
+  ]
+}
