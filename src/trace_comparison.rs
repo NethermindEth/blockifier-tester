@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -180,7 +180,7 @@ fn compare_storage_diffs(base_diffs: Value, native_diffs: Value) -> Value {
         Value::Array(a) => Ok(a),
         _ => Err("Value is not an array"),
     };
-    let add_value_to_map = |mut map: HashMap<String, String>, value: Value| {
+    let add_value_to_map = |mut map: BTreeMap<String, String>, value: Value| {
         let obj = value.as_object().expect("Value is not an object");
 
         let key = obj
@@ -200,14 +200,16 @@ fn compare_storage_diffs(base_diffs: Value, native_diffs: Value) -> Value {
         map
     };
 
-    let base_diffs: HashMap<String, String> = to_array(base_diffs)
+    // Using BTrees instead of HashMaps to have consistent results over any runs.
+    // Using Hashmaps will change the order of the keys etc...
+    let base_diffs: BTreeMap<String, String> = to_array(base_diffs)
         .expect("Base `storage_diffs` is not an array")
         .into_iter()
-        .fold(HashMap::new(), add_value_to_map);
-    let mut native_diffs: HashMap<String, String> = to_array(native_diffs)
+        .fold(BTreeMap::new(), add_value_to_map);
+    let mut native_diffs: BTreeMap<String, String> = to_array(native_diffs)
         .expect("Native `storage_diffs` is not an array")
         .into_iter()
-        .fold(HashMap::new(), add_value_to_map);
+        .fold(BTreeMap::new(), add_value_to_map);
 
     let mut output: Vec<Value> = vec![];
     let kv_to_json = |k, v| json!({"key": k, "value": v});
@@ -280,6 +282,7 @@ fn value_is_same(val: &Value) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use itertools::enumerate;
 
     #[test]
     fn test_all_same() {
@@ -506,5 +509,158 @@ mod tests {
               }
             )
         );
+    }
+
+    #[test]
+    fn test_compare_storage_diffs() {
+        struct Params {
+            input: (Value, Value),
+            output: Value,
+        }
+        let kv_to_json = |k, v| json!({"key": k, "value": v});
+
+        let test_params = vec![
+            // 0
+            Params {
+                input: (
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1"),]),
+                    json!([kv_to_json("k1", "v1"), kv_to_json("k0", "v0"),]),
+                ),
+                output: json!(SAME),
+            },
+            // 1
+            Params {
+                input: (
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1")]),
+                    json!([
+                        kv_to_json("k0", "v0"),
+                        kv_to_json("k1", "v1"),
+                        kv_to_json("kw", "vw"),
+                    ]),
+                ),
+                output: json!([
+                    json!(SAME),
+                    json!(SAME),
+                    ComparisonResult::new_different_native_only(kv_to_json("kw", "vw")).into_json(),
+                ]),
+            },
+            // 2
+            Params {
+                input: (
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1")]),
+                    json!([
+                        kv_to_json("k0", "v0"),
+                        kv_to_json("k1", "v1"),
+                        kv_to_json("kw", "vw"),
+                    ]),
+                ),
+                output: json!([
+                    json!(SAME),
+                    json!(SAME),
+                    ComparisonResult::new_different_native_only(kv_to_json("kw", "vw")).into_json(),
+                ]),
+            },
+            // 3
+            Params {
+                input: (
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1")]),
+                    json!([
+                        kv_to_json("k0", "v0"),
+                        kv_to_json("kw", "vw"),
+                        kv_to_json("k1", "v1"),
+                    ]),
+                ),
+                output: json!([
+                    json!(SAME),
+                    json!(SAME),
+                    ComparisonResult::new_different_native_only(kv_to_json("kw", "vw")).into_json(),
+                ]),
+            },
+            // 4
+            Params {
+                input: (
+                    json!([
+                        kv_to_json("k0", "v0"),
+                        kv_to_json("k1", "v1"),
+                        kv_to_json("kw", "vw")
+                    ]),
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1"),]),
+                ),
+                output: json!([
+                    json!(SAME),
+                    json!(SAME),
+                    ComparisonResult::new_different_base_only(kv_to_json("kw", "vw")).into_json(),
+                ]),
+            },
+            // 5
+            Params {
+                input: (
+                    json!([
+                        kv_to_json("k0", "v0"),
+                        kv_to_json("k1", "v1"),
+                        kv_to_json("kw", "vw"),
+                    ]),
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1"),]),
+                ),
+                output: json!([
+                    json!(SAME),
+                    json!(SAME),
+                    ComparisonResult::new_different_base_only(kv_to_json("kw", "vw")).into_json(),
+                ]),
+            },
+            // 6
+            Params {
+                input: (
+                    json!([
+                        kv_to_json("k0", "v0"),
+                        kv_to_json("kw", "vw"),
+                        kv_to_json("k1", "v1"),
+                    ]),
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1"),]),
+                ),
+                output: json!([
+                    json!(SAME),
+                    json!(SAME),
+                    ComparisonResult::new_different_base_only(kv_to_json("kw", "vw")).into_json(),
+                ]),
+            },
+            // 7
+            Params {
+                input: (
+                    json!([kv_to_json("k0", "v0"), kv_to_json("kw", "vw"),]),
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1"),]),
+                ),
+                output: json!([
+                    json!(SAME),
+                    ComparisonResult::new_different_base_only(kv_to_json("kw", "vw")).into_json(),
+                    ComparisonResult::new_different_native_only(kv_to_json("k1", "v1")).into_json(),
+                ]),
+            },
+            // 8
+            Params {
+                input: (
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1"),]),
+                    json!([kv_to_json("k0", "v0"), kv_to_json("kw", "vw"),]),
+                ),
+                output: json!([
+                    json!(SAME),
+                    ComparisonResult::new_different_base_only(kv_to_json("k1", "v1")).into_json(),
+                    ComparisonResult::new_different_native_only(kv_to_json("kw", "vw")).into_json(),
+                ]),
+            },
+        ];
+
+        for (i, param) in enumerate(test_params) {
+            let expected = param.output;
+            let result = clean_json_value(compare_storage_diffs(param.input.0, param.input.1));
+
+            assert_eq!(
+                expected,
+                result,
+                "Test {i}\nExpected:\n{}\nResult:\n{}",
+                serde_json::to_string_pretty(&expected).unwrap(),
+                serde_json::to_string_pretty(&result).unwrap()
+            )
+        }
     }
 }
