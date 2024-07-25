@@ -7,13 +7,16 @@ pub struct Cli {
     pub command: Commands,
     /// Enables `SKIP_FEE_CHARGE` mode for simulating transactions.
     #[clap(long)]
-    pub skip_fee_charge: Option<u64>,
+    pub skip_fee_charge: bool,
     /// Enables `SKIP_VALIDATE` mode for simulating transactions.
     #[clap(long)]
-    pub skip_validate: Option<u64>,
-    /// Forces action even if an output file (block- or trace-) already exists for block
+    pub skip_validate: bool,
+    /// Forces the comparison between base and native if this already exists.
     #[clap(long)]
-    pub run_known: bool,
+    pub redo_comp: bool,
+    /// Forces the tracing of a block with base juno if this already exists.
+    #[clap(long)]
+    pub redo_base_trace: bool,
 }
 
 #[derive(Debug, Subcommand)]

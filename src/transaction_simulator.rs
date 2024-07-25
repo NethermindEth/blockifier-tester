@@ -1,10 +1,11 @@
-use std::{fmt::Display, fs::OpenOptions};
+use std::fmt::Display;
 
 use log::{debug, info};
 
 use itertools::Itertools;
 use num_bigint::BigUint;
 use serde::Serialize;
+use starknet::core::types::SimulationFlag;
 use starknet::{
     core::types::{
         BlockId, BroadcastedDeployAccountTransaction, BroadcastedDeployAccountTransactionV1,
@@ -17,7 +18,7 @@ use starknet::{
     providers::Provider,
 };
 
-use crate::juno_manager::{JunoBranch, JunoManager, ManagerError};
+use crate::juno_manager::{JunoManager, ManagerError};
 
 #[allow(dead_code)]
 pub enum SimulationStrategy {
@@ -26,10 +27,6 @@ pub enum SimulationStrategy {
     Pessimistic,
 }
 pub trait TransactionSimulator {
-    async fn get_expected_transaction_result(
-        &mut self,
-        tx_hash: FieldElement,
-    ) -> Result<TransactionResult, ManagerError>;
     async fn get_transactions_to_simulate(
         &mut self,
         block: &MaybePendingBlockWithTxs,
@@ -38,47 +35,52 @@ pub trait TransactionSimulator {
         &mut self,
         block_number: u64,
         strategy: SimulationStrategy,
-    ) -> Result<Vec<SimulationReport>, ManagerError>;
+        simulation_flags: &[SimulationFlag],
+        ) -> Result<BlockSimulationReport, ManagerError>;
     async fn binary_repeat_simulate_until_success(
         &mut self,
         block_id: BlockId,
         transactions: &[TransactionToSimulate],
+        simulation_flags: &[SimulationFlag],
     ) -> Result<Vec<SimulatedTransaction>, ManagerError>;
     async fn optimistic_repeat_simulate_until_success(
         &mut self,
         block_id: BlockId,
         transaction: &[TransactionToSimulate],
+        simulation_flags: &[SimulationFlag],
     ) -> Result<Vec<SimulatedTransaction>, ManagerError>;
     async fn pessimistic_repeat_simulate_until_success(
         &mut self,
         block_id: BlockId,
         transactions: &[TransactionToSimulate],
+        simulation_flags: &[SimulationFlag],
     ) -> Result<Vec<SimulatedTransaction>, ManagerError>;
 }
 
 impl TransactionSimulator for JunoManager {
-    async fn get_expected_transaction_result(
-        &mut self,
-        tx_hash: FieldElement,
-    ) -> Result<TransactionResult, ManagerError> {
-        debug!("Getting receipt for Tx 0x{}", hash_to_hex(&tx_hash));
-        self.ensure_usable().await?;
-        let result = self
-            .rpc_client
-            .get_transaction_receipt(tx_hash)
-            .await?
-            .into();
-        Ok(result)
-    }
-
     async fn get_transactions_to_simulate(
         &mut self,
         block: &MaybePendingBlockWithTxs,
     ) -> Result<Vec<TransactionToSimulate>, ManagerError> {
+        // Make sure it is usable just at the beginning since the RPC call
+        // shouldn't crash the node ever (Native unrelated)
+        self.ensure_usable().await?;
+
         let mut result = vec![];
-        for transaction in block.transactions() {
+        let max_transaction = block.transactions().len();
+        for (i, transaction) in block.transactions().iter().enumerate() {
             let tx_hash = get_block_transaction_hash(transaction);
-            let expected_result = self.get_expected_transaction_result(tx_hash).await?;
+            debug!(
+                "({}/{max_transaction}) Receipt for 0x{}",
+                i + 1,
+                hash_to_hex(&tx_hash)
+            );
+            let expected_result = self
+                .rpc_client
+                .get_transaction_receipt(tx_hash)
+                .await?
+                .into();
+
             result.push(TransactionToSimulate {
                 tx: block_transaction_to_broadcasted_transaction(transaction)?,
                 hash: tx_hash,
@@ -92,7 +94,8 @@ impl TransactionSimulator for JunoManager {
         &mut self,
         block_number: u64,
         strategy: SimulationStrategy,
-    ) -> Result<Vec<SimulationReport>, ManagerError> {
+        simulation_flags: &[SimulationFlag],
+    ) -> Result<BlockSimulationReport, ManagerError> {
         info!("Getting block {block_number} with txns");
         let block = self
             .get_block_with_txs(BlockId::Number(block_number))
@@ -105,6 +108,7 @@ impl TransactionSimulator for JunoManager {
                 self.binary_repeat_simulate_until_success(
                     BlockId::Number(block_number - 1),
                     &transactions,
+                    simulation_flags,
                 )
                 .await
             }
@@ -112,6 +116,7 @@ impl TransactionSimulator for JunoManager {
                 self.optimistic_repeat_simulate_until_success(
                     BlockId::Number(block_number - 1),
                     &transactions,
+                    simulation_flags,
                 )
                 .await
             }
@@ -119,6 +124,7 @@ impl TransactionSimulator for JunoManager {
                 self.pessimistic_repeat_simulate_until_success(
                     BlockId::Number(block_number - 1),
                     &transactions,
+                    simulation_flags,
                 )
                 .await
             }
@@ -143,7 +149,11 @@ impl TransactionSimulator for JunoManager {
             });
         }
 
-        Ok(report)
+        Ok(BlockSimulationReport {
+            simulated_reports: report,
+            simulated_transactions: simulation_results,
+            transactions_list: transactions,
+        })
     }
 
     // Try all transactions and count down until they all work
@@ -151,6 +161,7 @@ impl TransactionSimulator for JunoManager {
         &mut self,
         block_id: BlockId,
         transactions: &[TransactionToSimulate],
+        simulation_flags: &[SimulationFlag],
     ) -> Result<Vec<SimulatedTransaction>, ManagerError> {
         let broadcasted_transactions = transactions.iter().map(|tx| tx.tx.clone()).collect_vec();
         for i in 0..transactions.len() {
@@ -159,7 +170,7 @@ impl TransactionSimulator for JunoManager {
             self.ensure_usable().await?;
             let simulation_result = self
                 .rpc_client
-                .simulate_transactions(block_id, transactions_to_try, [])
+                .simulate_transactions(block_id, transactions_to_try, simulation_flags)
                 .await;
 
             if simulation_result.is_ok() {
@@ -176,6 +187,7 @@ impl TransactionSimulator for JunoManager {
         &mut self,
         block_id: BlockId,
         transactions: &[TransactionToSimulate],
+        simulation_flags: &[SimulationFlag],
     ) -> Result<Vec<SimulatedTransaction>, ManagerError> {
         let mut results = vec![];
 
@@ -186,7 +198,7 @@ impl TransactionSimulator for JunoManager {
             self.ensure_usable().await?;
             let simulation_result = self
                 .rpc_client
-                .simulate_transactions(block_id, transactions_to_try, [])
+                .simulate_transactions(block_id, transactions_to_try, simulation_flags)
                 .await;
 
             if simulation_result.is_ok() {
@@ -204,6 +216,7 @@ impl TransactionSimulator for JunoManager {
         &mut self,
         block_id: BlockId,
         transactions: &[TransactionToSimulate],
+        simulation_flags: &[SimulationFlag],
     ) -> Result<Vec<SimulatedTransaction>, ManagerError> {
         info!(
             "Searching for failed transaction in block {} (Using binary search)",
@@ -227,7 +240,7 @@ impl TransactionSimulator for JunoManager {
             self.ensure_usable().await?;
             let simulation_result = self
                 .rpc_client
-                .simulate_transactions(block_id, transactions_to_try, [])
+                .simulate_transactions(block_id, transactions_to_try, simulation_flags)
                 .await;
 
             match simulation_result {
@@ -306,10 +319,16 @@ fn hash_to_hex(h: &FieldElement) -> String {
     BigUint::from_bytes_be(&h.to_bytes_be()).to_str_radix(16)
 }
 
+pub struct BlockSimulationReport {
+    pub simulated_reports: Vec<SimulationReport>,
+    pub simulated_transactions: Vec<SimulatedTransaction>,
+    pub transactions_list: Vec<TransactionToSimulate>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct SimulationReport {
     #[serde(serialize_with = "hex_serialize")]
-    tx_hash: FieldElement,
+    pub tx_hash: FieldElement,
     expected_result: TransactionResult,
     simulated_result: TransactionResult,
 }
@@ -331,22 +350,9 @@ impl SimulationReport {
     }
 }
 
-pub fn log_block_report(block_number: u64, report: Vec<SimulationReport>) {
-    info!("Log report for block {block_number}");
-    let block_file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(format!("./results/block-{}.json", block_number))
-        .expect("Failed to open log file");
-
-    serde_json::to_writer_pretty(block_file, &report)
-        .unwrap_or_else(|_| panic!("failed to write block: {block_number}"));
-}
-
 pub struct TransactionToSimulate {
     tx: BroadcastedTransaction,
-    hash: FieldElement,
+    pub hash: FieldElement,
     expected_result: TransactionResult,
 }
 
@@ -468,24 +474,4 @@ fn get_simulated_transaction_result(transaction: &SimulatedTransaction) -> Trans
         TransactionTrace::L1Handler(_) => TransactionResult::L1Handler,
         TransactionTrace::Declare(_) => TransactionResult::Declare,
     }
-}
-
-#[allow(dead_code)]
-pub async fn simulate_main() -> Result<(), ManagerError> {
-    let block_number = 610026;
-    let mut juno_manager = JunoManager::new(JunoBranch::Native).await?;
-    let block_report = juno_manager
-        .simulate_block(block_number, SimulationStrategy::Optimistic)
-        .await?;
-    log_block_report(block_number, block_report);
-    info!("//Done {block_number}");
-
-    for block_number in 645000..645100 {
-        let block_report = juno_manager
-            .simulate_block(block_number, SimulationStrategy::Binary)
-            .await?;
-        log_block_report(block_number, block_report);
-        info!("//Done {block_number}");
-    }
-    Ok(())
 }

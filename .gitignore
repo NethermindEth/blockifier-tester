@@ -1,4 +1,7 @@
 target/
 config.toml
-juno_out.log
+base_juno_out.log
+native_juno_out.log
 .vscode/
+.idea/
+.DS_Store
