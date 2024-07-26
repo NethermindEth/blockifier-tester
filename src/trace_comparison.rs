@@ -12,7 +12,7 @@ const DIFFERENT: &str = "Different";
 
 #[derive(Serialize, Deserialize)]
 pub enum ComparisonResult {
-    Same,
+    Same(Value),
     Different {
         base: Option<Value>,
         native: Option<Value>,
@@ -20,8 +20,8 @@ pub enum ComparisonResult {
 }
 
 impl ComparisonResult {
-    pub fn new_same() -> Self {
-        ComparisonResult::Same
+    pub fn new_same(val: Value) -> Self {
+        ComparisonResult::Same(val)
     }
 
     pub fn new_different(base: Value, native: Value) -> Self {
@@ -47,13 +47,28 @@ impl ComparisonResult {
 
     pub fn into_json(self) -> Value {
         match self {
-            ComparisonResult::Same => json!(SAME),
+            ComparisonResult::Same(val) => {
+                let repr = format!("({})", ComparisonResult::value_to_short_representation(val));
+                json!(format!("{SAME}{repr}"))
+            }
             ComparisonResult::Different { base, native } => json!({
                 DIFFERENT:{
                     "base": base.unwrap_or(Value::String(EMPTY.into())),
                     "native": native.unwrap_or(Value::String(EMPTY.into())),
                 }
             }),
+        }
+    }
+
+    // utility
+    pub fn value_to_short_representation(val: Value) -> String {
+        match val {
+            Value::Array(a) => format!("[{}]", a.len()),
+            Value::Object(b) => format!("{{{}}}", b.len()),
+            Value::Null => String::from("null"),
+            Value::String(s) => s,
+            Value::Number(n) => n.to_string(),
+            Value::Bool(b) => b.to_string(),
         }
     }
 }
@@ -116,7 +131,7 @@ fn compare_json_values(val_1: Value, val_2: Value) -> Value {
     match (val_1, val_2) {
         (Value::Object(obj_1), Value::Object(obj_2)) => compare_json_objects(obj_1, obj_2),
         (Value::Array(arr_1), Value::Array(arr_2)) => compare_json_arrays(arr_1, arr_2),
-        (val_1, val_2) if val_1 == val_2 => ComparisonResult::new_same().into(),
+        (val_1, val_2) if val_1 == val_2 => ComparisonResult::new_same(val_1).into(),
         (val_1, val_2) => ComparisonResult::new_different(val_1, val_2).into(),
     }
 }
@@ -134,7 +149,7 @@ fn compare_json_objects(obj_1: Map<String, Value>, mut obj_2: Map<String, Value>
         match obj_2.remove(&key_1) {
             Some(val_2) => {
                 let compare_result = match key_1.as_str() {
-                    "storage_diffs" => compare_storage_diffs(val_1, val_2),
+                    "storage_entries" => compare_storage_entries(val_1, val_2),
                     _ => compare_json_values(val_1, val_2),
                 };
                 output.insert(key_1, compare_result)
@@ -162,7 +177,7 @@ fn compare_json_arrays(arr_1: Vec<Value>, arr_2: Vec<Value>) -> Value {
     }
 
     if arr_1.is_empty() && arr_2.is_empty() {
-        return ComparisonResult::new_same().into();
+        return ComparisonResult::new_same(Value::Array(arr_1)).into();
     }
 
     let output: Vec<Value> = arr_1
@@ -174,12 +189,7 @@ fn compare_json_arrays(arr_1: Vec<Value>, arr_2: Vec<Value>) -> Value {
     Value::Array(output)
 }
 
-fn compare_storage_diffs(base_diffs: Value, native_diffs: Value) -> Value {
-    // helper method to consume the value (as_array gives a reference)
-    let to_array = |v: Value| match v {
-        Value::Array(a) => Ok(a),
-        _ => Err("Value is not an array"),
-    };
+fn compare_storage_entries(base_diffs: Value, native_diffs: Value) -> Value {
     let add_value_to_map = |mut map: BTreeMap<String, String>, value: Value| {
         let obj = value.as_object().expect("Value is not an object");
 
@@ -200,6 +210,11 @@ fn compare_storage_diffs(base_diffs: Value, native_diffs: Value) -> Value {
         map
     };
 
+    // helper method to consume the value (as_array gives a reference)
+    let to_array = |v: Value| match v {
+        Value::Array(a) => Ok(a),
+        _ => Err("Value is not an array"),
+    };
     // Using BTrees instead of HashMaps to have consistent results over any runs.
     // Using Hashmaps will change the order of the keys etc...
     let base_diffs: BTreeMap<String, String> = to_array(base_diffs)
@@ -247,12 +262,9 @@ fn clean_json_object(obj: Map<String, Value>) -> Value {
         cleaned_obj.insert(key, clean_json_value(val));
     }
 
-    let all_same = cleaned_obj
-        .values()
-        .all(|el| matches!(el, Value::String(str) if str == SAME));
-
+    let all_same = cleaned_obj.values().all(value_is_same);
     if all_same {
-        ComparisonResult::Same.into()
+        ComparisonResult::new_same(Value::Object(cleaned_obj)).into()
     } else {
         Value::Object(cleaned_obj)
     }
@@ -266,21 +278,23 @@ fn clean_json_array(arr: Vec<Value>) -> Value {
     }
 
     let cleaned_arr: Vec<Value> = arr.into_iter().map(clean_json_value).collect();
-    let all_same = cleaned_arr.iter().all(value_is_same);
 
+    let all_same = cleaned_arr.iter().all(value_is_same);
     if all_same {
-        ComparisonResult::Same.into()
+        ComparisonResult::new_same(Value::Array(cleaned_arr)).into()
     } else {
         Value::Array(cleaned_arr)
     }
 }
 
 fn value_is_same(val: &Value) -> bool {
-    matches!(val, Value::String(str) if str == SAME)
+    matches!(val, Value::String(str) if str.starts_with(SAME))
 }
 
 #[cfg(test)]
 mod tests {
+    use std::fmt::Display;
+
     use super::*;
     use itertools::enumerate;
 
@@ -316,7 +330,7 @@ mod tests {
 
         let result = compare_jsons(base, native);
 
-        assert_eq!(result, Value::String(SAME.into()));
+        assert_eq!(result, same_object_repr(4));
     }
 
     #[test]
@@ -386,7 +400,7 @@ mod tests {
         assert_eq!(
             result,
             json!([
-                "Same",
+                same_value_repr("value1"),
                 {
                     DIFFERENT: {
                         "base": "value2",
@@ -479,36 +493,12 @@ mod tests {
 
     #[test]
     fn test_both_empty_list() {
-        let base = json!(
-          {
-            "key_1": "a",
-            "storage_dependencies": []
-          }
-        );
-
-        let native = json!(
-          {
-            "key_1": "b",
-            "storage_dependencies": []
-          }
-        );
+        let base = json!([]);
+        let native = json!([]);
 
         let result = compare_jsons(base, native);
 
-        assert_eq!(
-            result,
-            json!(
-              {
-                "key_1": {
-                  DIFFERENT: {
-                    "base" : "a",
-                    "native" : "b",
-                  }
-                },
-                "storage_dependencies": SAME
-              }
-            )
-        );
+        assert_eq!(result, json!(same_array_repr(0)));
     }
 
     #[test]
@@ -526,7 +516,7 @@ mod tests {
                     json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1"),]),
                     json!([kv_to_json("k1", "v1"), kv_to_json("k0", "v0"),]),
                 ),
-                output: json!(SAME),
+                output: json!(same_array_repr(2)),
             },
             // 1
             Params {
@@ -539,8 +529,8 @@ mod tests {
                     ]),
                 ),
                 output: json!([
-                    json!(SAME),
-                    json!(SAME),
+                    json!(same_object_repr(2)),
+                    json!(same_object_repr(2)),
                     ComparisonResult::new_different_native_only(kv_to_json("kw", "vw")).into_json(),
                 ]),
             },
@@ -555,8 +545,8 @@ mod tests {
                     ]),
                 ),
                 output: json!([
-                    json!(SAME),
-                    json!(SAME),
+                    json!(same_object_repr(2)),
+                    json!(same_object_repr(2)),
                     ComparisonResult::new_different_native_only(kv_to_json("kw", "vw")).into_json(),
                 ]),
             },
@@ -571,8 +561,8 @@ mod tests {
                     ]),
                 ),
                 output: json!([
-                    json!(SAME),
-                    json!(SAME),
+                    json!(same_object_repr(2)),
+                    json!(same_object_repr(2)),
                     ComparisonResult::new_different_native_only(kv_to_json("kw", "vw")).into_json(),
                 ]),
             },
@@ -587,8 +577,8 @@ mod tests {
                     json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1"),]),
                 ),
                 output: json!([
-                    json!(SAME),
-                    json!(SAME),
+                    json!(same_object_repr(2)),
+                    json!(same_object_repr(2)),
                     ComparisonResult::new_different_base_only(kv_to_json("kw", "vw")).into_json(),
                 ]),
             },
@@ -603,8 +593,8 @@ mod tests {
                     json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1"),]),
                 ),
                 output: json!([
-                    json!(SAME),
-                    json!(SAME),
+                    json!(same_object_repr(2)),
+                    json!(same_object_repr(2)),
                     ComparisonResult::new_different_base_only(kv_to_json("kw", "vw")).into_json(),
                 ]),
             },
@@ -619,8 +609,8 @@ mod tests {
                     json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1"),]),
                 ),
                 output: json!([
-                    json!(SAME),
-                    json!(SAME),
+                    json!(same_object_repr(2)),
+                    json!(same_object_repr(2)),
                     ComparisonResult::new_different_base_only(kv_to_json("kw", "vw")).into_json(),
                 ]),
             },
@@ -631,7 +621,7 @@ mod tests {
                     json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1"),]),
                 ),
                 output: json!([
-                    json!(SAME),
+                    json!(same_object_repr(2)),
                     ComparisonResult::new_different_base_only(kv_to_json("kw", "vw")).into_json(),
                     ComparisonResult::new_different_native_only(kv_to_json("k1", "v1")).into_json(),
                 ]),
@@ -643,7 +633,7 @@ mod tests {
                     json!([kv_to_json("k0", "v0"), kv_to_json("kw", "vw"),]),
                 ),
                 output: json!([
-                    json!(SAME),
+                    json!(same_object_repr(2)),
                     ComparisonResult::new_different_base_only(kv_to_json("k1", "v1")).into_json(),
                     ComparisonResult::new_different_native_only(kv_to_json("kw", "vw")).into_json(),
                 ]),
@@ -652,7 +642,7 @@ mod tests {
 
         for (i, param) in enumerate(test_params) {
             let expected = param.output;
-            let result = clean_json_value(compare_storage_diffs(param.input.0, param.input.1));
+            let result = clean_json_value(compare_storage_entries(param.input.0, param.input.1));
 
             assert_eq!(
                 expected,
@@ -662,5 +652,18 @@ mod tests {
                 serde_json::to_string_pretty(&result).unwrap()
             )
         }
+    }
+
+    fn same_array_repr(len: usize) -> String {
+        format!("{SAME}([{len}])")
+    }
+    fn same_object_repr(len: usize) -> String {
+        format!("{SAME}({{{len}}})")
+    }
+    fn same_value_repr<T>(val: T) -> String
+    where
+        T: Display,
+    {
+        format!("{SAME}({val})")
     }
 }
