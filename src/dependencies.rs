@@ -8,7 +8,6 @@ use starknet::{
 };
 
 use crate::{
-    block_tracer::TraceBlockReport,
     graph::{self, DependencyMap},
     transaction_simulator::BlockSimulationReport,
 };
@@ -94,15 +93,12 @@ pub fn simulation_report_dependencies(report: &BlockSimulationReport) -> serde_j
     )
 }
 
-pub fn block_report_with_dependencies(
-    block_report: &TraceBlockReport,
-) -> Option<serde_json::Value> {
-    block_report.post_response.as_ref().map(|traces| {
-        let (contract_dependencies, storage_dependencies) = graph::get_dependencies(traces.iter());
-        to_json_with_dependencies(
-            traces.iter().map(|trace| (trace, trace.transaction_hash)),
-            Some(&contract_dependencies),
-            Some(&storage_dependencies),
-        )
-    })
+pub fn block_report_with_dependencies(traces: &Vec<TransactionTraceWithHash>) -> serde_json::Value {
+    let (contract_dependencies, storage_dependencies) = graph::get_dependencies(traces.iter());
+
+    to_json_with_dependencies(
+        traces.iter().map(|trace| (trace, trace.transaction_hash)),
+        Some(&contract_dependencies),
+        Some(&storage_dependencies),
+    )
 }

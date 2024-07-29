@@ -1,12 +1,10 @@
-use std::cmp::{max, min};
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
+use starknet::core::types::{StateDiff, TransactionTrace, TransactionTraceWithHash};
 
-use crate::{
-    block_tracer::TraceBlockReport, dependencies::block_report_with_dependencies,
-    dependencies::dependencies_to_json, graph,
-};
+use crate::{block_tracer::TraceBlockReport, dependencies::block_report_with_dependencies};
 
 const SAME: &str = "Same";
 const EMPTY: &str = "Empty";
@@ -14,8 +12,7 @@ const DIFFERENT: &str = "Different";
 
 #[derive(Serialize, Deserialize)]
 pub enum ComparisonResult {
-    Same,
-    Both(Value),
+    Same(Value),
     Different {
         base: Option<Value>,
         native: Option<Value>,
@@ -23,8 +20,8 @@ pub enum ComparisonResult {
 }
 
 impl ComparisonResult {
-    pub fn new_same() -> Self {
-        ComparisonResult::Same
+    pub fn new_same(val: Value) -> Self {
+        ComparisonResult::Same(val)
     }
 
     pub fn new_different(base: Value, native: Value) -> Self {
@@ -50,13 +47,28 @@ impl ComparisonResult {
 
     pub fn into_json(self) -> Value {
         match self {
-            ComparisonResult::Same => json!(SAME),
+            ComparisonResult::Same(val) => {
+                let repr = format!("({})", ComparisonResult::value_to_short_representation(val));
+                json!(format!("{SAME}{repr}"))
+            }
             ComparisonResult::Different { base, native } => json!({
-                "comparison": DIFFERENT,
-                "base": base.unwrap_or(Value::String(EMPTY.into())),
-                "native": native.unwrap_or(Value::String(EMPTY.into())),
+                DIFFERENT:{
+                    "base": base.unwrap_or(Value::String(EMPTY.into())),
+                    "native": native.unwrap_or(Value::String(EMPTY.into())),
+                }
             }),
-            ComparisonResult::Both(value) => json!({"Both": value}),
+        }
+    }
+
+    // utility
+    pub fn value_to_short_representation(val: Value) -> String {
+        match val {
+            Value::Array(a) => format!("[{}]", a.len()),
+            Value::Object(b) => format!("{{{}}}", b.len()),
+            Value::Null => String::from("null"),
+            Value::String(s) => s,
+            Value::Number(n) => n.to_string(),
+            Value::Bool(b) => b.to_string(),
         }
     }
 }
@@ -68,68 +80,48 @@ impl From<ComparisonResult> for Value {
 }
 
 fn trace_block_report_to_json(report: TraceBlockReport) -> Value {
+    let mut traces = report.post_response.unwrap_or_default();
+
+    normalize_traces_state_diff(&mut traces);
+
     json!({
         "block_num": report.block_num,
-        "post_response": block_report_with_dependencies(&report)
+        "post_response": block_report_with_dependencies(&traces)
     })
 }
 
-fn diff_or_both(left : Value, right : Value) -> ComparisonResult {
-  if left == right {
-    ComparisonResult::Both(left)
-  } else {
-    ComparisonResult::Different { base: Some(left), native: Some(right) }
-  }
-}
-
-pub fn generate_block_comparison(
-    base_report: TraceBlockReport,
-    native_report: TraceBlockReport,
-) -> Value {
-    let post_response = if let (Some(base_transactions), Some(native_transactions)) =
-        (base_report.post_response, native_report.post_response)
-    {
-        let mut transaction_comparisons = Vec::<Value>::new();
-
-        let base_dependencies = graph::get_dependencies(base_transactions.iter());
-        let native_dependencies = graph::get_dependencies(native_transactions.iter());
-        if base_dependencies != native_dependencies {
-          todo!("dependencies don't match!");
+fn normalize_traces_state_diff(traces: &mut Vec<TransactionTraceWithHash>) {
+    let normalize = |maybe_state_diff: &mut Option<StateDiff>| {
+        if let Some(state_diff) = maybe_state_diff {
+            state_diff
+                .storage_diffs
+                .sort_by(|lhs, rhs| lhs.address.cmp(&rhs.address))
         }
-
-        for transaction_index in 0..min(base_transactions.len(), native_transactions.len()) {
-            let base_transaction = &base_transactions[transaction_index];
-            let native_transaction = &native_transactions[transaction_index];
-            if base_transaction.transaction_hash != native_transaction.transaction_hash {
-                todo!("base and native transactions do not line up!");
-            }
-            let transaction = base_transaction.transaction_hash;
-
-            transaction_comparisons.push(json!({
-              "transaction_hash" : base_transaction.transaction_hash,
-              "contract_dependencies" : dependencies_to_json(transaction, Some(&base_dependencies.0)),
-              "storage_dependencies" : dependencies_to_json(transaction, Some(&base_dependencies.1)),
-              "body" : compare_jsons(serde_json::to_value(base_transaction).unwrap(), serde_json::to_value(native_transaction).unwrap()),
-            }));
-        }
-
-        Value::from(transaction_comparisons)
-    } else {
-        // Either base_report or native_report have no post_response.
-        // todo!("handle None in generate block comparison");
-        Value::from("todo")
     };
 
-    json!({
-        "block_num": diff_or_both(base_report.block_num.into(), native_report.block_num.into()),
-        "post_response": post_response
-    })
+    for trace in traces {
+        match &mut trace.trace_root {
+            TransactionTrace::Invoke(tx) => normalize(&mut tx.state_diff),
+            TransactionTrace::Declare(tx) => normalize(&mut tx.state_diff),
+            TransactionTrace::DeployAccount(tx) => normalize(&mut tx.state_diff),
+            TransactionTrace::L1Handler(tx) => normalize(&mut tx.state_diff),
+        }
+    }
 }
-
 
 // Take two JSONs and compare each (key, value) recursively.
 // It will consume the two JSON as well.
 // Store the resutls in an output JSON.
+pub fn generate_block_comparison(
+    base_report: TraceBlockReport,
+    native_report: TraceBlockReport,
+) -> Value {
+    compare_jsons(
+        trace_block_report_to_json(base_report),
+        trace_block_report_to_json(native_report),
+    )
+}
+
 pub fn compare_jsons(json_1: Value, json_2: Value) -> Value {
     let output = compare_json_values(json_1, json_2);
     clean_json_value(output)
@@ -139,7 +131,7 @@ fn compare_json_values(val_1: Value, val_2: Value) -> Value {
     match (val_1, val_2) {
         (Value::Object(obj_1), Value::Object(obj_2)) => compare_json_objects(obj_1, obj_2),
         (Value::Array(arr_1), Value::Array(arr_2)) => compare_json_arrays(arr_1, arr_2),
-        (val_1, val_2) if val_1 == val_2 => ComparisonResult::Same.into(),
+        (val_1, val_2) if val_1 == val_2 => ComparisonResult::new_same(val_1).into(),
         (val_1, val_2) => ComparisonResult::new_different(val_1, val_2).into(),
     }
 }
@@ -148,9 +140,20 @@ fn compare_json_objects(obj_1: Map<String, Value>, mut obj_2: Map<String, Value>
     // Object to store the comparison results per key
     let mut output = Map::<String, Value>::new();
 
+    // TODO: we might to have special handles for special keys. For example:
+    // 1. For error messages ('revert-reason'), which are fundamentally different but might say the
+    // same thing, we can implement Levenshtein Distance or TF-IDF. Or we can modifiy the error
+    // messages in Native to look similar to the ones in Base.
+
     for (key_1, val_1) in obj_1 {
         match obj_2.remove(&key_1) {
-            Some(val_2) => output.insert(key_1, compare_json_values(val_1, val_2)),
+            Some(val_2) => {
+                let compare_result = match key_1.as_str() {
+                    "storage_entries" => compare_storage_entries(val_1, val_2),
+                    _ => compare_json_values(val_1, val_2),
+                };
+                output.insert(key_1, compare_result)
+            }
             None => output.insert(
                 key_1,
                 ComparisonResult::new_different_base_only(val_1).into(),
@@ -174,7 +177,7 @@ fn compare_json_arrays(arr_1: Vec<Value>, arr_2: Vec<Value>) -> Value {
     }
 
     if arr_1.is_empty() && arr_2.is_empty() {
-        return ComparisonResult::new_same().into();
+        return ComparisonResult::new_same(Value::Array(arr_1)).into();
     }
 
     let output: Vec<Value> = arr_1
@@ -182,6 +185,65 @@ fn compare_json_arrays(arr_1: Vec<Value>, arr_2: Vec<Value>) -> Value {
         .zip(arr_2)
         .map(|e| compare_json_values(e.0, e.1))
         .collect();
+
+    Value::Array(output)
+}
+
+fn compare_storage_entries(base_diffs: Value, native_diffs: Value) -> Value {
+    let add_value_to_map = |mut map: BTreeMap<String, String>, value: Value| {
+        let obj = value.as_object().expect("Value is not an object");
+
+        let key = obj
+            .get("key")
+            .expect("No `key` field")
+            .as_str()
+            .expect("`key` field is not a string")
+            .to_owned();
+        let value = obj
+            .get("value")
+            .expect("No `value` field")
+            .as_str()
+            .expect("`value` field is not a string")
+            .to_owned();
+
+        map.insert(key, value);
+        map
+    };
+
+    // helper method to consume the value (as_array gives a reference)
+    let to_array = |v: Value| match v {
+        Value::Array(a) => Ok(a),
+        _ => Err("Value is not an array"),
+    };
+    // Using BTrees instead of HashMaps to have consistent results over any runs.
+    // Using Hashmaps will change the order of the keys etc...
+    let base_diffs: BTreeMap<String, String> = to_array(base_diffs)
+        .expect("Base `storage_diffs` is not an array")
+        .into_iter()
+        .fold(BTreeMap::new(), add_value_to_map);
+    let mut native_diffs: BTreeMap<String, String> = to_array(native_diffs)
+        .expect("Native `storage_diffs` is not an array")
+        .into_iter()
+        .fold(BTreeMap::new(), add_value_to_map);
+
+    let mut output: Vec<Value> = vec![];
+    let kv_to_json = |k, v| json!({"key": k, "value": v});
+    for (base_key, base_val) in base_diffs {
+        let comp = if let Some(native_val) = native_diffs.remove(&base_key) {
+            compare_json_values(
+                kv_to_json(base_key.clone(), base_val),
+                kv_to_json(base_key, native_val),
+            )
+        } else {
+            ComparisonResult::new_different_base_only(kv_to_json(base_key, base_val)).into()
+        };
+        output.push(comp);
+    }
+    for (native_key, native_val) in native_diffs {
+        let comp =
+            ComparisonResult::new_different_native_only(kv_to_json(native_key, native_val)).into();
+        output.push(comp);
+    }
 
     Value::Array(output)
 }
@@ -200,12 +262,9 @@ fn clean_json_object(obj: Map<String, Value>) -> Value {
         cleaned_obj.insert(key, clean_json_value(val));
     }
 
-    let all_same = cleaned_obj
-        .values()
-        .all(|el| matches!(el, Value::String(str) if str == SAME));
-
+    let all_same = cleaned_obj.values().all(value_is_same);
     if all_same {
-        ComparisonResult::Same.into()
+        ComparisonResult::new_same(Value::Object(cleaned_obj)).into()
     } else {
         Value::Object(cleaned_obj)
     }
@@ -219,22 +278,25 @@ fn clean_json_array(arr: Vec<Value>) -> Value {
     }
 
     let cleaned_arr: Vec<Value> = arr.into_iter().map(clean_json_value).collect();
-    let all_same = cleaned_arr.iter().all(value_is_same);
 
+    let all_same = cleaned_arr.iter().all(value_is_same);
     if all_same {
-        ComparisonResult::Same.into()
+        ComparisonResult::new_same(Value::Array(cleaned_arr)).into()
     } else {
         Value::Array(cleaned_arr)
     }
 }
 
 fn value_is_same(val: &Value) -> bool {
-    matches!(val, Value::String(str) if str == SAME)
+    matches!(val, Value::String(str) if str.starts_with(SAME))
 }
 
 #[cfg(test)]
 mod tests {
+    use std::fmt::Display;
+
     use super::*;
+    use itertools::enumerate;
 
     #[test]
     fn test_all_same() {
@@ -268,7 +330,7 @@ mod tests {
 
         let result = compare_jsons(base, native);
 
-        assert_eq!(result, Value::String(SAME.into()));
+        assert_eq!(result, same_object_repr(4));
     }
 
     #[test]
@@ -287,9 +349,10 @@ mod tests {
             result,
             json!({
                 "key1": {
-                    "comparison": DIFFERENT,
-                    "base": "value1",
-                    "native": "value1-2",
+                    DIFFERENT: {
+                        "base": "value1",
+                        "native": "value1-2",
+                    }
                 }
             })
         );
@@ -311,14 +374,16 @@ mod tests {
             result,
             json!({
                 "key1": {
-                    "comparison": DIFFERENT,
-                    "base": "value1",
-                    "native": EMPTY,
+                    DIFFERENT: {
+                        "base": "value1",
+                        "native": EMPTY
+                    }
                 },
                 "key2": {
-                    "comparison": DIFFERENT,
-                    "base": EMPTY,
-                    "native": "value2",
+                     DIFFERENT: {
+                        "base": EMPTY,
+                        "native": "value2"
+                     }
                 }
             })
         );
@@ -335,11 +400,12 @@ mod tests {
         assert_eq!(
             result,
             json!([
-                "Same",
+                same_value_repr("value1"),
                 {
-                    "comparison": DIFFERENT,
-                    "base": "value2",
-                    "native": "value2-2",
+                    DIFFERENT: {
+                        "base": "value2",
+                        "native": "value2-2",
+                    }
                 }
             ])
         );
@@ -357,9 +423,10 @@ mod tests {
             result,
             json!(
                 {
-                    "comparison": DIFFERENT,
-                    "base": ["value1", "value2"],
-                    "native": ["value1", "value2", "value3"],
+                     DIFFERENT: {
+                        "base": ["value1", "value2"],
+                        "native": ["value1", "value2", "value3"],
+                     }
                 }
             )
         );
@@ -402,18 +469,20 @@ mod tests {
                 "post_response": [
                   {
                     "contract_dependencies": {
-                      "base": [],
-                      "comparison": DIFFERENT,
-                      "native": [
-                        "0x11d75966a7514052309ce01f62e6d48f2be6158254d22d306e71a3ad07d5c62"
-                      ]
+                      DIFFERENT: {
+                        "base": [],
+                        "native": [
+                            "0x11d75966a7514052309ce01f62e6d48f2be6158254d22d306e71a3ad07d5c62"
+                        ]
+                      }
                     },
                     "storage_dependencies": {
-                      "base": [],
-                      "comparison": DIFFERENT,
-                      "native": [
-                        "0x11d75966a7514052309ce01f62e6d48f2be6158254d22d306e71a3ad07d5c62"
-                      ]
+                      DIFFERENT: {
+                        "base": [],
+                        "native": [
+                          "0x11d75966a7514052309ce01f62e6d48f2be6158254d22d306e71a3ad07d5c62"
+                        ]
+                      }
                     }
                   }
                 ]
@@ -424,34 +493,177 @@ mod tests {
 
     #[test]
     fn test_both_empty_list() {
-        let base = json!(
-          {
-            "key_1": "a",
-            "storage_dependencies": []
-          }
-        );
-
-        let native = json!(
-          {
-            "key_1": "b",
-            "storage_dependencies": []
-          }
-        );
+        let base = json!([]);
+        let native = json!([]);
 
         let result = compare_jsons(base, native);
 
-        assert_eq!(
-            result,
-            json!(
-              {
-                "key_1": {
-                  "base" : "a",
-                  "comparison": DIFFERENT,
-                  "native" : "b",
-                },
-                "storage_dependencies": SAME
-              }
+        assert_eq!(result, json!(same_array_repr(0)));
+    }
+
+    #[test]
+    fn test_compare_storage_diffs() {
+        struct Params {
+            input: (Value, Value),
+            output: Value,
+        }
+        let kv_to_json = |k, v| json!({"key": k, "value": v});
+
+        let test_params = vec![
+            // 0
+            Params {
+                input: (
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1"),]),
+                    json!([kv_to_json("k1", "v1"), kv_to_json("k0", "v0"),]),
+                ),
+                output: json!(same_array_repr(2)),
+            },
+            // 1
+            Params {
+                input: (
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1")]),
+                    json!([
+                        kv_to_json("k0", "v0"),
+                        kv_to_json("k1", "v1"),
+                        kv_to_json("kw", "vw"),
+                    ]),
+                ),
+                output: json!([
+                    json!(same_object_repr(2)),
+                    json!(same_object_repr(2)),
+                    ComparisonResult::new_different_native_only(kv_to_json("kw", "vw")).into_json(),
+                ]),
+            },
+            // 2
+            Params {
+                input: (
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1")]),
+                    json!([
+                        kv_to_json("k0", "v0"),
+                        kv_to_json("k1", "v1"),
+                        kv_to_json("kw", "vw"),
+                    ]),
+                ),
+                output: json!([
+                    json!(same_object_repr(2)),
+                    json!(same_object_repr(2)),
+                    ComparisonResult::new_different_native_only(kv_to_json("kw", "vw")).into_json(),
+                ]),
+            },
+            // 3
+            Params {
+                input: (
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1")]),
+                    json!([
+                        kv_to_json("k0", "v0"),
+                        kv_to_json("kw", "vw"),
+                        kv_to_json("k1", "v1"),
+                    ]),
+                ),
+                output: json!([
+                    json!(same_object_repr(2)),
+                    json!(same_object_repr(2)),
+                    ComparisonResult::new_different_native_only(kv_to_json("kw", "vw")).into_json(),
+                ]),
+            },
+            // 4
+            Params {
+                input: (
+                    json!([
+                        kv_to_json("k0", "v0"),
+                        kv_to_json("k1", "v1"),
+                        kv_to_json("kw", "vw")
+                    ]),
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1"),]),
+                ),
+                output: json!([
+                    json!(same_object_repr(2)),
+                    json!(same_object_repr(2)),
+                    ComparisonResult::new_different_base_only(kv_to_json("kw", "vw")).into_json(),
+                ]),
+            },
+            // 5
+            Params {
+                input: (
+                    json!([
+                        kv_to_json("k0", "v0"),
+                        kv_to_json("k1", "v1"),
+                        kv_to_json("kw", "vw"),
+                    ]),
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1"),]),
+                ),
+                output: json!([
+                    json!(same_object_repr(2)),
+                    json!(same_object_repr(2)),
+                    ComparisonResult::new_different_base_only(kv_to_json("kw", "vw")).into_json(),
+                ]),
+            },
+            // 6
+            Params {
+                input: (
+                    json!([
+                        kv_to_json("k0", "v0"),
+                        kv_to_json("kw", "vw"),
+                        kv_to_json("k1", "v1"),
+                    ]),
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1"),]),
+                ),
+                output: json!([
+                    json!(same_object_repr(2)),
+                    json!(same_object_repr(2)),
+                    ComparisonResult::new_different_base_only(kv_to_json("kw", "vw")).into_json(),
+                ]),
+            },
+            // 7
+            Params {
+                input: (
+                    json!([kv_to_json("k0", "v0"), kv_to_json("kw", "vw"),]),
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1"),]),
+                ),
+                output: json!([
+                    json!(same_object_repr(2)),
+                    ComparisonResult::new_different_base_only(kv_to_json("kw", "vw")).into_json(),
+                    ComparisonResult::new_different_native_only(kv_to_json("k1", "v1")).into_json(),
+                ]),
+            },
+            // 8
+            Params {
+                input: (
+                    json!([kv_to_json("k0", "v0"), kv_to_json("k1", "v1"),]),
+                    json!([kv_to_json("k0", "v0"), kv_to_json("kw", "vw"),]),
+                ),
+                output: json!([
+                    json!(same_object_repr(2)),
+                    ComparisonResult::new_different_base_only(kv_to_json("k1", "v1")).into_json(),
+                    ComparisonResult::new_different_native_only(kv_to_json("kw", "vw")).into_json(),
+                ]),
+            },
+        ];
+
+        for (i, param) in enumerate(test_params) {
+            let expected = param.output;
+            let result = clean_json_value(compare_storage_entries(param.input.0, param.input.1));
+
+            assert_eq!(
+                expected,
+                result,
+                "Test {i}\nExpected:\n{}\nResult:\n{}",
+                serde_json::to_string_pretty(&expected).unwrap(),
+                serde_json::to_string_pretty(&result).unwrap()
             )
-        );
+        }
+    }
+
+    fn same_array_repr(len: usize) -> String {
+        format!("{SAME}([{len}])")
+    }
+    fn same_object_repr(len: usize) -> String {
+        format!("{SAME}({{{len}}})")
+    }
+    fn same_value_repr<T>(val: T) -> String
+    where
+        T: Display,
+    {
+        format!("{SAME}({val})")
     }
 }
