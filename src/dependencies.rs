@@ -2,9 +2,7 @@
 
 use itertools::Itertools;
 use serde::Serialize;
-use starknet::{
-    core::types::{FieldElement, TransactionTraceWithHash},
-};
+use starknet::core::types::{FieldElement, TransactionTraceWithHash};
 
 use crate::{
     graph::{self, DependencyMap},
@@ -92,7 +90,7 @@ pub fn simulation_report_dependencies(report: &BlockSimulationReport) -> serde_j
     )
 }
 
-pub fn block_report_with_dependencies(traces: &Vec<TransactionTraceWithHash>) -> serde_json::Value {
+pub fn block_report_with_dependencies(traces: &[TransactionTraceWithHash]) -> serde_json::Value {
     let (contract_dependencies, storage_dependencies) = graph::get_dependencies(traces.iter());
 
     to_json_with_dependencies(
