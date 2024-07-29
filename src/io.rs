@@ -105,4 +105,5 @@ pub async fn prepare_directories() {
     tokio::fs::create_dir_all("./cache").await.unwrap();
     tokio::fs::create_dir_all("./results/base").await.unwrap();
     tokio::fs::create_dir_all("./results/native").await.unwrap();
+    tokio::fs::create_dir_all("./results/dependencies").await.unwrap();
 }
