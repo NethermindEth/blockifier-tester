@@ -5,7 +5,6 @@ use serde::Serialize;
 use starknet::core::types::{FieldElement, TransactionTraceWithHash};
 
 use crate::{
-    block_tracer::TraceBlockReport,
     graph::{self, DependencyMap},
     transaction_simulator::BlockSimulationReport,
 };
@@ -77,9 +76,7 @@ where
     serde_json::value::to_value(values).unwrap()
 }
 
-pub fn simulation_report_dependencies(
-    report: &BlockSimulationReport,
-) -> serde_json::Value {
+pub fn simulation_report_dependencies(report: &BlockSimulationReport) -> serde_json::Value {
     let dependencies = get_simulation_dependencies(report);
     to_json_with_dependencies(
         report
@@ -90,12 +87,11 @@ pub fn simulation_report_dependencies(
     )
 }
 
-pub fn block_report_with_dependencies(block_report: &TraceBlockReport) -> Option<serde_json::Value> {
-    block_report.post_response.as_ref().map(|traces| {
-        let dependencies = graph::get_dependencies(traces.iter());
-        to_json_with_dependencies(
-            traces.iter().map(|trace| (trace, trace.transaction_hash)),
-            Some(dependencies),
-        )
-    })
+pub fn block_report_with_dependencies(traces: &Vec<TransactionTraceWithHash>) -> serde_json::Value {
+    let dependencies = graph::get_dependencies(traces.iter());
+
+    to_json_with_dependencies(
+        traces.iter().map(|trace| (trace, trace.transaction_hash)),
+        Some(dependencies),
+    )
 }
