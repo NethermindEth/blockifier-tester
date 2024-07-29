@@ -232,12 +232,7 @@ pub type DependencyMap = HashMap<FieldElement, Vec<String>>;
 ///
 /// Hashmap values: A list of `transaction_hash`s for each transaction depended on by the transaction of the corresponding key.
 /// For example, the key value pair: `(4, [1, 2])` implies that transaction 4 depends on transactions 1 and 2.
-pub fn get_dependencies<'a, T>(
-    block_transactions: T,
-) -> (
-    DependencyMap,
-    DependencyMap,
-)
+pub fn get_dependencies<'a, T>(block_transactions: T) -> (DependencyMap, DependencyMap)
 where
     T: Iterator<Item = &'a TransactionTraceWithHash>,
 {

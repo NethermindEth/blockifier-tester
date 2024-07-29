@@ -7,9 +7,7 @@ use tokio::{
 
 use log::{debug, info, warn};
 
-use crate::{
-    block_tracer::TraceBlockReport, juno_manager::ManagerError,
-};
+use crate::{block_tracer::TraceBlockReport, juno_manager::ManagerError};
 
 pub fn succesful_comparison_path(block_num: u64) -> PathBuf {
     PathBuf::from(format!("results/comparison-{}.json", block_num))
@@ -105,4 +103,7 @@ pub async fn prepare_directories() {
     tokio::fs::create_dir_all("./cache").await.unwrap();
     tokio::fs::create_dir_all("./results/base").await.unwrap();
     tokio::fs::create_dir_all("./results/native").await.unwrap();
+    tokio::fs::create_dir_all("./results/dependencies")
+        .await
+        .unwrap();
 }

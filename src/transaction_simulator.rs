@@ -36,7 +36,7 @@ pub trait TransactionSimulator {
         block_number: u64,
         strategy: SimulationStrategy,
         simulation_flags: &[SimulationFlag],
-        ) -> Result<BlockSimulationReport, ManagerError>;
+    ) -> Result<BlockSimulationReport, ManagerError>;
     async fn binary_repeat_simulate_until_success(
         &mut self,
         block_id: BlockId,
