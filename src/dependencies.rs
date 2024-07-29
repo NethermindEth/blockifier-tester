@@ -3,7 +3,6 @@
 use itertools::Itertools;
 use serde::Serialize;
 use starknet::{
-    contract,
     core::types::{FieldElement, TransactionTraceWithHash},
 };
 
