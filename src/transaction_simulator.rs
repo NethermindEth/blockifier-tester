@@ -1,18 +1,24 @@
 use std::fmt::Display;
+use std::sync::Arc;
 
 use log::{debug, info};
 
 use itertools::Itertools;
 use num_bigint::BigUint;
 use serde::Serialize;
-use starknet::core::types::SimulationFlag;
+use starknet::core::types::{
+    BlockTag, BroadcastedDeclareTransaction, BroadcastedDeclareTransactionV1,
+    BroadcastedDeclareTransactionV2, BroadcastedDeclareTransactionV3, ContractClass,
+    SimulationFlag, StarknetError,
+};
+use starknet::providers::ProviderError;
 use starknet::{
     core::types::{
         BlockId, BroadcastedDeployAccountTransaction, BroadcastedDeployAccountTransactionV1,
         BroadcastedDeployAccountTransactionV3, BroadcastedInvokeTransaction,
         BroadcastedInvokeTransactionV1, BroadcastedInvokeTransactionV3, BroadcastedTransaction,
-        DeployAccountTransaction, ExecuteInvocation, ExecutionResult, FieldElement,
-        InvokeTransaction, MaybePendingBlockWithTxs, MaybePendingTransactionReceipt,
+        DeclareTransaction, DeployAccountTransaction, ExecuteInvocation, ExecutionResult,
+        FieldElement, InvokeTransaction, MaybePendingBlockWithTxs, MaybePendingTransactionReceipt,
         SimulatedTransaction, Transaction, TransactionTrace,
     },
     providers::Provider,
@@ -68,6 +74,13 @@ impl TransactionSimulator for JunoManager {
 
         let mut result = vec![];
         let max_transaction = block.transactions().len();
+        let block_id = match block {
+            MaybePendingBlockWithTxs::Block(block) => BlockId::Number(block.block_number),
+            MaybePendingBlockWithTxs::PendingBlock(pending_block) => {
+                BlockId::Tag(BlockTag::Pending)
+            }
+        };
+
         for (i, transaction) in block.transactions().iter().enumerate() {
             let tx_hash = get_block_transaction_hash(transaction);
             debug!(
@@ -82,7 +95,9 @@ impl TransactionSimulator for JunoManager {
                 .into();
 
             result.push(TransactionToSimulate {
-                tx: block_transaction_to_broadcasted_transaction(transaction)?,
+                tx: self
+                    .block_transaction_to_broadcasted_transaction(transaction, block_id)
+                    .await?,
                 hash: tx_hash,
                 expected_result,
             })
@@ -263,6 +278,152 @@ impl TransactionSimulator for JunoManager {
                     }
                 }
             }
+        }
+    }
+}
+
+impl JunoManager {
+    async fn block_transaction_to_broadcasted_transaction(
+        &self,
+        transaction: &Transaction,
+        block_id: BlockId,
+    ) -> Result<BroadcastedTransaction, ManagerError> {
+        match transaction {
+            Transaction::Invoke(invoke_transaction) => match invoke_transaction {
+                InvokeTransaction::V0(_) => {
+                    Err(ManagerError::InternalError("V0 invoke".to_string()))
+                }
+                InvokeTransaction::V1(tx) => Ok(BroadcastedTransaction::Invoke(
+                    BroadcastedInvokeTransaction::V1(BroadcastedInvokeTransactionV1 {
+                        sender_address: tx.sender_address,
+                        calldata: tx.calldata.clone(),
+                        max_fee: tx.max_fee,
+                        signature: tx.signature.clone(),
+                        nonce: tx.nonce,
+                        is_query: false,
+                    }),
+                )),
+                InvokeTransaction::V3(tx) => Ok(BroadcastedTransaction::Invoke(
+                    BroadcastedInvokeTransaction::V3(BroadcastedInvokeTransactionV3 {
+                        sender_address: tx.sender_address,
+                        calldata: tx.calldata.clone(),
+                        signature: tx.signature.clone(),
+                        nonce: tx.nonce,
+                        resource_bounds: tx.resource_bounds.clone(),
+                        tip: tx.tip,
+                        paymaster_data: tx.paymaster_data.clone(),
+                        account_deployment_data: tx.account_deployment_data.clone(),
+                        nonce_data_availability_mode: tx.nonce_data_availability_mode,
+                        fee_data_availability_mode: tx.fee_data_availability_mode,
+                        is_query: false,
+                    }),
+                )),
+            },
+            Transaction::L1Handler(_) => Err(ManagerError::InternalError("L1Handler".to_string())),
+            Transaction::Declare(declare_transaction) => {
+                Ok(BroadcastedTransaction::Declare(match declare_transaction {
+                    DeclareTransaction::V0(_) => panic!("V0"),
+                    DeclareTransaction::V1(tx) => {
+                        let contract_class = self
+                            .rpc_client
+                            .get_class(block_id, tx.class_hash)
+                            .await
+                            .map_err(|_| {
+                                ManagerError::InternalError(String::from("class not found"))
+                            })?;
+                        if let ContractClass::Legacy(contract_class) = contract_class {
+                            BroadcastedDeclareTransaction::V1(BroadcastedDeclareTransactionV1 {
+                                sender_address: tx.sender_address,
+                                max_fee: tx.max_fee,
+                                signature: tx.signature.clone(),
+                                nonce: tx.nonce,
+                                contract_class: Arc::new(contract_class),
+                                is_query: false,
+                            })
+                        } else {
+                            panic!("V1 declare can't find legacy contract class")
+                        }
+                    }
+                    DeclareTransaction::V2(tx) => {
+                        let contract_class = self
+                            .rpc_client
+                            .get_class(block_id, tx.class_hash)
+                            .await
+                            .map_err(|_| {
+                                ManagerError::InternalError(String::from("class not found"))
+                            })?;
+                        if let ContractClass::Sierra(contract_class) = contract_class {
+                            BroadcastedDeclareTransaction::V2(BroadcastedDeclareTransactionV2 {
+                                sender_address: tx.sender_address,
+                                max_fee: tx.max_fee,
+                                signature: tx.signature.clone(),
+                                nonce: tx.nonce,
+                                compiled_class_hash: tx.compiled_class_hash,
+                                contract_class: Arc::new(contract_class),
+                                is_query: false,
+                            })
+                        } else {
+                            panic!("V2 declare can't find sierra contract class")
+                        }
+                    }
+                    DeclareTransaction::V3(tx) => {
+                        let contract_class = self
+                            .rpc_client
+                            .get_class(block_id, tx.class_hash)
+                            .await
+                            .map_err(|_| {
+                                ManagerError::InternalError(String::from("class not found"))
+                            })?;
+                        if let ContractClass::Sierra(contract_class) = contract_class {
+                            BroadcastedDeclareTransaction::V3(BroadcastedDeclareTransactionV3 {
+                                sender_address: tx.sender_address,
+                                signature: tx.signature.clone(),
+                                nonce: tx.nonce,
+                                compiled_class_hash: tx.compiled_class_hash,
+                                contract_class: Arc::new(contract_class),
+                                account_deployment_data: tx.account_deployment_data.clone(),
+                                fee_data_availability_mode: tx.fee_data_availability_mode,
+                                nonce_data_availability_mode: tx.nonce_data_availability_mode,
+                                paymaster_data: tx.paymaster_data.clone(),
+                                resource_bounds: tx.resource_bounds.clone(),
+                                tip: tx.tip,
+                                is_query: false,
+                            })
+                        } else {
+                            panic!("V3 declare can't find sierra contract class")
+                        }
+                    }
+                }))
+            }
+            Transaction::Deploy(_) => Err(ManagerError::InternalError("Deploy".to_string())),
+            Transaction::DeployAccount(tx) => Ok(BroadcastedTransaction::DeployAccount(match tx {
+                DeployAccountTransaction::V1(tx) => {
+                    BroadcastedDeployAccountTransaction::V1(BroadcastedDeployAccountTransactionV1 {
+                        max_fee: tx.max_fee,
+                        signature: tx.signature.clone(),
+                        nonce: tx.nonce,
+                        contract_address_salt: tx.contract_address_salt,
+                        constructor_calldata: tx.constructor_calldata.clone(),
+                        class_hash: tx.class_hash,
+                        is_query: false,
+                    })
+                }
+                DeployAccountTransaction::V3(tx) => {
+                    BroadcastedDeployAccountTransaction::V3(BroadcastedDeployAccountTransactionV3 {
+                        signature: tx.signature.clone(),
+                        nonce: tx.nonce,
+                        contract_address_salt: tx.contract_address_salt,
+                        constructor_calldata: tx.constructor_calldata.clone(),
+                        class_hash: tx.class_hash,
+                        resource_bounds: tx.resource_bounds.clone(),
+                        tip: tx.tip,
+                        paymaster_data: tx.paymaster_data.clone(),
+                        nonce_data_availability_mode: tx.nonce_data_availability_mode,
+                        fee_data_availability_mode: tx.fee_data_availability_mode,
+                        is_query: false,
+                    })
+                }
+            })),
         }
     }
 }
