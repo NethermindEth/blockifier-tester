@@ -1,3 +1,4 @@
+use futures::future;
 use serde_json::Value;
 use std::{fs::OpenOptions, path::PathBuf};
 use tokio::{
@@ -99,11 +100,13 @@ pub async fn read_base_trace(block_number: u64) -> TraceBlockReport {
 
 pub async fn prepare_directories() {
     debug!("Preparing directories");
-    tokio::fs::create_dir_all("./results").await.unwrap();
-    tokio::fs::create_dir_all("./cache").await.unwrap();
-    tokio::fs::create_dir_all("./results/base").await.unwrap();
-    tokio::fs::create_dir_all("./results/native").await.unwrap();
-    tokio::fs::create_dir_all("./results/dependencies")
-        .await
-        .unwrap();
+    let paths = [
+        "./results",
+        "./cache",
+        "./results/base",
+        "./results/native",
+        "./results/dependencies",
+    ];
+
+    future::join_all(paths.iter().map(tokio::fs::create_dir_all)).await;
 }
