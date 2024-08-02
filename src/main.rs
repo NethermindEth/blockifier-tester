@@ -184,33 +184,24 @@ async fn main() -> Result<(), ManagerError> {
         simulation_flags.push(SimulationFlag::SkipFeeCharge)
     }
 
-    match cli.command {
+    let (start_block, end_block) = match cli.command {
         Commands::Block { block_num } => {
             let start_block = block_num;
             let end_block = block_num + 1;
-            execute_traces(
-                start_block,
-                end_block,
-                redo_comparison,
-                redo_base_trace,
-                simulation_flags,
-            )
-            .await?;
+            (start_block, end_block)
         }
         Commands::Range {
             start_block_num,
             end_block_num,
-        } => {
-            execute_traces(
-                start_block_num,
-                end_block_num,
-                redo_comparison,
-                redo_base_trace,
-                simulation_flags,
-            )
-            .await?;
-        }
-    }
+        } => (start_block_num, end_block_num),
+    };
 
-    Ok(())
+    // Note [Terminating Juno]
+    // Pressing ctrl+c will cause the ctrl_c future to finish first and will abort execute_traces.
+    // This will lead to the JunoManager's drop to be called which in turn issues a SIGKILL to Juno.
+    // For now the native blockifier requires a SIGKILL to be terminated as it doesn't respond to SIGTERM in a timely manner.
+    tokio::select! {
+        sigterm = tokio::signal::ctrl_c() => sigterm.map_err(|e| e.into()),
+        trace = execute_traces( start_block, end_block, redo_comparison, redo_base_trace, simulation_flags ) => trace,
+    }
 }
