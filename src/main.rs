@@ -197,8 +197,8 @@ async fn main() -> Result<(), ManagerError> {
     };
 
     // Note [Terminating Juno]
-    // Pressing ctrl+c will cause the ctrl_c future to finish first and will abort of the execute_traces future.
-    // This will lead to the JunoManager's drop to be killed which in turn issues a SIGKILL to Juno.
+    // Pressing ctrl+c will cause the ctrl_c future to finish first and will abort execute_traces.
+    // This will lead to the JunoManager's drop to be called which in turn issues a SIGKILL to Juno.
     // For now the native blockifier requires a SIGKILL to be terminated as it doesn't respond to SIGTERM in a timely manner.
     tokio::select! {
         _sigterm = tokio::signal::ctrl_c() => Ok(()),
