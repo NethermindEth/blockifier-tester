@@ -272,6 +272,8 @@ impl JunoManager {
 impl Drop for JunoManager {
     fn drop(&mut self) {
         if let Some(mut process) = self.process.take() {
+            // The SIGTERM handler relies on JunoManager to issue a SIGKILL on drop.
+            // See Note [Terminating Juno]
             match process.kill() {
                 Err(e) => warn!(
                     "FAILED to kill {} Juno (through mem drop). Be sure to kill it manually before running another: {}", self.branch, e

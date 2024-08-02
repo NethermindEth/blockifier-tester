@@ -196,20 +196,12 @@ async fn main() -> Result<(), ManagerError> {
         } => (start_block_num, end_block_num),
     };
 
-    // First one to finish aborts the other
+    // Note [Terminating Juno]
+    // Pressing ctrl+c will cause the ctrl_c future to finish first and will abort of the execute_traces future.
+    // This will lead to the JunoManager's drop to be killed which in turn issues a SIGKILL to Juno.
+    // For now the native blockifier requires a SIGKILL to be terminated as it doesn't respond to SIGTERM in a timely manner.
     tokio::select! {
-        sigterm = ctrl_c_handler() => Ok(sigterm),
+        _sigterm = tokio::signal::ctrl_c() => Ok(()),
         trace = execute_traces( start_block, end_block, redo_comparison, redo_base_trace, simulation_flags ) => trace,
     }
-}
-
-// TODO(xrvdg) prevent zombie
-
-async fn ctrl_c_handler() {
-    let _ = tokio::signal::ctrl_c().await;
-    println!("ctrl_c hit");
-    let gpid = nix::unistd::getpgrp();
-    // Maybe a bit too agressive? For the process itself, doesn't give execute_traces to time to reach an await point
-    // Native blockifier does not respond to SIGTERM therefore we send a SIGKILL
-    nix::sys::signal::killpg(gpid, nix::sys::signal::SIGKILL).unwrap();
 }
