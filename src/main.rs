@@ -201,7 +201,7 @@ async fn main() -> Result<(), ManagerError> {
     // This will lead to the JunoManager's drop to be called which in turn issues a SIGKILL to Juno.
     // For now the native blockifier requires a SIGKILL to be terminated as it doesn't respond to SIGTERM in a timely manner.
     tokio::select! {
-        _sigterm = tokio::signal::ctrl_c() => Ok(()),
+        sigterm = tokio::signal::ctrl_c() => sigterm.map_err(|e| e.into()),
         trace = execute_traces( start_block, end_block, redo_comparison, redo_base_trace, simulation_flags ) => trace,
     }
 }

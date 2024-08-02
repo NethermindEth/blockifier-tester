@@ -37,6 +37,7 @@ impl Display for JunoBranch {
 pub enum ManagerError {
     ProviderError(ProviderError),
     InternalError(String),
+    IOError(std::io::Error),
 }
 
 impl From<ProviderError> for ManagerError {
@@ -45,11 +46,18 @@ impl From<ProviderError> for ManagerError {
     }
 }
 
+impl From<std::io::Error> for ManagerError {
+    fn from(value: std::io::Error) -> Self {
+        Self::IOError(value)
+    }
+}
+
 impl Display for ManagerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ManagerError::ProviderError(err) => write!(f, "Manager error: {}", err),
             ManagerError::InternalError(err) => write!(f, "Internal error: {}", err),
+            ManagerError::IOError(err) => write!(f, "IO error: {}", err),
         }
     }
 }
