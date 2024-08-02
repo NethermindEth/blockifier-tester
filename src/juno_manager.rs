@@ -215,6 +215,9 @@ impl JunoManager {
         if let Some(process) = self.process.as_mut() {
             let id = process.id().to_string();
             debug!("Spawning kill -s INT {id}");
+            // todo(xrvdg) should be a better way to handle gracefully
+            // should also be TERM instead of INT
+            // probably use the nix package
             let mut kill = Command::new("kill")
                 .args(["-s", "INT", &id])
                 .spawn()

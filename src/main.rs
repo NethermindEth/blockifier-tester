@@ -196,12 +196,20 @@ async fn main() -> Result<(), ManagerError> {
         } => (start_block_num, end_block_num),
     };
 
-    execute_traces(
-        start_block,
-        end_block,
-        redo_comparison,
-        redo_base_trace,
-        simulation_flags,
-    )
-    .await
+    // First one to finish aborts the other
+    tokio::select! {
+        sigterm = ctrl_c_handler() => Ok(sigterm),
+        trace = execute_traces( start_block, end_block, redo_comparison, redo_base_trace, simulation_flags ) => trace,
+    }
+}
+
+// TODO(xrvdg) prevent zombie
+
+async fn ctrl_c_handler() {
+    let _ = tokio::signal::ctrl_c().await;
+    println!("ctrl_c hit");
+    let gpid = nix::unistd::getpgrp();
+    // Maybe a bit too agressive? For the process itself, doesn't give execute_traces to time to reach an await point
+    // Native blockifier does not respond to SIGTERM therefore we send a SIGKILL
+    nix::sys::signal::killpg(gpid, nix::sys::signal::SIGKILL).unwrap();
 }
