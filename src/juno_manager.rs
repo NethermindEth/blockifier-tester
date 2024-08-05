@@ -2,9 +2,11 @@ use std::{
     fmt::Display,
     fs::OpenOptions,
     path::Path,
-    process::{self, Command, Stdio},
+    process::Stdio,
     time::{Duration, SystemTime},
 };
+
+use tokio::process::{Child, Command};
 
 use anyhow::Context;
 use log::{debug, info, warn};
@@ -79,7 +81,7 @@ impl Config {
 
 pub struct JunoManager {
     pub branch: JunoBranch,
-    pub process: Option<process::Child>,
+    pub process: Option<Child>,
     pub rpc_client: JsonRpcClient<HttpTransport>,
     juno_path: String,
     juno_native_path: String,
@@ -146,7 +148,7 @@ impl JunoManager {
                 .context(format!("path: {}", &self.juno_native_path))
                 .expect("Failed to spawn native juno"),
         };
-        info!("Spawned {} juno with id {}", self.branch, process.id());
+        info!("Spawned {} juno with id {:?}", self.branch, process.id());
         self.process = Some(process);
     }
 
@@ -222,11 +224,15 @@ impl JunoManager {
         let start_time = SystemTime::now();
         info!("Killing {} Juno... (by ensure_dead)", self.branch);
         if let Some(process) = self.process.as_mut() {
-            let id = process.id();
-            debug!("Sending SIGTERM to {id}");
-            let _ = signal::kill(nix::unistd::Pid::from_raw(id as i32), signal::SIGTERM);
+            match process.id() {
+                Some(id) => {
+                    debug!("Sending SIGTERM to {id}");
+                    let _ = signal::kill(nix::unistd::Pid::from_raw(id as i32), signal::SIGTERM);
+                }
+                None => info!("Process already completed"),
+            }
 
-            match process.wait() {
+            match process.wait().await {
                 Ok(status) => info!("wait exit status {status:?}"),
                 Err(err) => info!("failed to kill {err}"),
             }
@@ -288,7 +294,7 @@ impl Drop for JunoManager {
         if let Some(mut process) = self.process.take() {
             // The SIGTERM handler relies on JunoManager to issue a SIGKILL on drop.
             // See Note [Terminating Juno]
-            match process.kill() {
+            match futures::executor::block_on(process.kill()) {
                 Err(e) => warn!(
                     "FAILED to kill {} Juno (through mem drop). Be sure to kill it manually before running another: {}", self.branch, e
                 ),
