@@ -186,7 +186,7 @@ impl JunoManager {
                 self.spawn_process_unchecked();
             }
 
-            async_std::task::sleep(Duration::from_millis(100)).await;
+            tokio::time::sleep(Duration::from_millis(100)).await;
             match self.rpc_client.block_number().await {
                 Ok(block_number) => {
                     info!(
@@ -216,33 +216,8 @@ impl JunoManager {
 
     pub async fn ensure_dead(&mut self) -> Result<(), ManagerError> {
         info!("Killing {} Juno... (by ensure_dead)", self.branch);
-        if let Some(process) = self.process.as_mut() {
-            let id = match process.id() {
-                Some(id) => {
-                    debug!("Sending SIGTERM to {id}");
-                    let _ = signal::kill(nix::unistd::Pid::from_raw(id as i32), signal::SIGTERM);
-                    id
-                }
-                None => {
-                    debug!("Juno already terminated");
-                    return Ok(());
-                }
-            };
-
-            let res = tokio::select! {
-                status = process.wait() => match status {
-                    Ok(status) => { debug!("Juno {id} killed with exit code {status:?}"); Ok(())},
-                    Err(err) => { Err(ManagerError::InternalError(format!("Failed to kill Juno {err} with PID {id}")))},
-                },
-                _time = {tokio::time::sleep(Duration::from_secs(10))} => match process.kill().await {
-                    Ok(()) => {debug!("Forcibly killed Juno {id}"); Ok(())},
-                    Err(err) => Err(ManagerError::InternalError(format!("Failed to kill Juno by force: {err}"))),
-                },
-            };
-
-            self.process = None;
-
-            res
+        if let Some(process) = self.process.take() {
+            terminate_process(process).await
         } else {
             warn!("Attempted to automatically kill and restart Juno following an unstable action but no stored process was found. Either an external juno is being used, or ensure_dead has been run multiple times");
             Ok(())
@@ -272,12 +247,41 @@ impl JunoManager {
     }
 }
 
+/// Terminate a child process
+///
+/// Try to SIGTERM a process and if it does not respond quickly SIGKILL it.
+async fn terminate_process(mut process: Child) -> Result<(), ManagerError> {
+    let id = match process.id() {
+        Some(id) => {
+            debug!("Send SIGTERM to {id}");
+            let _ = signal::kill(nix::unistd::Pid::from_raw(id as i32), signal::SIGTERM);
+            id
+        }
+        None => {
+            debug!("Juno has already been terminated");
+            return Ok(());
+        }
+    };
+
+    // If Juno does not process the SIGTERM within 10 seconds it is SIGKILL'ed.
+    tokio::select! {
+        status = process.wait() => match status {
+            Ok(status) => { debug!("Juno (PID {id}) exited with {status:?}"); Ok(())},
+            Err(err) => { Err(ManagerError::InternalError(format!("Failed to kill Juno (PID {id}): {err}")))},
+        },
+        _time = {tokio::time::sleep(Duration::from_secs(10))} => match process.kill().await {
+            Ok(()) => {debug!("Forcibly killed Juno (PID {id})"); Ok(())},
+            Err(err) => Err(ManagerError::InternalError(format!("Failed to kill Juno by force: {err}"))),
+        },
+    }
+}
+
 impl Drop for JunoManager {
     fn drop(&mut self) {
-        if let Some(mut process) = self.process.take() {
+        if let Some(process) = self.process.take() {
             // The SIGTERM handler relies on JunoManager to issue a SIGKILL on drop.
             // See Note [Terminating Juno]
-            match futures::executor::block_on(process.kill()) {
+            match futures::executor::block_on(terminate_process(process)) {
                 Err(e) => warn!(
                     "FAILED to kill {} Juno (through mem drop). Be sure to kill it manually before running another: {}", self.branch, e
                 ),

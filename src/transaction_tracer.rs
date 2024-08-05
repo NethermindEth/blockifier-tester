@@ -89,8 +89,6 @@ impl TransactionTracer for JunoManager {
         };
         info!("{result_type}");
 
-        self.ensure_dead().await?;
-
         Ok(TraceTransactionReport {
             transaction,
             result: result_type,
