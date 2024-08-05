@@ -1,10 +1,4 @@
-use std::{
-    fmt::Display,
-    fs::OpenOptions,
-    path::Path,
-    process::Stdio,
-    time::{Duration, SystemTime},
-};
+use std::{fmt::Display, fs::OpenOptions, path::Path, process::Stdio, time::Duration};
 
 use tokio::process::{Child, Command};
 
@@ -221,45 +215,34 @@ impl JunoManager {
     }
 
     pub async fn ensure_dead(&mut self) -> Result<(), ManagerError> {
-        let start_time = SystemTime::now();
         info!("Killing {} Juno... (by ensure_dead)", self.branch);
         if let Some(process) = self.process.as_mut() {
-            match process.id() {
+            let id = match process.id() {
                 Some(id) => {
                     debug!("Sending SIGTERM to {id}");
                     let _ = signal::kill(nix::unistd::Pid::from_raw(id as i32), signal::SIGTERM);
+                    id
                 }
-                None => info!("Process already completed"),
-            }
-
-            match process.wait().await {
-                Ok(status) => info!("wait exit status {status:?}"),
-                Err(err) => info!("failed to kill {err}"),
-            }
-
-            while start_time.elapsed().unwrap().as_secs() < 30 {
-                let ping_result = self.rpc_client.block_number().await;
-                match ping_result {
-                    Ok(_) => {
-                        async_std::task::sleep(Duration::from_millis(100)).await;
-                    }
-                    Err(err) => {
-                        match process.try_wait() {
-                            Ok(code) => {
-                                info!("{} Juno Killed with Exit Code {code:?}", self.branch)
-                            }
-                            Err(_) => info!("Could not reap Juno"),
-                        }
-                        self.process = None;
-                        debug!("Received error (as expected): {err}");
-                        return Ok(());
-                    }
+                None => {
+                    debug!("Juno already terminated");
+                    return Ok(());
                 }
-            }
+            };
+
+            let res = tokio::select! {
+                status = process.wait() => match status {
+                    Ok(status) => { debug!("Juno {id} killed with exit code {status:?}"); Ok(())},
+                    Err(err) => { Err(ManagerError::InternalError(format!("Failed to kill Juno {err} with PID {id}")))},
+                },
+                _time = {tokio::time::sleep(Duration::from_secs(10))} => match process.kill().await {
+                    Ok(()) => {debug!("Forcibly killed Juno {id}"); Ok(())},
+                    Err(err) => Err(ManagerError::InternalError(format!("Failed to kill Juno by force: {err}"))),
+                },
+            };
+
             self.process = None;
-            Err(ManagerError::InternalError(
-                "Juno still contactable after 30 seconds".to_string(),
-            ))
+
+            res
         } else {
             warn!("Attempted to automatically kill and restart Juno following an unstable action but no stored process was found. Either an external juno is being used, or ensure_dead has been run multiple times");
             Ok(())
