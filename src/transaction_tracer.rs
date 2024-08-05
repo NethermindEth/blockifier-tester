@@ -77,7 +77,7 @@ impl TransactionTracer for JunoManager {
         info!("Tracing transaction {transaction_hash}");
         self.ensure_usable().await?;
         let transaction = FieldElement::from_hex_be(transaction_hash)
-            .map_err(|e| ManagerError::InternalError(format!("{}", e)))?;
+            .map_err(|e| ManagerError::Internal(format!("{}", e)))?;
         let trace_result = self.rpc_client.trace_transaction(transaction).await;
 
         let result_type = match &trace_result {

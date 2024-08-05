@@ -361,7 +361,7 @@ fn block_transaction_to_broadcasted_transaction(
 ) -> Result<BroadcastedTransaction, ManagerError> {
     match transaction {
         Transaction::Invoke(invoke_transaction) => match invoke_transaction {
-            InvokeTransaction::V0(_) => Err(ManagerError::InternalError("V0 invoke".to_string())),
+            InvokeTransaction::V0(_) => Err(ManagerError::Internal("V0 invoke".to_string())),
             InvokeTransaction::V1(tx) => Ok(BroadcastedTransaction::Invoke(
                 BroadcastedInvokeTransaction::V1(BroadcastedInvokeTransactionV1 {
                     sender_address: tx.sender_address,
@@ -388,9 +388,9 @@ fn block_transaction_to_broadcasted_transaction(
                 }),
             )),
         },
-        Transaction::L1Handler(_) => Err(ManagerError::InternalError("L1Handler".to_string())),
+        Transaction::L1Handler(_) => Err(ManagerError::Internal("L1Handler".to_string())),
         Transaction::Declare(_declare_transaction) => {
-            Err(ManagerError::InternalError("Declare".to_string()))
+            Err(ManagerError::Internal("Declare".to_string()))
             // BroadcastedTransaction::Declare(match declare_transaction {
             //     DeclareTransaction::V0(_) => panic!("V0"),
             //     DeclareTransaction::V1(tx) => {
@@ -413,7 +413,7 @@ fn block_transaction_to_broadcasted_transaction(
             //     }
             // })
         }
-        Transaction::Deploy(_) => Err(ManagerError::InternalError("Deploy".to_string())),
+        Transaction::Deploy(_) => Err(ManagerError::Internal("Deploy".to_string())),
         Transaction::DeployAccount(tx) => Ok(BroadcastedTransaction::DeployAccount(match tx {
             DeployAccountTransaction::V1(tx) => {
                 BroadcastedDeployAccountTransaction::V1(BroadcastedDeployAccountTransactionV1 {

@@ -32,29 +32,29 @@ impl Display for JunoBranch {
 
 #[derive(Debug)]
 pub enum ManagerError {
-    ProviderError(ProviderError),
-    InternalError(String),
-    IOError(std::io::Error),
+    Provider(ProviderError),
+    Internal(String),
+    IO(std::io::Error),
 }
 
 impl From<ProviderError> for ManagerError {
     fn from(value: ProviderError) -> Self {
-        Self::ProviderError(value)
+        Self::Provider(value)
     }
 }
 
 impl From<std::io::Error> for ManagerError {
     fn from(value: std::io::Error) -> Self {
-        Self::IOError(value)
+        Self::IO(value)
     }
 }
 
 impl Display for ManagerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ManagerError::ProviderError(err) => write!(f, "Manager error: {}", err),
-            ManagerError::InternalError(err) => write!(f, "Internal error: {}", err),
-            ManagerError::IOError(err) => write!(f, "IO error: {}", err),
+            ManagerError::Provider(err) => write!(f, "Manager error: {}", err),
+            ManagerError::Internal(err) => write!(f, "Internal error: {}", err),
+            ManagerError::IO(err) => write!(f, "IO error: {}", err),
         }
     }
 }
@@ -84,9 +84,8 @@ pub struct JunoManager {
 
 impl JunoManager {
     pub async fn new(branch: JunoBranch) -> Result<Self, ManagerError> {
-        let config = Config::from_path(Path::new("./config.toml")).map_err(|e| {
-            ManagerError::InternalError(format!("Failed to create config: '{e:?}'"))
-        })?;
+        let config = Config::from_path(Path::new("./config.toml"))
+            .map_err(|e| ManagerError::Internal(format!("Failed to create config: '{e:?}'")))?;
 
         let mut juno_manager = JunoManager {
             branch,
@@ -176,7 +175,7 @@ impl JunoManager {
                         self.spawn_process_unchecked()
                     }
                     Ok(None) => {}
-                    Err(err) => return Err(ManagerError::InternalError(format!("{err}"))),
+                    Err(err) => return Err(ManagerError::Internal(format!("{err}"))),
                 }
             } else {
                 debug!(
@@ -209,7 +208,7 @@ impl JunoManager {
                 },
             }
         }
-        Err(ManagerError::InternalError(format!(
+        Err(ManagerError::Internal(format!(
             "Failed to set up Juno in {time_limit_seconds} seconds",
         )))
     }
@@ -267,11 +266,11 @@ async fn terminate_process(mut process: Child) -> Result<(), ManagerError> {
     tokio::select! {
         status = process.wait() => match status {
             Ok(status) => { debug!("Juno (PID {id}) exited with {status:?}"); Ok(())},
-            Err(err) => { Err(ManagerError::InternalError(format!("Failed to kill Juno (PID {id}): {err}")))},
+            Err(err) => { Err(ManagerError::Internal(format!("Failed to kill Juno (PID {id}): {err}")))},
         },
         _time = {tokio::time::sleep(Duration::from_secs(10))} => match process.kill().await {
             Ok(()) => {debug!("Forcibly killed Juno (PID {id})"); Ok(())},
-            Err(err) => Err(ManagerError::InternalError(format!("Failed to kill Juno by force: {err}"))),
+            Err(err) => Err(ManagerError::Internal(format!("Failed to kill Juno by force: {err}"))),
         },
     }
 }
