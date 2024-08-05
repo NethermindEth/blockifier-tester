@@ -8,6 +8,7 @@ use std::{
 
 use anyhow::Context;
 use log::{debug, info, warn};
+use nix::sys::signal;
 use starknet::{
     core::types::{BlockId, MaybePendingBlockWithTxs},
     providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider, ProviderError, Url},
@@ -221,14 +222,15 @@ impl JunoManager {
         let start_time = SystemTime::now();
         info!("Killing {} Juno... (by ensure_dead)", self.branch);
         if let Some(process) = self.process.as_mut() {
-            let id = process.id().to_string();
-            debug!("Spawning kill -s INT {id}");
-            let mut kill = Command::new("kill")
-                .args(["-s", "INT", &id])
-                .spawn()
-                .expect("Failed to spawn kill process");
-            kill.wait().expect("Failed to send sigint");
-            self.process = None;
+            let id = process.id();
+            debug!("Sending SIGTERM to {id}");
+            let _ = signal::kill(nix::unistd::Pid::from_raw(id as i32), signal::SIGTERM);
+
+            match process.wait() {
+                Ok(status) => info!("wait exit status {status:?}"),
+                Err(err) => info!("failed to kill {err}"),
+            }
+
             while start_time.elapsed().unwrap().as_secs() < 30 {
                 let ping_result = self.rpc_client.block_number().await;
                 match ping_result {
@@ -236,12 +238,19 @@ impl JunoManager {
                         async_std::task::sleep(Duration::from_millis(100)).await;
                     }
                     Err(err) => {
-                        info!("{} Juno Killed", self.branch);
+                        match process.try_wait() {
+                            Ok(code) => {
+                                info!("{} Juno Killed with Exit Code {code:?}", self.branch)
+                            }
+                            Err(_) => info!("Could not reap Juno"),
+                        }
+                        self.process = None;
                         debug!("Received error (as expected): {err}");
                         return Ok(());
                     }
                 }
             }
+            self.process = None;
             Err(ManagerError::InternalError(
                 "Juno still contactable after 30 seconds".to_string(),
             ))
