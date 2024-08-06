@@ -75,9 +75,7 @@ impl TransactionSimulator for JunoManager {
         let max_transaction = block.transactions().len();
         let block_id = match block {
             MaybePendingBlockWithTxs::Block(block) => BlockId::Number(block.block_number),
-            MaybePendingBlockWithTxs::PendingBlock(_) => {
-                BlockId::Tag(BlockTag::Pending)
-            }
+            MaybePendingBlockWithTxs::PendingBlock(_) => BlockId::Tag(BlockTag::Pending),
         };
 
         for (i, transaction) in block.transactions().iter().enumerate() {
@@ -87,6 +85,10 @@ impl TransactionSimulator for JunoManager {
                 i + 1,
                 hash_to_hex(&tx_hash)
             );
+            if let Transaction::L1Handler(_) = transaction {
+                debug!("Skipping L1Handler transaction simulation, {:?}", tx_hash);
+                continue;
+            }
             let expected_result = self
                 .rpc_client
                 .get_transaction_receipt(tx_hash)
