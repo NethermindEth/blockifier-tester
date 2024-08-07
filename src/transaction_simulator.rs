@@ -288,6 +288,95 @@ impl TransactionSimulator for JunoManager {
     }
 }
 
+#[derive(Clone, Debug, Serialize)]
+pub enum TransactionResult {
+    Success,
+    Revert { reason: String },
+    Crash,
+    Unreached,
+
+    // TEMP
+    DeployAccount,
+    L1Handler,
+    Declare,
+}
+
+// To be used when outputting in json format
+impl Display for TransactionResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TransactionResult::Success => write!(f, "Success"),
+            TransactionResult::Revert { reason } => write!(f, "Reverted: {}", reason),
+            TransactionResult::Crash => write!(f, "Crash"),
+            TransactionResult::Unreached => write!(f, "Unreached"),
+            TransactionResult::DeployAccount => {
+                write!(f, "TODO determine success of deploy account transactions")
+            }
+            TransactionResult::L1Handler => write!(f, "L1Handler transactions not handled yet"),
+            TransactionResult::Declare => write!(f, "Declare transactions not handled yet"),
+        }
+    }
+}
+
+impl From<MaybePendingTransactionReceipt> for TransactionResult {
+    fn from(value: MaybePendingTransactionReceipt) -> Self {
+        match value.execution_result() {
+            ExecutionResult::Succeeded => Self::Success,
+            ExecutionResult::Reverted { reason } => Self::Revert {
+                reason: reason.clone(),
+            },
+        }
+    }
+}
+
+pub fn hex_serialize<S>(val: &FieldElement, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_str(&format!("0x{}", hash_to_hex(val)))
+}
+
+fn hash_to_hex(h: &FieldElement) -> String {
+    BigUint::from_bytes_be(&h.to_bytes_be()).to_str_radix(16)
+}
+
+pub struct BlockSimulationReport {
+    pub simulated_reports: Vec<SimulationReport>,
+    pub simulated_transactions: Vec<SimulatedTransaction>,
+    pub transactions_list: Vec<TransactionToSimulate>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SimulationReport {
+    #[serde(serialize_with = "hex_serialize")]
+    pub tx_hash: FieldElement,
+    expected_result: TransactionResult,
+    simulated_result: TransactionResult,
+}
+
+impl Display for SimulationReport {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{{\n\"Hash\": \"{}\",\n\"Expected result\": \"{}\",\n\"Simulated result\": \"{}\"}}",
+            self.tx_hash, self.expected_result, self.simulated_result
+        )
+    }
+}
+
+impl SimulationReport {
+    pub fn is_correct(&self) -> bool {
+        std::mem::discriminant(&self.expected_result)
+            == std::mem::discriminant(&self.simulated_result)
+    }
+}
+
+pub struct TransactionToSimulate {
+    tx: BroadcastedTransaction,
+    pub hash: FieldElement,
+    expected_result: TransactionResult,
+}
+
 async fn block_transaction_to_broadcasted_transaction(
     juno_manager: &JunoManager,
     transaction: &Transaction,
@@ -422,95 +511,6 @@ async fn block_transaction_to_broadcasted_transaction(
             }
         })),
     }
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub enum TransactionResult {
-    Success,
-    Revert { reason: String },
-    Crash,
-    Unreached,
-
-    // TEMP
-    DeployAccount,
-    L1Handler,
-    Declare,
-}
-
-// To be used when outputting in json format
-impl Display for TransactionResult {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TransactionResult::Success => write!(f, "Success"),
-            TransactionResult::Revert { reason } => write!(f, "Reverted: {}", reason),
-            TransactionResult::Crash => write!(f, "Crash"),
-            TransactionResult::Unreached => write!(f, "Unreached"),
-            TransactionResult::DeployAccount => {
-                write!(f, "TODO determine success of deploy account transactions")
-            }
-            TransactionResult::L1Handler => write!(f, "L1Handler transactions not handled yet"),
-            TransactionResult::Declare => write!(f, "Declare transactions not handled yet"),
-        }
-    }
-}
-
-impl From<MaybePendingTransactionReceipt> for TransactionResult {
-    fn from(value: MaybePendingTransactionReceipt) -> Self {
-        match value.execution_result() {
-            ExecutionResult::Succeeded => Self::Success,
-            ExecutionResult::Reverted { reason } => Self::Revert {
-                reason: reason.clone(),
-            },
-        }
-    }
-}
-
-pub fn hex_serialize<S>(val: &FieldElement, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    serializer.serialize_str(&format!("0x{}", hash_to_hex(val)))
-}
-
-fn hash_to_hex(h: &FieldElement) -> String {
-    BigUint::from_bytes_be(&h.to_bytes_be()).to_str_radix(16)
-}
-
-pub struct BlockSimulationReport {
-    pub simulated_reports: Vec<SimulationReport>,
-    pub simulated_transactions: Vec<SimulatedTransaction>,
-    pub transactions_list: Vec<TransactionToSimulate>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct SimulationReport {
-    #[serde(serialize_with = "hex_serialize")]
-    pub tx_hash: FieldElement,
-    expected_result: TransactionResult,
-    simulated_result: TransactionResult,
-}
-
-impl Display for SimulationReport {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{{\n\"Hash\": \"{}\",\n\"Expected result\": \"{}\",\n\"Simulated result\": \"{}\"}}",
-            self.tx_hash, self.expected_result, self.simulated_result
-        )
-    }
-}
-
-impl SimulationReport {
-    pub fn is_correct(&self) -> bool {
-        std::mem::discriminant(&self.expected_result)
-            == std::mem::discriminant(&self.simulated_result)
-    }
-}
-
-pub struct TransactionToSimulate {
-    tx: BroadcastedTransaction,
-    pub hash: FieldElement,
-    expected_result: TransactionResult,
 }
 
 fn get_block_transaction_hash(transaction: &Transaction) -> FieldElement {
