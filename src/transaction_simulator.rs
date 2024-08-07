@@ -155,7 +155,13 @@ impl TransactionSimulator for JunoManager {
                 TransactionResult::Unreached
             } else {
                 found_crash = true;
-                TransactionResult::Crash
+                let tx = &block.transactions()[i];
+                if let Transaction::L1Handler(_) = tx {
+                    TransactionResult::L1Handler
+                } else {
+                    found_crash = true;
+                    TransactionResult::Crash
+                }
             };
             report.push(SimulationReport {
                 tx_hash: tx.hash,
@@ -289,7 +295,7 @@ async fn block_transaction_to_broadcasted_transaction(
 ) -> Result<BroadcastedTransaction, ManagerError> {
     match transaction {
         Transaction::Invoke(invoke_transaction) => match invoke_transaction {
-            InvokeTransaction::V0(_) => Err(ManagerError::InternalError("V0 invoke".to_string())),
+            InvokeTransaction::V0(_) => Err(ManagerError::Internal("V0 invoke".to_string())),
             InvokeTransaction::V1(tx) => Ok(BroadcastedTransaction::Invoke(
                 BroadcastedInvokeTransaction::V1(BroadcastedInvokeTransactionV1 {
                     sender_address: tx.sender_address,
@@ -316,7 +322,7 @@ async fn block_transaction_to_broadcasted_transaction(
                 }),
             )),
         },
-        Transaction::L1Handler(_) => Err(ManagerError::InternalError("L1Handler".to_string())),
+        Transaction::L1Handler(_) => Err(ManagerError::Internal("L1Handler".to_string())),
         Transaction::Declare(declare_transaction) => {
             Ok(BroadcastedTransaction::Declare(match declare_transaction {
                 DeclareTransaction::V0(_) => panic!("V0"),
@@ -325,9 +331,7 @@ async fn block_transaction_to_broadcasted_transaction(
                         .rpc_client
                         .get_class(block_id, tx.class_hash)
                         .await
-                        .map_err(|_| {
-                            ManagerError::InternalError(String::from("class not found"))
-                        })?;
+                        .map_err(|_| ManagerError::Internal(String::from("class not found")))?;
                     if let ContractClass::Legacy(contract_class) = contract_class {
                         BroadcastedDeclareTransaction::V1(BroadcastedDeclareTransactionV1 {
                             sender_address: tx.sender_address,
@@ -346,9 +350,7 @@ async fn block_transaction_to_broadcasted_transaction(
                         .rpc_client
                         .get_class(block_id, tx.class_hash)
                         .await
-                        .map_err(|_| {
-                            ManagerError::InternalError(String::from("class not found"))
-                        })?;
+                        .map_err(|_| ManagerError::Internal(String::from("class not found")))?;
                     if let ContractClass::Sierra(contract_class) = contract_class {
                         BroadcastedDeclareTransaction::V2(BroadcastedDeclareTransactionV2 {
                             sender_address: tx.sender_address,
@@ -368,9 +370,7 @@ async fn block_transaction_to_broadcasted_transaction(
                         .rpc_client
                         .get_class(block_id, tx.class_hash)
                         .await
-                        .map_err(|_| {
-                            ManagerError::InternalError(String::from("class not found"))
-                        })?;
+                        .map_err(|_| ManagerError::Internal(String::from("class not found")))?;
                     if let ContractClass::Sierra(contract_class) = contract_class {
                         BroadcastedDeclareTransaction::V3(BroadcastedDeclareTransactionV3 {
                             sender_address: tx.sender_address,
@@ -392,7 +392,7 @@ async fn block_transaction_to_broadcasted_transaction(
                 }
             }))
         }
-        Transaction::Deploy(_) => Err(ManagerError::InternalError("Deploy".to_string())),
+        Transaction::Deploy(_) => Err(ManagerError::Internal("Deploy".to_string())),
         Transaction::DeployAccount(tx) => Ok(BroadcastedTransaction::DeployAccount(match tx {
             DeployAccountTransaction::V1(tx) => {
                 BroadcastedDeployAccountTransaction::V1(BroadcastedDeployAccountTransactionV1 {
@@ -511,95 +511,6 @@ pub struct TransactionToSimulate {
     tx: BroadcastedTransaction,
     pub hash: FieldElement,
     expected_result: TransactionResult,
-}
-
-fn block_transaction_to_broadcasted_transaction(
-    transaction: &Transaction,
-) -> Result<BroadcastedTransaction, ManagerError> {
-    match transaction {
-        Transaction::Invoke(invoke_transaction) => match invoke_transaction {
-            InvokeTransaction::V0(_) => Err(ManagerError::Internal("V0 invoke".to_string())),
-            InvokeTransaction::V1(tx) => Ok(BroadcastedTransaction::Invoke(
-                BroadcastedInvokeTransaction::V1(BroadcastedInvokeTransactionV1 {
-                    sender_address: tx.sender_address,
-                    calldata: tx.calldata.clone(),
-                    max_fee: tx.max_fee,
-                    signature: tx.signature.clone(),
-                    nonce: tx.nonce,
-                    is_query: false,
-                }),
-            )),
-            InvokeTransaction::V3(tx) => Ok(BroadcastedTransaction::Invoke(
-                BroadcastedInvokeTransaction::V3(BroadcastedInvokeTransactionV3 {
-                    sender_address: tx.sender_address,
-                    calldata: tx.calldata.clone(),
-                    signature: tx.signature.clone(),
-                    nonce: tx.nonce,
-                    resource_bounds: tx.resource_bounds.clone(),
-                    tip: tx.tip,
-                    paymaster_data: tx.paymaster_data.clone(),
-                    account_deployment_data: tx.account_deployment_data.clone(),
-                    nonce_data_availability_mode: tx.nonce_data_availability_mode,
-                    fee_data_availability_mode: tx.fee_data_availability_mode,
-                    is_query: false,
-                }),
-            )),
-        },
-        Transaction::L1Handler(_) => Err(ManagerError::Internal("L1Handler".to_string())),
-        Transaction::Declare(_declare_transaction) => {
-            Err(ManagerError::Internal("Declare".to_string()))
-            // BroadcastedTransaction::Declare(match declare_transaction {
-            //     DeclareTransaction::V0(_) => panic!("V0"),
-            //     DeclareTransaction::V1(tx) => {
-            //         BroadcastedDeclareTransaction::V1(BroadcastedDeclareTransactionV1 {
-            //             sender_address: tx.sender_address,
-            //             max_fee: tx.max_fee,
-            //             signature: tx.signature.clone(),
-            //             nonce: tx.nonce,
-            //             contract_class: todo!("contract class"), DO NOT USE todo!
-            //             is_query: false,
-            //         })
-            //     }
-            //     DeclareTransaction::V2(_tx) => {
-            //         todo!("Declare v2")
-            //         // BroadcastedDeclareTransaction::V2()
-            //     }
-            //     DeclareTransaction::V3(_tx) => {
-            //         todo!("Declare v3")
-            //         // BroadcastedDeclareTransaction::V3()
-            //     }
-            // })
-        }
-        Transaction::Deploy(_) => Err(ManagerError::Internal("Deploy".to_string())),
-        Transaction::DeployAccount(tx) => Ok(BroadcastedTransaction::DeployAccount(match tx {
-            DeployAccountTransaction::V1(tx) => {
-                BroadcastedDeployAccountTransaction::V1(BroadcastedDeployAccountTransactionV1 {
-                    max_fee: tx.max_fee,
-                    signature: tx.signature.clone(),
-                    nonce: tx.nonce,
-                    contract_address_salt: tx.contract_address_salt,
-                    constructor_calldata: tx.constructor_calldata.clone(),
-                    class_hash: tx.class_hash,
-                    is_query: false,
-                })
-            }
-            DeployAccountTransaction::V3(tx) => {
-                BroadcastedDeployAccountTransaction::V3(BroadcastedDeployAccountTransactionV3 {
-                    signature: tx.signature.clone(),
-                    nonce: tx.nonce,
-                    contract_address_salt: tx.contract_address_salt,
-                    constructor_calldata: tx.constructor_calldata.clone(),
-                    class_hash: tx.class_hash,
-                    resource_bounds: tx.resource_bounds.clone(),
-                    tip: tx.tip,
-                    paymaster_data: tx.paymaster_data.clone(),
-                    nonce_data_availability_mode: tx.nonce_data_availability_mode,
-                    fee_data_availability_mode: tx.fee_data_availability_mode,
-                    is_query: false,
-                })
-            }
-        })),
-    }
 }
 
 fn get_block_transaction_hash(transaction: &Transaction) -> FieldElement {
