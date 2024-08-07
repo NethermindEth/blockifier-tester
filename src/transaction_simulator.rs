@@ -430,6 +430,11 @@ pub enum TransactionResult {
     Revert { reason: String },
     Crash,
     Unreached,
+
+    // TEMP
+    DeployAccount,
+    L1Handler,
+    Declare,
 }
 
 // To be used when outputting in json format
@@ -440,6 +445,11 @@ impl Display for TransactionResult {
             TransactionResult::Revert { reason } => write!(f, "Reverted: {}", reason),
             TransactionResult::Crash => write!(f, "Crash"),
             TransactionResult::Unreached => write!(f, "Unreached"),
+            TransactionResult::DeployAccount => {
+                write!(f, "TODO determine success of deploy account transactions")
+            }
+            TransactionResult::L1Handler => write!(f, "L1Handler transactions not handled yet"),
+            TransactionResult::Declare => write!(f, "Declare transactions not handled yet"),
         }
     }
 }
@@ -617,8 +627,8 @@ fn get_simulated_transaction_result(transaction: &SimulatedTransaction) -> Trans
                 reason: tx.revert_reason.clone(),
             },
         },
-        TransactionTrace::DeployAccount(_) => TransactionResult::Success,
-        TransactionTrace::L1Handler(_) => TransactionResult::Success,
-        TransactionTrace::Declare(_) => TransactionResult::Success,
+        TransactionTrace::DeployAccount(_) => TransactionResult::DeployAccount,
+        TransactionTrace::L1Handler(_) => TransactionResult::L1Handler,
+        TransactionTrace::Declare(_) => TransactionResult::Declare,
     }
 }
