@@ -63,6 +63,7 @@ pub trait TransactionSimulator {
 }
 
 impl TransactionSimulator for JunoManager {
+    /// Returns a list of transactions to simulate. Note that [`Transaction::L1Handler`] transactions are currently skipped.
     async fn get_transactions_to_simulate(
         &mut self,
         block: &MaybePendingBlockWithTxs,
@@ -86,7 +87,10 @@ impl TransactionSimulator for JunoManager {
                 hash_to_hex(&tx_hash)
             );
             if let Transaction::L1Handler(_) = transaction {
-                debug!("Skipping L1Handler transaction simulation, {:?}", tx_hash);
+                debug!(
+                    "Skipping L1Handler transaction simulation, {:?}",
+                    tx_hash.to_string()
+                );
                 continue;
             }
             let expected_result = self
@@ -147,27 +151,41 @@ impl TransactionSimulator for JunoManager {
 
         let mut found_crash = false;
         let mut report = vec![];
-        for i in 0..transactions.len() {
-            let tx = &transactions[i];
-            let simulated_result = if i < simulation_results.len() {
-                get_simulated_transaction_result(&simulation_results[i])
-            } else if found_crash {
-                TransactionResult::Unreached
-            } else {
-                found_crash = true;
-                let tx = &block.transactions()[i];
-                if let Transaction::L1Handler(_) = tx {
-                    TransactionResult::L1Handler
+        for tx in block.transactions() {
+            let tx_hash = tx.transaction_hash();
+            let index = transactions
+                .iter()
+                .position(|transaction| transaction.hash.eq(tx_hash));
+
+            if let Some(i) = index {
+                let simulated_result = if i < simulation_results.len() {
+                    get_simulated_transaction_result(&simulation_results[i])
+                } else if found_crash {
+                    TransactionResult::Unreached
                 } else {
                     found_crash = true;
                     TransactionResult::Crash
-                }
-            };
-            report.push(SimulationReport {
-                tx_hash: tx.hash,
-                simulated_result,
-                expected_result: tx.expected_result.clone(),
-            });
+                };
+                let expected_result = &transactions[i].expected_result;
+                report.push(SimulationReport {
+                    tx_hash: *tx_hash,
+                    simulated_result,
+                    expected_result: expected_result.clone(),
+                });
+            } else if let Transaction::L1Handler(skipped_tx) = tx {
+                let expected_result = self
+                    .rpc_client
+                    .get_transaction_receipt(skipped_tx.transaction_hash)
+                    .await?
+                    .into();
+                report.push(SimulationReport {
+                    tx_hash: *tx_hash,
+                    simulated_result: TransactionResult::L1Handler,
+                    expected_result,
+                });
+            } else {
+                debug!("Skipping simulation report, transaction was not simulated for: {:?}", tx_hash.to_string());
+            }
         }
 
         Ok(BlockSimulationReport {
