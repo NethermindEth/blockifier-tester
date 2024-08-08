@@ -26,7 +26,7 @@ use juno_manager::{JunoBranch, JunoManager, ManagerError};
 use log::{error, info, warn};
 use starknet::core::types::SimulationFlag;
 use std::io::Write;
-use trace_comparison::{generate_block_comparison, tidy_trace_roots};
+use trace_comparison::generate_block_comparison;
 use transaction_simulator::{SimulationStrategy, TransactionSimulator};
 use transaction_tracer::TraceResult;
 
@@ -107,8 +107,7 @@ async fn execute_traces(
                             warn!("Error writing transaction dependencies: {e:?}");
                         }
                         let comparison = generate_block_comparison(base_report, native_report);
-                        let tidied_comparison = tidy_trace_roots(comparison);
-                        log_comparison_report(block_number, tidied_comparison).await;
+                        log_comparison_report(block_number, comparison).await;
                     }
                     Ok(native_report) => {
                         // When tracing a block with native fails, the next step is performing a
