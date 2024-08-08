@@ -137,9 +137,10 @@ pub fn tidy_trace_roots(comparison_report: Value) -> Value {
     })
 }
 
-fn contains_key(trace_root: &Value, target_key: &String) -> bool {
+// BFS to check whether target key is present in JSON object
+fn contains_key(object: &Value, target_key: &String) -> bool {
     let mut queue = VecDeque::new();
-    queue.push_back(trace_root);
+    queue.push_back(object);
 
     while let Some(current_object) = queue.pop_front() {
         if let Some(map) = current_object.as_object() {
@@ -150,6 +151,10 @@ fn contains_key(trace_root: &Value, target_key: &String) -> bool {
 
                 if value.is_object() {
                     queue.push_back(value);
+                } else if value.is_array() {
+                    for item in value.as_array().unwrap() {
+                        queue.push_back(item);
+                    }
                 }
             }
         }
