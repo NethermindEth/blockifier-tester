@@ -26,7 +26,7 @@ use juno_manager::{JunoBranch, JunoManager, ManagerError};
 use log::{error, info, warn};
 use starknet::core::types::{SimulationFlag, TransactionTraceWithHash};
 use std::io::Write;
-use trace_comparison::{generate_block_comparison, tidy_trace_roots};
+use trace_comparison::generate_block_comparison;
 use transaction_simulator::{SimulationStrategy, TransactionSimulator};
 use transaction_tracer::TraceResult;
 

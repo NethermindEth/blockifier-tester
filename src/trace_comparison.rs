@@ -82,15 +82,6 @@ impl From<ComparisonResult> for Value {
     }
 }
 
-fn trace_block_report_to_json(block_num: u64, mut traces: Vec<TransactionTraceWithHash>) -> Value {
-    normalize_traces_state_diff(&mut traces);
-
-    json!({
-        "block_num": block_num,
-        "post_response": block_report_with_dependencies(&traces)
-    })
-}
-
 fn normalize_traces_state_diff(traces: &mut Vec<TransactionTraceWithHash>) {
     let normalize = |maybe_state_diff: &mut Option<StateDiff>| {
         if let Some(state_diff) = maybe_state_diff {
@@ -110,17 +101,14 @@ fn normalize_traces_state_diff(traces: &mut Vec<TransactionTraceWithHash>) {
     }
 }
 
-pub fn tidy_trace_roots(comparison_report: Value) -> Value {
-    let post_response = comparison_report["post_response"]
-        .as_array()
-        .expect("post_response is not an array");
-
+/// Takes an already compared `post_response` and removes unnecessary fields if "trace_root" is "Same"
+pub fn tidy_post_response(post_response: Vec<Value>) -> Vec<Value> {
     let mut output = vec![Value::Null; post_response.len()];
     for (index, trace) in post_response.iter().enumerate() {
-        // check if there are any keys called "Different" recursively
+        // Check if there are any keys called "Different" recursively
         let is_different = contains_key(&trace["trace_root"], &String::from("Different"));
 
-        // If all fields are the same, we only return the trace_field with transaction_hash
+        // If all fields are the same, we only return select fields
         let trace_map = trace.as_object().expect("trace is not an object");
         if !is_different {
             output[index] = json!({
@@ -131,10 +119,7 @@ pub fn tidy_trace_roots(comparison_report: Value) -> Value {
             output[index] = trace.clone();
         }
     }
-    json!({
-        "block_num": comparison_report["block_num"],
-        "post_response": output,
-    })
+    output
 }
 
 // BFS to check whether target key is present in JSON object
@@ -163,20 +148,36 @@ fn contains_key(object: &Value, target_key: &String) -> bool {
     false
 }
 
-// Take two JSONs and compare each (key, value) recursively.
-// It will consume the two JSON as well.
-// Store the resutls in an output JSON.
 pub fn generate_block_comparison(
     block_number: u64,
     base_traces: Vec<TransactionTraceWithHash>,
     native_traces: Vec<TransactionTraceWithHash>,
 ) -> Value {
-    compare_jsons(
-        trace_block_report_to_json(block_number, base_traces),
-        trace_block_report_to_json(block_number, native_traces),
-    )
+    let mut base_traces = base_report.post_response.unwrap_or_default();
+    let mut native_traces = native_report.post_response.unwrap_or_default();
+
+    normalize_traces_state_diff(&mut base_traces);
+    normalize_traces_state_diff(&mut native_traces);
+
+    let base_block_report = block_report_with_dependencies(&base_traces);
+    let native_block_report = block_report_with_dependencies(&native_traces);
+
+    let post_response = compare_jsons(base_block_report, native_block_report)
+        .as_array()
+        .expect("post_response is not an array")
+        .to_vec();
+
+    let tidied_post_response = tidy_post_response(post_response);
+
+    json!({
+        "block_num": base_report.block_num,
+        "post_response": tidied_post_response,
+    })
 }
 
+/// Take two JSONs and compare each (key, value) recursively.
+/// It will consume the two JSON as well.
+/// Store the resutls in an output JSON.
 pub fn compare_jsons(json_1: Value, json_2: Value) -> Value {
     let output = compare_json_values(json_1, json_2);
     clean_json_value(output)
@@ -713,41 +714,94 @@ mod tests {
     }
 
     #[test]
-    fn test_tidy_trace_roots() {
-        let comparison_report = json!({
-            "block_num": "Same(633333)",
-            "post_response": [{
-                "contract_dependencies": "Same([0])",
-                "storage_dependencies": "Same([0])",
-                "trace_root": {
-                    "execute_invocation": {
+    fn test_generate_block_comparison() {
+        let comparison_report_with_all_same = json!([{
+            "contract_dependencies": "Same([0])",
+            "storage_dependencies": "Same([0])",
+            "trace_root": {
+                "execute_invocation": {
+                "call_type": "Same(CALL)",
+                "calldata": "Same([8])",
+                "caller_address": "Same(0x0)",
+                "calls": [{
                     "call_type": "Same(CALL)",
-                    "calldata": "Same([8])",
-                    "caller_address": "Same(0x0)",
-                    "calls": [{
-                        "call_type": "Same(CALL)",
-                        "calldata": "Same([4])",
-                        "caller_address": "Same(0x9f481dc204eef7d51f908fb6243be9a0d96d872053233dccdf131109b6e398)",
-                        "calls": []
-                    }]
-                    },
+                    "calldata": "Same([4])",
+                    "caller_address": "Same(0x9f481dc204eef7d51f908fb6243be9a0d96d872053233dccdf131109b6e398)",
+                    "calls": []
+                }]
                 },
-                "transaction_hash": "Same(0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9)"
-            }]
-        });
+            },
+            "transaction_hash": "Same(0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9)"
+        }]);
 
-        let result = tidy_trace_roots(comparison_report);
+        let result =
+            tidy_post_response(comparison_report_with_all_same.as_array().unwrap().to_vec());
         assert_eq!(
             result,
-            json!({
-                "block_num": "Same(633333)",
-                "post_response": [
-                    {
-                        "trace_root": "Same",
-                        "transaction_hash": "Same(0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9)"
-                    }
-                ]
-            })
+            json!([
+                {
+                    "trace_root": "Same",
+                    "transaction_hash": "Same(0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9)"
+                }
+            ]).as_array().unwrap().to_vec()
+        );
+
+        let comparison_report_with_some_different = json!([{
+            "contract_dependencies": "Same([0])",
+            "storage_dependencies": "Same([0])",
+            "trace_root": {
+                "execute_invocation": {
+                    "call_type": "Same(CALL)",
+                    "calldata": "Same([4])",
+                    "caller_address": "Same(0x9f481dc204eef7d51f908fb6243be9a0d96d872053233dccdf131109b6e398)",
+                    "calls": [{
+                        "call_type": "Same(CALL)",
+                        "calldata": "Same([8])",
+                        "caller_address": {
+                            "Different": {
+                                "base": "0x0",
+                                "native": "0x1"
+                            }
+                        },
+                        "calls": []
+                    }]
+                },
+            },
+            "transaction_hash": "Same(0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9)"
+        }]);
+
+        let result = tidy_post_response(
+            comparison_report_with_some_different
+                .as_array()
+                .unwrap()
+                .to_vec(),
+        );
+        assert_eq!(
+            result,
+            json!([
+                {
+                    "contract_dependencies": "Same([0])",
+                    "storage_dependencies": "Same([0])",
+                    "trace_root": {
+                        "execute_invocation": {
+                            "call_type": "Same(CALL)",
+                            "calldata": "Same([4])",
+                            "caller_address": "Same(0x9f481dc204eef7d51f908fb6243be9a0d96d872053233dccdf131109b6e398)", "calls": [{
+                                "call_type": "Same(CALL)",
+                                "calldata": "Same([8])",
+                                "caller_address": {
+                                    "Different": {
+                                        "base": "0x0",
+                                        "native": "0x1"
+                                    }
+                                },
+                                "calls": []
+                            }]
+                        }
+                    },
+                    "transaction_hash": "Same(0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9)"
+                }
+            ]).as_array().unwrap().to_vec()
         );
     }
 
