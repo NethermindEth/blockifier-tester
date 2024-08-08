@@ -101,53 +101,6 @@ fn normalize_traces_state_diff(traces: &mut Vec<TransactionTraceWithHash>) {
     }
 }
 
-/// Takes an already compared `post_response` and removes unnecessary fields if "trace_root" is "Same"
-pub fn tidy_post_response(post_response: Vec<Value>) -> Vec<Value> {
-    let mut output = vec![Value::Null; post_response.len()];
-    for (index, trace) in post_response.iter().enumerate() {
-        // Check if there are any keys called "Different" recursively
-        let is_different = contains_key(&trace["trace_root"], &String::from("Different"));
-
-        // If all fields are the same, we only return select fields
-        let trace_map = trace.as_object().expect("trace is not an object");
-        if !is_different {
-            output[index] = json!({
-                "transaction_hash": trace_map.get("transaction_hash").expect("transaction_hash not found"),
-                "trace_root": "Same"
-            })
-        } else {
-            output[index] = trace.clone();
-        }
-    }
-    output
-}
-
-// BFS to check whether target key is present in JSON object
-fn contains_key(object: &Value, target_key: &String) -> bool {
-    let mut queue = VecDeque::new();
-    queue.push_back(object);
-
-    while let Some(current_object) = queue.pop_front() {
-        if let Some(map) = current_object.as_object() {
-            for (key, value) in map {
-                if key.cmp(target_key) == Ordering::Equal {
-                    return true;
-                }
-
-                if value.is_object() {
-                    queue.push_back(value);
-                } else if value.is_array() {
-                    for item in value.as_array().unwrap() {
-                        queue.push_back(item);
-                    }
-                }
-            }
-        }
-    }
-
-    false
-}
-
 pub fn generate_block_comparison(
     block_number: u64,
     base_traces: Vec<TransactionTraceWithHash>,
@@ -162,16 +115,17 @@ pub fn generate_block_comparison(
     let base_block_report = block_report_with_dependencies(&base_traces);
     let native_block_report = block_report_with_dependencies(&native_traces);
 
-    let post_response = compare_jsons(base_block_report, native_block_report)
-        .as_array()
-        .expect("post_response is not an array")
-        .to_vec();
+    let mut post_response = vec![];
 
-    let tidied_post_response = tidy_post_response(post_response);
+    if let (Value::Array(base), Value::Array(native)) = (&base_block_report, &native_block_report) {
+        for (base_trace, native_trace) in base.iter().zip(native.iter()) {
+            post_response.push(compare_trace(base_trace.clone(), native_trace.clone()));
+        }
+    }
 
     json!({
         "block_num": base_report.block_num,
-        "post_response": tidied_post_response,
+        "post_response": post_response,
     })
 }
 
@@ -305,6 +259,63 @@ fn compare_storage_entries(base_diffs: Value, native_diffs: Value) -> Value {
     }
 
     Value::Array(output)
+}
+
+/// Compares the trace of two block reports.
+/// If the trace roots are different, it compares the contract dependencies and storage dependencies.
+/// Otherwise, it skips comparison for contract dependencies and storage dependencies.
+fn compare_trace(base_trace: Value, native_trace: Value) -> Value {
+    let base_trace_root = base_trace["trace_root"].clone();
+    let native_trace_root = native_trace["trace_root"].clone();
+
+    let trace_root_comparison = compare_jsons(base_trace_root, native_trace_root);
+    let transaction_hash_comparison = compare_jsons(
+        base_trace["transaction_hash"].clone(),
+        native_trace["transaction_hash"].clone(),
+    );
+    let is_different = contains_key(&trace_root_comparison, &String::from("Different"));
+
+    if !is_different {
+        json!({
+            "transaction_hash": transaction_hash_comparison,
+            "trace_root": "Same"
+        })
+    } else {
+        json!({
+            "contract_dependencies": compare_jsons(base_trace["contract_dependencies"].clone(), native_trace["contract_dependencies"].clone()),
+            "storage_dependencies": compare_jsons(base_trace["storage_dependencies"].clone(), native_trace["storage_dependencies"].clone()),
+            "transaction_hash": transaction_hash_comparison,
+            "trace_root": trace_root_comparison.clone()
+        })
+    }
+}
+
+/// BFS to check whether target key is present in JSON object
+fn contains_key(object: &Value, target_key: &String) -> bool {
+    let mut queue = VecDeque::new();
+    queue.push_back(object);
+
+    while let Some(current_object) = queue.pop_front() {
+        if let Some(map) = current_object.as_object() {
+            for (key, value) in map {
+                if key.cmp(target_key) == Ordering::Equal {
+                    return true;
+                }
+
+                if value.is_object() {
+                    queue.push_back(value);
+                } else if value.is_array() {
+                    for item in value.as_array().unwrap() {
+                        if item.is_object() {
+                            queue.push_back(item);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    false
 }
 
 fn clean_json_value(val: Value) -> Value {
@@ -715,93 +726,92 @@ mod tests {
 
     #[test]
     fn test_generate_block_comparison() {
-        let comparison_report_with_all_same = json!([{
-            "contract_dependencies": "Same([0])",
-            "storage_dependencies": "Same([0])",
+        let base_trace = json!({
+            "contract_dependencies": "[0]",
+            "storage_dependencies": "[0]",
             "trace_root": {
                 "execute_invocation": {
-                "call_type": "Same(CALL)",
-                "calldata": "Same([8])",
-                "caller_address": "Same(0x0)",
-                "calls": [{
-                    "call_type": "Same(CALL)",
-                    "calldata": "Same([4])",
-                    "caller_address": "Same(0x9f481dc204eef7d51f908fb6243be9a0d96d872053233dccdf131109b6e398)",
-                    "calls": []
-                }]
-                },
-            },
-            "transaction_hash": "Same(0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9)"
-        }]);
-
-        let result =
-            tidy_post_response(comparison_report_with_all_same.as_array().unwrap().to_vec());
-        assert_eq!(
-            result,
-            json!([
-                {
-                    "trace_root": "Same",
-                    "transaction_hash": "Same(0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9)"
-                }
-            ]).as_array().unwrap().to_vec()
-        );
-
-        let comparison_report_with_some_different = json!([{
-            "contract_dependencies": "Same([0])",
-            "storage_dependencies": "Same([0])",
-            "trace_root": {
-                "execute_invocation": {
-                    "call_type": "Same(CALL)",
-                    "calldata": "Same([4])",
-                    "caller_address": "Same(0x9f481dc204eef7d51f908fb6243be9a0d96d872053233dccdf131109b6e398)",
+                    "call_type": "CALL",
+                    "calldata": "[8]",
+                    "caller_address": "0x0",
                     "calls": [{
-                        "call_type": "Same(CALL)",
-                        "calldata": "Same([8])",
-                        "caller_address": {
-                            "Different": {
-                                "base": "0x0",
-                                "native": "0x1"
-                            }
-                        },
+                        "call_type": "CALL",
+                        "calldata": "[4]",
+                        "caller_address": "0x9f481dc204eef7d51f908fb6243be9a0d96d872053233dccdf131109b6e398",
                         "calls": []
                     }]
                 },
             },
-            "transaction_hash": "Same(0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9)"
-        }]);
-
-        let result = tidy_post_response(
-            comparison_report_with_some_different
-                .as_array()
-                .unwrap()
-                .to_vec(),
-        );
+            "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
+        });
+        let native_trace = base_trace.clone();
+        let result = compare_trace(base_trace, native_trace);
         assert_eq!(
             result,
-            json!([
-                {
-                    "contract_dependencies": "Same([0])",
-                    "storage_dependencies": "Same([0])",
-                    "trace_root": {
-                        "execute_invocation": {
-                            "call_type": "Same(CALL)",
-                            "calldata": "Same([4])",
-                            "caller_address": "Same(0x9f481dc204eef7d51f908fb6243be9a0d96d872053233dccdf131109b6e398)", "calls": [{
-                                "call_type": "Same(CALL)",
-                                "calldata": "Same([8])",
-                                "caller_address": {
-                                    "Different": {
-                                        "base": "0x0",
-                                        "native": "0x1"
-                                    }
-                                },
-                                "calls": []
-                            }]
-                        }
-                    },
-                    "transaction_hash": "Same(0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9)"
-                }
-            ]).as_array().unwrap().to_vec()
+            json!({
+                "trace_root": "Same",
+                "transaction_hash": "Same(0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9)"
+            })
+        );
+
+        let base_trace = json!({
+            "contract_dependencies": "[0]",
+            "storage_dependencies": "[0]",
+            "trace_root": {
+                "execute_invocation": {
+                    "call_type": "CALL",
+                    "calldata": "[8]",
+                    "caller_address": "0x1",
+                    "calls": [{
+                        "call_type": "CALL",
+                        "calldata": "[4]",
+                        "caller_address": "0x9f481dc204eef7d51f908fb6243be9a0d96d872053233dccdf131109b6e398",
+                        "calls": []
+                    }]
+                },
+            },
+            "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
+        });
+        let native_trace = json!({
+            "contract_dependencies": "[0]",
+            "storage_dependencies": "[0]",
+            "trace_root": {
+                "execute_invocation": {
+                    "call_type": "CALL",
+                    "calldata": "[8]",
+                    "caller_address": "0x0",
+                    "calls": [{
+                        "call_type": "CALL",
+                        "calldata": "[4]",
+                        "caller_address": "0x9f481dc204eef7d51f908fb6243be9a0d96d872053233dccdf131109b6e398",
+                        "calls": []
+                    }]
+                },
+            },
+            "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
+        });
+
+        let result = compare_trace(base_trace, native_trace);
+        assert_eq!(
+            result,
+            json!({
+                "contract_dependencies": "Same([0])",
+                "storage_dependencies": "Same([0])",
+                "trace_root": {
+                    "execute_invocation": {
+                        "call_type": "Same(CALL)",
+                        "calldata": "Same([8])",
+                        "caller_address": {
+                            "Different": {
+                                "base": "0x1",
+                                "native": "0x0"
+                            }
+                        },
+                        "calls": "Same([1])"
+                    }
+                },
+                "transaction_hash": "Same(0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9)"
+            })
         );
     }
 
