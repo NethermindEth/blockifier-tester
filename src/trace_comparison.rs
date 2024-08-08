@@ -1,4 +1,7 @@
-use std::collections::BTreeMap;
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, VecDeque},
+};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -105,6 +108,54 @@ fn normalize_traces_state_diff(traces: &mut Vec<TransactionTraceWithHash>) {
             TransactionTrace::L1Handler(tx) => normalize(&mut tx.state_diff),
         }
     }
+}
+
+pub fn tidy_trace_roots(comparison_report: Value) -> Value {
+    let post_response = comparison_report["post_response"]
+        .as_array()
+        .expect("post_response is not an array");
+
+    let mut output = vec![Value::Null; post_response.len()];
+    for (index, trace) in post_response.iter().enumerate() {
+        // check if there are any keys called "Different" recursively
+        let is_different = contains_key(&trace["trace_root"], &String::from("Different"));
+
+        // If all fields are the same, we only return the trace_field with transaction_hash
+        let trace_map = trace.as_object().expect("trace is not an object");
+        if !is_different {
+            output[index] = json!({
+                "transaction_hash": trace_map.get("transaction_hash").expect("transaction_hash not found"),
+                "trace_root": "Same"
+            })
+        } else {
+            output[index] = trace.clone();
+        }
+    }
+    json!({
+        "block_num": comparison_report["block_num"],
+        "post_response": output,
+    })
+}
+
+fn contains_key(trace_root: &Value, target_key: &String) -> bool {
+    let mut queue = VecDeque::new();
+    queue.push_back(trace_root);
+
+    while let Some(current_object) = queue.pop_front() {
+        if let Some(map) = current_object.as_object() {
+            for (key, value) in map {
+                if key.cmp(target_key) == Ordering::Equal {
+                    return true;
+                }
+
+                if value.is_object() {
+                    queue.push_back(value);
+                }
+            }
+        }
+    }
+
+    false
 }
 
 // Take two JSONs and compare each (key, value) recursively.
@@ -654,6 +705,45 @@ mod tests {
                 serde_json::to_string_pretty(&result).unwrap()
             )
         }
+    }
+
+    #[test]
+    fn test_tidy_trace_roots() {
+        let comparison_report = json!({
+            "block_num": "Same(633333)",
+            "post_response": [{
+                "contract_dependencies": "Same([0])",
+                "storage_dependencies": "Same([0])",
+                "trace_root": {
+                    "execute_invocation": {
+                    "call_type": "Same(CALL)",
+                    "calldata": "Same([8])",
+                    "caller_address": "Same(0x0)",
+                    "calls": [{
+                        "call_type": "Same(CALL)",
+                        "calldata": "Same([4])",
+                        "caller_address": "Same(0x9f481dc204eef7d51f908fb6243be9a0d96d872053233dccdf131109b6e398)",
+                        "calls": []
+                    }]
+                    },
+                },
+                "transaction_hash": "Same(0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9)"
+            }]
+        });
+
+        let result = tidy_trace_roots(comparison_report);
+        assert_eq!(
+            result,
+            json!({
+                "block_num": "Same(633333)",
+                "post_response": [
+                    {
+                        "trace_root": "Same",
+                        "transaction_hash": "Same(0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9)"
+                    }
+                ]
+            })
+        );
     }
 
     fn same_array_repr(len: usize) -> String {
