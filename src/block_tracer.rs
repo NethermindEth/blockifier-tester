@@ -1,19 +1,16 @@
 use log::debug;
 use serde::{Deserialize, Serialize};
-use starknet::{
-    core::types::{BlockId, TransactionTraceWithHash},
-    providers::Provider,
-};
+use starknet::{core::types::BlockId, providers::Provider};
 
 use crate::{
     juno_manager::{JunoManager, ManagerError},
     transaction_tracer::TraceResult,
 };
 
-#[derive(Debug, Serialize, Deserialize)]
+// todo(xrvdg) try to get rid of clone
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TraceBlockReport {
     pub block_num: u64,
-    pub post_response: Option<Vec<TransactionTraceWithHash>>,
     pub result: TraceResult,
 }
 
@@ -33,15 +30,13 @@ impl BlockTracer for JunoManager {
         match trace_result {
             Ok(trace_result) => Ok(TraceBlockReport {
                 block_num,
-                result: TraceResult::Success,
-                post_response: Some(trace_result),
+                result: TraceResult::Success(trace_result),
             }),
             Err(provider_error) => Ok(TraceBlockReport {
                 block_num,
                 result: TraceResult::Crash {
                     error: provider_error.to_string(),
                 },
-                post_response: None,
             }),
         }
     }

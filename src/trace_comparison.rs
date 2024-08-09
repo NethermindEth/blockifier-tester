@@ -80,7 +80,7 @@ impl From<ComparisonResult> for Value {
 }
 
 fn trace_block_report_to_json(report: TraceBlockReport) -> Value {
-    let mut traces = report.post_response.unwrap_or_default();
+    let mut traces = report.result.as_success().unwrap_or_default();
 
     normalize_traces_state_diff(&mut traces);
 

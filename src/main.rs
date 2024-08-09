@@ -28,7 +28,6 @@ use starknet::core::types::SimulationFlag;
 use std::io::Write;
 use trace_comparison::generate_block_comparison;
 use transaction_simulator::{SimulationStrategy, TransactionSimulator};
-use transaction_tracer::TraceResult;
 
 fn setup_env_logger() {
     env_logger::Builder::from_env(Env::default().filter_or("LOG_LEVEL", "debug"))
@@ -46,7 +45,9 @@ fn setup_env_logger() {
 
 async fn execute_traces(
     start_block: u64,
+    // end_block should be inclusive
     end_block: u64,
+    // Would be nice to get these bools out
     redo_comparison: bool,
     redo_traces: bool,
     simulation_flags: Vec<SimulationFlag>,
@@ -78,10 +79,12 @@ async fn execute_traces(
         // Second branch is an unexpected crash by Juno/Blockifier/nNative
         match base_trace_result {
             Ok(base_report) => {
-                if base_report.result != TraceResult::Success {
+                if !base_report.result.is_success() {
                     // todo: prettier handling, but low prio.
                     let trace = serde_json::to_string_pretty(&base_report)
                         .unwrap_or(format!("Serialization failed!\n{base_report:?}"));
+
+                    // todo(xrvdg) Early exit, but you can't use panic when doing multiple traces
                     panic!("Tracing with base juno is always expected to work. Check your base juno bin and config. Error:\n{}",trace);
                 }
                 if !using_cached_trace {
@@ -90,6 +93,9 @@ async fn execute_traces(
 
                 info!("Switching from Base Juno to Native Juno");
                 base_juno.ensure_dead().await?;
+
+                // Native starts
+
                 let mut native_juno = JunoManager::new(JunoBranch::Native).await?;
 
                 info!("TRACING block {block_number} with Native. It has {tx_count} transactions");
@@ -97,12 +103,12 @@ async fn execute_traces(
                 // Second branch is an unhandled crash by the blockifier/native during tracing
                 // Third branch is an unexpected crash by Juno Manager
                 match native_juno.trace_block(block_number).await {
-                    Ok(native_report) if native_report.result == TraceResult::Success => {
+                    Ok(native_report) if native_report.result.is_success() => {
                         info!("SUCCESS tracing block with native");
                         if let Err(e) = graph::write_transaction_dependencies(
                             block_number,
                             "native",
-                            native_report.post_response.as_ref().unwrap().iter(),
+                            native_report.clone().result.as_success().unwrap().iter(),
                         ) {
                             warn!("Error writing transaction dependencies: {e:?}");
                         }

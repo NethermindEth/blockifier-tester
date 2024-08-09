@@ -9,10 +9,28 @@ use starknet::{
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum TraceResult {
-    Success,
+    Success(Vec<TransactionTraceWithHash>),
     OtherError(String),
     NotFound,
     Crash { error: String },
+}
+
+// TODO(xrvdg) try to get rid of these again
+impl TraceResult {
+    pub fn is_success(&self) -> bool {
+        match self {
+            TraceResult::Success(_) => true,
+            _ => false,
+        }
+    }
+
+    // What were the naming convention rules about this again?
+    pub fn as_success(self) -> Option<Vec<TransactionTraceWithHash>> {
+        match self {
+            TraceResult::Success(vec) => Some(vec),
+            _ => None,
+        }
+    }
 }
 
 impl From<&ProviderError> for TraceResult {
@@ -45,7 +63,8 @@ impl From<&ProviderError> for TraceResult {
 impl Display for TraceResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
-            TraceResult::Success => write!(f, "TraceResult::Success"),
+            // todo(xrvdg) do we want to include the result here?
+            TraceResult::Success(_) => write!(f, "TraceResult::Success"),
             TraceResult::OtherError(error) => write!(f, "TraceResult::OtherError: '{}'", error),
             TraceResult::NotFound => write!(f, "TraceResult::NotFound"),
             TraceResult::Crash { error } => write!(f, "TraceResult::Crash: '{}'", error),
