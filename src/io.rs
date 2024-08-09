@@ -59,7 +59,7 @@ pub fn log_crash_report(block_number: u64, report: serde_json::Value) {
 }
 
 // Creates a file in ./results/crash-{`block_number`}.json with the failure reason
-pub async fn log_unexpected_error_report(block_number: u64, err: ManagerError) {
+pub async fn log_unexpected_error_report(block_number: u64, err: &ManagerError) {
     let mut log_file = AsyncOpenOptions::new()
         .create(true)
         .write(true)
