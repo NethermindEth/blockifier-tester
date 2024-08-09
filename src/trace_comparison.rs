@@ -4,7 +4,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use starknet::core::types::{StateDiff, TransactionTrace, TransactionTraceWithHash};
 
-use crate::{block_tracer::TraceBlockReport, dependencies::block_report_with_dependencies};
+use crate::{
+    block_tracer::TraceBlockReport, dependencies::block_report_with_dependencies,
+    transaction_tracer::TraceResult,
+};
 
 const SAME: &str = "Same";
 const EMPTY: &str = "Empty";
@@ -112,12 +115,17 @@ fn normalize_traces_state_diff(traces: &mut Vec<TransactionTraceWithHash>) {
 // Take two JSONs and compare each (key, value) recursively.
 // It will consume the two JSON as well.
 // Store the resutls in an output JSON.
+// TODO(xrvdg) only use on successful blocks
 pub fn generate_block_comparison(
-    base_report: TraceBlockReport,
+    block_number: u64,
+    base_report: Vec<TransactionTraceWithHash>,
     native_report: TraceBlockReport,
 ) -> Value {
     compare_jsons(
-        trace_block_report_to_json(base_report),
+        trace_block_report_to_json(TraceBlockReport {
+            block_num: block_number,
+            result: TraceResult::Success(base_report),
+        }),
         trace_block_report_to_json(native_report),
     )
 }

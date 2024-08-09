@@ -28,6 +28,7 @@ use starknet::core::types::SimulationFlag;
 use std::io::Write;
 use trace_comparison::generate_block_comparison;
 use transaction_simulator::{SimulationStrategy, TransactionSimulator};
+use transaction_tracer::TraceResult;
 
 fn setup_env_logger() {
     env_logger::Builder::from_env(Env::default().filter_or("LOG_LEVEL", "debug"))
@@ -101,21 +102,27 @@ async fn execute_traces(
         info!("TRACING block {block_number} with Native. It has {tx_count} transactions");
 
         // logging about base_trace
-        match &base_trace_result {
-            base_report if !base_report.result.is_success() => {
+        let base_trace_result = match base_trace_result.result {
+            TraceResult::Success(trace) => {
+                if !using_cached_trace {
+                    // todo(xrvdg)
+                    // Have to clone because it wants to put it in a blocktracereport
+                    log_base_trace(block_number, trace.clone()).await;
+                }
+                trace
+            }
+
+            base_report => {
                 // todo: prettier handling, but low prio.
                 let trace = serde_json::to_string_pretty(&base_report)
                     .unwrap_or(format!("Serialization failed!\n{base_report:?}"));
 
                 // todo(xrvdg) Early exit, but you can't use panic when doing multiple traces
+                // can now turn this into an error and exit early
                 panic!("Tracing with base juno is always expected to work. Check your base juno bin and config. Error:\n{}",trace);
             }
-            base_report => {
-                if !using_cached_trace {
-                    log_base_trace(block_number, &base_report).await;
-                }
-            }
-        }
+        };
+
         // Invariant now we have a trace block report that we can actuallly use. How can we make this progression in the type?
 
         // First branch is succesful block trace with Native
@@ -131,7 +138,8 @@ async fn execute_traces(
                 ) {
                     warn!("Error writing transaction dependencies: {e:?}");
                 }
-                let comparison = generate_block_comparison(base_trace_result, native_report);
+                let comparison =
+                    generate_block_comparison(block_number, base_trace_result, native_report);
                 log_comparison_report(block_number, comparison).await;
             }
             Ok(native_report) => {

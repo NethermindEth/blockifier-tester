@@ -1,5 +1,6 @@
 use futures::future;
 use serde_json::Value;
+use starknet::core::types::TransactionTraceWithHash;
 use std::{fs::OpenOptions, path::PathBuf};
 use tokio::{
     fs::OpenOptions as AsyncOpenOptions,
@@ -8,7 +9,9 @@ use tokio::{
 
 use log::{debug, info, warn};
 
-use crate::{block_tracer::TraceBlockReport, juno_manager::ManagerError};
+use crate::{
+    block_tracer::TraceBlockReport, juno_manager::ManagerError, transaction_tracer::TraceResult,
+};
 
 pub fn succesful_comparison_path(block_num: u64) -> PathBuf {
     PathBuf::from(format!("results/comparison-{}.json", block_num))
@@ -73,7 +76,7 @@ pub async fn log_unexpected_error_report(block_number: u64, err: &ManagerError) 
 }
 
 // Creates a file in ./results/base/trace-{`block_number`}.json with the block trace by Base Juno
-pub async fn log_base_trace(block_number: u64, trace: &TraceBlockReport) {
+pub async fn log_base_trace(block_number: u64, trace: Vec<TransactionTraceWithHash>) {
     info!("Log trace for block {block_number}");
 
     let block_file = OpenOptions::new()
@@ -83,8 +86,14 @@ pub async fn log_base_trace(block_number: u64, trace: &TraceBlockReport) {
         .open(base_trace_path(block_number))
         .expect("Failed to open log file");
 
-    serde_json::to_writer_pretty(block_file, &trace)
-        .unwrap_or_else(|_| panic!("failed to write block: {block_number}"));
+    serde_json::to_writer_pretty(
+        block_file,
+        &TraceBlockReport {
+            block_num: block_number,
+            result: TraceResult::Success(trace),
+        },
+    )
+    .unwrap_or_else(|_| panic!("failed to write block: {block_number}"));
 }
 
 pub async fn read_base_trace(block_number: u64) -> TraceBlockReport {
