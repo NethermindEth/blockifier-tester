@@ -77,6 +77,7 @@ async fn execute_traces(
         };
 
         // Error handling base_trace_result
+        // not using map_err to deal with await
         let base_trace_result = match base_trace_result {
             Ok(b) => Ok(b),
             Err(err) => {
@@ -98,6 +99,16 @@ async fn execute_traces(
         let mut native_juno = JunoManager::new(JunoBranch::Native).await?;
 
         let native_trace_result = native_juno.trace_block(block_number).await;
+
+        let native_trace_result = match native_trace_result {
+            Ok(b) => Ok(b),
+            Err(err) => {
+                // couldn't lift this out because of block_number
+                warn!("{err:?}");
+                log_unexpected_error_report(block_number, &err).await;
+                Err(err)
+            }
+        }?;
 
         info!("TRACING block {block_number} with Native. It has {tx_count} transactions");
 
@@ -129,7 +140,7 @@ async fn execute_traces(
         // Second branch is an unhandled crash by the blockifier/native during tracing
         // Third branch is an unexpected crash by Juno Manager
         match native_trace_result {
-            Ok(native_report) if native_report.result.is_success() => {
+            native_report if native_report.result.is_success() => {
                 info!("SUCCESS tracing block with native");
                 if let Err(e) = graph::write_transaction_dependencies(
                     block_number,
@@ -142,7 +153,7 @@ async fn execute_traces(
                     generate_block_comparison(block_number, base_trace_result, native_report);
                 log_comparison_report(block_number, comparison).await;
             }
-            Ok(native_report) => {
+            native_report => {
                 // When tracing a block with native fails, the next step is performing a
                 // binary search over the transactions searching for the one that crashes
                 info!("Failed to trace block with Native, got {native_report:?}");
@@ -174,10 +185,6 @@ async fn execute_traces(
                     }
                     Err(err) => error!("Error simulating transactions: {}", err),
                 };
-            }
-            Err(err) => {
-                warn!("{err:?}");
-                log_unexpected_error_report(block_number, &err).await;
             }
         };
     }
