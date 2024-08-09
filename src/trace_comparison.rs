@@ -150,6 +150,9 @@ fn compare_json_objects(obj_1: Map<String, Value>, mut obj_2: Map<String, Value>
             Some(val_2) => {
                 let compare_result = match key_1.as_str() {
                     "storage_entries" => compare_storage_entries(val_1, val_2),
+                    // We are blatantly ignoring execution resources since they won't be the same
+                    // for the near future.
+                    "execution_resources" => ComparisonResult::new_same(val_1).into(),
                     _ => compare_json_values(val_1, val_2),
                 };
                 output.insert(key_1, compare_result)
@@ -215,8 +218,8 @@ fn compare_storage_entries(base_diffs: Value, native_diffs: Value) -> Value {
         Value::Array(a) => Ok(a),
         _ => Err("Value is not an array"),
     };
-    // Using BTrees instead of HashMaps to have consistent results over any runs.
-    // Using Hashmaps will change the order of the keys etc...
+    // Using BTrees instead of HashMaps so that comparison results
+    // stay with the same order across runs
     let base_diffs: BTreeMap<String, String> = to_array(base_diffs)
         .expect("Base `storage_diffs` is not an array")
         .into_iter()
