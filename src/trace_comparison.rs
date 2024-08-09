@@ -119,14 +119,17 @@ fn normalize_traces_state_diff(traces: &mut Vec<TransactionTraceWithHash>) {
 pub fn generate_block_comparison(
     block_number: u64,
     base_report: Vec<TransactionTraceWithHash>,
-    native_report: TraceBlockReport,
+    native_report: Vec<TransactionTraceWithHash>,
 ) -> Value {
     compare_jsons(
         trace_block_report_to_json(TraceBlockReport {
             block_num: block_number,
             result: TraceResult::Success(base_report),
         }),
-        trace_block_report_to_json(native_report),
+        trace_block_report_to_json(TraceBlockReport {
+            block_num: block_number,
+            result: TraceResult::Success(native_report),
+        }),
     )
 }
 

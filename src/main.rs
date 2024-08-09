@@ -139,13 +139,13 @@ async fn execute_traces(
         // First branch is succesful block trace with Native
         // Second branch is an unhandled crash by the blockifier/native during tracing
         // Third branch is an unexpected crash by Juno Manager
-        match native_trace_result {
-            native_report if native_report.result.is_success() => {
+        match native_trace_result.result {
+            TraceResult::Success(native_report) => {
                 info!("SUCCESS tracing block with native");
                 if let Err(e) = graph::write_transaction_dependencies(
                     block_number,
                     "native",
-                    native_report.clone().result.as_success().unwrap().iter(),
+                    native_report.iter(),
                 ) {
                     warn!("Error writing transaction dependencies: {e:?}");
                 }
