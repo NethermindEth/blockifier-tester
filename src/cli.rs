@@ -35,4 +35,8 @@ pub enum Commands {
         /// The last block number to trace (exclusive).
         end_block_num: u64,
     },
+
+    #[command(about = "Scans comparison files for differences and outputs counts of class_hashes.")]
+    GatherClassHashes {
+    },
 }

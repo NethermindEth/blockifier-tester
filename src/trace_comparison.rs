@@ -7,9 +7,9 @@ use starknet::core::types::{StateDiff, TransactionTrace, TransactionTraceWithHas
 
 use crate::dependencies::block_report_with_dependencies;
 
-const SAME: &str = "Same";
-const EMPTY: &str = "Empty";
-const DIFFERENT: &str = "Different";
+pub const SAME: &str = "Same";
+pub const EMPTY: &str = "Empty";
+pub const DIFFERENT: &str = "Different";
 
 #[derive(Serialize, Deserialize)]
 pub enum ComparisonResult {
@@ -115,7 +115,7 @@ pub fn generate_block_comparison(
     let post_response: Vec<Value> = match (base_block_report, native_block_report) {
         (Value::Array(base), Value::Array(native)) => base
             .into_iter()
-            .zip(native.into_iter())
+            .zip(native)
             .map(|(base_tx_trace, native_tx_trace)| {
                 generate_transaction_comparions(base_tx_trace, native_tx_trace)
             })
