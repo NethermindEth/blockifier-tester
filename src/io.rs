@@ -1,5 +1,6 @@
 use futures::future;
 use serde_json::Value;
+use starknet::core::types::TransactionTraceWithHash;
 use std::{fs::OpenOptions, path::PathBuf};
 use tokio::{
     fs::OpenOptions as AsyncOpenOptions,
@@ -8,7 +9,7 @@ use tokio::{
 
 use log::{debug, info, warn};
 
-use crate::{block_tracer::TraceBlockReport, juno_manager::ManagerError};
+use crate::juno_manager::ManagerError;
 
 pub fn succesful_comparison_path(block_num: u64) -> PathBuf {
     PathBuf::from(format!("results/comparison-{}.json", block_num))
@@ -59,7 +60,7 @@ pub fn log_crash_report(block_number: u64, report: serde_json::Value) {
 }
 
 // Creates a file in ./results/crash-{`block_number`}.json with the failure reason
-pub async fn log_unexpected_error_report(block_number: u64, err: ManagerError) {
+pub async fn log_unexpected_error_report(block_number: u64, err: &ManagerError) {
     let mut log_file = AsyncOpenOptions::new()
         .create(true)
         .write(true)
@@ -73,7 +74,7 @@ pub async fn log_unexpected_error_report(block_number: u64, err: ManagerError) {
 }
 
 // Creates a file in ./results/base/trace-{`block_number`}.json with the block trace by Base Juno
-pub async fn log_base_trace(block_number: u64, trace: &TraceBlockReport) {
+pub fn log_base_trace(block_number: u64, trace: &Vec<TransactionTraceWithHash>) {
     info!("Log trace for block {block_number}");
 
     let block_file = OpenOptions::new()
@@ -83,19 +84,22 @@ pub async fn log_base_trace(block_number: u64, trace: &TraceBlockReport) {
         .open(base_trace_path(block_number))
         .expect("Failed to open log file");
 
-    serde_json::to_writer_pretty(block_file, &trace)
+    serde_json::to_writer_pretty(block_file, trace)
         .unwrap_or_else(|_| panic!("failed to write block: {block_number}"));
 }
 
-pub async fn read_base_trace(block_number: u64) -> TraceBlockReport {
-    info!("Reading cached trace for block {block_number}");
-
+/// Read a cached base trace
+///
+/// Returns None if no valid cached base trace is found.
+/// todo(xrvdg) convert to result once blockifier has been parallelized?
+pub fn read_base_trace(block_number: u64) -> Option<Vec<TransactionTraceWithHash>> {
     let block_file = OpenOptions::new()
         .read(true)
         .open(base_trace_path(block_number))
-        .expect("Failed to read base trace");
+        .ok()?;
 
-    serde_json::from_reader(block_file).expect("Couldn't parse JSON")
+    // If parsing fails the file format has changed and the cache is invalidated
+    serde_json::from_reader(block_file).ok()?
 }
 
 pub async fn prepare_directories() {

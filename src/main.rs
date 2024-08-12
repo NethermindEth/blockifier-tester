@@ -11,8 +11,8 @@ mod transaction_tracer;
 
 use crate::cli::{Cli, Commands};
 use crate::io::{
-    base_trace_path, crashed_comparison_path, log_base_trace, log_comparison_report,
-    log_crash_report, log_unexpected_error_report, read_base_trace, succesful_comparison_path,
+    crashed_comparison_path, log_base_trace, log_comparison_report, log_crash_report,
+    log_unexpected_error_report, read_base_trace, succesful_comparison_path,
 };
 use block_tracer::BlockTracer;
 use cache::get_sorted_blocks_with_tx_count;
@@ -24,7 +24,7 @@ use env_logger::Env;
 use io::prepare_directories;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
 use log::{error, info, warn};
-use starknet::core::types::SimulationFlag;
+use starknet::core::types::{SimulationFlag, TransactionTraceWithHash};
 use std::io::Write;
 use trace_comparison::generate_block_comparison;
 use transaction_simulator::{SimulationStrategy, TransactionSimulator};
@@ -66,99 +66,143 @@ async fn execute_traces(
             continue;
         }
 
-        info!("TRACING block {block_number} with Base. It has {tx_count} transactions");
-        let using_cached_trace = !redo_traces && base_trace_path(block_number).exists();
-        let base_trace_result = if !using_cached_trace {
-            base_juno.trace_block(block_number).await
-        } else {
-            Ok(read_base_trace(block_number).await)
-        };
+        let base_trace_result =
+            trace_base(redo_traces, block_number, tx_count, &mut base_juno).await?;
 
-        // First branch is a succesful block trace with Base
-        // Second branch is an unexpected crash by Juno/Blockifier/nNative
-        match base_trace_result {
-            Ok(base_report) => {
-                if base_report.result != TraceResult::Success {
-                    // todo: prettier handling, but low prio.
-                    let trace = serde_json::to_string_pretty(&base_report)
-                        .unwrap_or(format!("Serialization failed!\n{base_report:?}"));
-                    panic!("Tracing with base juno is always expected to work. Check your base juno bin and config. Error:\n{}",trace);
-                }
-                if !using_cached_trace {
-                    log_base_trace(block_number, &base_report).await;
-                }
+        info!("Switching from Base Juno to Native Juno");
+        base_juno.ensure_dead().await?;
 
-                info!("Switching from Base Juno to Native Juno");
-                base_juno.ensure_dead().await?;
-                let mut native_juno = JunoManager::new(JunoBranch::Native).await?;
+        info!("TRACING block {block_number} with Native. It has {tx_count} transactions");
+        let native_trace = trace_native(block_number, tx_count, &simulation_flags).await?;
 
-                info!("TRACING block {block_number} with Native. It has {tx_count} transactions");
-                // First branch is succesful block trace with Native
-                // Second branch is an unhandled crash by the blockifier/native during tracing
-                // Third branch is an unexpected crash by Juno Manager
-                match native_juno.trace_block(block_number).await {
-                    Ok(native_report) if native_report.result == TraceResult::Success => {
-                        info!("SUCCESS tracing block with native");
-                        if let Err(e) = graph::write_transaction_dependencies(
-                            block_number,
-                            "native",
-                            native_report.post_response.as_ref().unwrap().iter(),
-                        ) {
-                            warn!("Error writing transaction dependencies: {e:?}");
-                        }
-                        let comparison = generate_block_comparison(base_report, native_report);
-                        log_comparison_report(block_number, comparison).await;
-                    }
-                    Ok(native_report) => {
-                        // When tracing a block with native fails, the next step is performing a
-                        // binary search over the transactions searching for the one that crashes
-                        info!("Failed to trace block with Native, got {native_report:?}");
-                        info!("SIMULATING block {block_number} with Native. It has {tx_count} transactions");
-
-                        // We make sure Natve Juno get properly killed before proceeding.
-                        native_juno.ensure_dead().await?;
-                        native_juno.ensure_usable().await?;
-                        let result = native_juno
-                            .simulate_block(
-                                block_number,
-                                SimulationStrategy::Binary,
-                                &simulation_flags,
-                            )
-                            .await;
-
-                        match result {
-                            // Note that this doesn't compare the reasons for failure or the result on a success
-                            Ok(result) => {
-                                let successes = result
-                                    .simulated_reports
-                                    .iter()
-                                    .filter(|result| result.is_correct())
-                                    .count();
-                                info!(
-                                    "Completed block {block_number} with {successes}/{} successes",
-                                    result.simulated_reports.len()
-                                );
-                                let reports_with_dependencies =
-                                    simulation_report_dependencies(&result);
-                                log_crash_report(block_number, reports_with_dependencies);
-                            }
-                            Err(err) => error!("Error simulating transactions: {}", err),
-                        };
-                    }
-                    Err(err) => {
-                        warn!("{err:?}");
-                        log_unexpected_error_report(block_number, err).await;
-                    }
-                };
-            }
-            Err(err) => {
-                warn!("{err:?}");
-                log_unexpected_error_report(block_number, err).await;
-            }
+        if let Some(native_trace) = native_trace {
+            let comparison =
+                generate_block_comparison(block_number, base_trace_result, native_trace);
+            log_comparison_report(block_number, comparison).await;
         }
     }
 
     Ok(())
+}
+
+/// Traces a transaction using base Juno and caches to result to disk.
+///
+/// trace_base will try and read a valid cache from [`io::base_trace_path`] if it exists
+/// otherwise it will trace a block using base Juno.
+///
+/// To force redoing a trace with base Juno set redo_traces to `true`.
+async fn trace_base(
+    redo_traces: bool,
+    block_number: u64,
+    tx_count: u64,
+    base_juno: &mut JunoManager,
+) -> Result<Vec<TransactionTraceWithHash>, ManagerError> {
+    info!("TRACING block {block_number} with Base. It has {tx_count} transactions");
+
+    let base_trace = match redo_traces {
+        true => None,
+        false => read_base_trace(block_number),
+    };
+
+    match base_trace {
+        Some(trace) => {
+            info!("Using cached trace for block {block_number}");
+            Ok(trace)
+        }
+        None => {
+            let base_trace_result = base_juno.trace_block(block_number).await;
+
+            // todo(xrvdg) can we lift this out when reworking error?
+            let base_trace_result = match base_trace_result {
+                Ok(b) => Ok(b),
+                Err(err) => {
+                    warn!("{err:?}");
+                    log_unexpected_error_report(block_number, &err).await;
+                    Err(err)
+                }
+            }?;
+
+            match base_trace_result.result {
+                TraceResult::Success(trace) => {
+                    log_base_trace(block_number, &trace);
+                    Ok(trace)
+                }
+
+                base_report => {
+                    // todo: prettier handling, but low prio.
+                    let trace = serde_json::to_string_pretty(&base_report)
+                        .unwrap_or(format!("Serialization failed!\n{base_report:?}"));
+
+                    // todo(xrvdg) remove this panic when moving to parallel execution
+                    panic!("Tracing with base juno is always expected to work. Check your base juno bin and config. Error:\n{}",trace);
+                }
+            }
+        }
+    }
+}
+
+async fn trace_native(
+    block_number: u64,
+    tx_count: u64,
+    simulation_flags: &[SimulationFlag],
+) -> Result<Option<Vec<TransactionTraceWithHash>>, ManagerError> {
+    let mut native_juno = JunoManager::new(JunoBranch::Native).await?;
+
+    let native_trace_result = native_juno.trace_block(block_number).await;
+
+    // todo(xrvdg) can we lift this out when reworking error?
+    let native_trace_result = match native_trace_result {
+        Ok(b) => Ok(b),
+        Err(err) => {
+            warn!("{err:?}");
+            log_unexpected_error_report(block_number, &err).await;
+            Err(err)
+        }
+    }?;
+
+    match native_trace_result.result {
+        TraceResult::Success(native_trace) => {
+            info!("SUCCESS tracing block with native");
+            if let Err(e) =
+                graph::write_transaction_dependencies(block_number, "native", native_trace.iter())
+            {
+                warn!("Error writing transaction dependencies: {e:?}");
+            }
+            Ok(Some(native_trace))
+        }
+        native_report => {
+            // When tracing a block with native fails, the next step is performing a
+            // binary search over the transactions searching for the one that crashes
+            info!("Failed to trace block with Native, got {native_report:?}");
+            info!("SIMULATING block {block_number} with Native. It has {tx_count} transactions");
+
+            // We make sure Native Juno get properly killed before proceeding.
+            native_juno.ensure_dead().await?;
+            native_juno.ensure_usable().await?;
+            let result = native_juno
+                .simulate_block(block_number, SimulationStrategy::Binary, simulation_flags)
+                .await;
+
+            match result {
+                // Note that this doesn't compare the reasons for failure or the result on a success
+                Ok(result) => {
+                    let successes = result
+                        .simulated_reports
+                        .iter()
+                        .filter(|result| result.is_correct())
+                        .count();
+                    info!(
+                        "Completed block {block_number} with {successes}/{} successes",
+                        result.simulated_reports.len()
+                    );
+                    let reports_with_dependencies = simulation_report_dependencies(&result);
+                    log_crash_report(block_number, reports_with_dependencies);
+                }
+                Err(err) => error!("Error simulating transactions: {}", err),
+            };
+            Ok(None)
+        }
+    }
 }
 
 #[tokio::main]
