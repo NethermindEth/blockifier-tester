@@ -170,10 +170,15 @@ async fn trace_base(
 ) -> Result<Vec<TransactionTraceWithHash>, ManagerError> {
     info!("TRACING block {block_number} with Base. It has {tx_count} transactions");
     let using_cached_trace = !redo_traces && base_trace_path(block_number).exists();
-    let base_trace_result = if !using_cached_trace {
+
+    // todo(xrvdg) possible to move out the awaits?
+    let base_trace_result = if redo_traces {
         base_juno.trace_block(block_number).await
     } else {
-        Ok(read_base_trace(block_number).await)
+        match read_base_trace(block_number).await {
+            Some(trace_block_report) => Ok(trace_block_report),
+            None => base_juno.trace_block(block_number).await,
+        }
     };
 
     let base_trace_result = match base_trace_result {

@@ -96,15 +96,21 @@ pub async fn log_base_trace(block_number: u64, trace: Vec<TransactionTraceWithHa
     .unwrap_or_else(|_| panic!("failed to write block: {block_number}"));
 }
 
-pub async fn read_base_trace(block_number: u64) -> TraceBlockReport {
-    info!("Reading cached trace for block {block_number}");
+// todo(xrvdg) add version check
+// change name to mention caching
+pub async fn read_base_trace(block_number: u64) -> Option<TraceBlockReport> {
+    if base_trace_path(block_number).exists() {
+        info!("Reading cached trace for block {block_number}");
 
-    let block_file = OpenOptions::new()
-        .read(true)
-        .open(base_trace_path(block_number))
-        .expect("Failed to read base trace");
+        let block_file = OpenOptions::new()
+            .read(true)
+            .open(base_trace_path(block_number))
+            .expect("Failed to read base trace");
 
-    serde_json::from_reader(block_file).expect("Couldn't parse JSON")
+        Some(serde_json::from_reader(block_file).expect("Couldn't parse JSON"))
+    } else {
+        None
+    }
 }
 
 pub async fn prepare_directories() {
