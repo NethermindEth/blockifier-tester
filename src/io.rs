@@ -9,9 +9,7 @@ use tokio::{
 
 use log::{debug, info, warn};
 
-use crate::{
-    block_tracer::TraceBlockReport, juno_manager::ManagerError, transaction_tracer::TraceResult,
-};
+use crate::juno_manager::ManagerError;
 
 pub fn succesful_comparison_path(block_num: u64) -> PathBuf {
     PathBuf::from(format!("results/comparison-{}.json", block_num))
@@ -76,7 +74,7 @@ pub async fn log_unexpected_error_report(block_number: u64, err: &ManagerError) 
 }
 
 // Creates a file in ./results/base/trace-{`block_number`}.json with the block trace by Base Juno
-pub async fn log_base_trace(block_number: u64, trace: Vec<TransactionTraceWithHash>) {
+pub fn log_base_trace(block_number: u64, trace: &Vec<TransactionTraceWithHash>) {
     info!("Log trace for block {block_number}");
 
     let block_file = OpenOptions::new()
@@ -86,31 +84,24 @@ pub async fn log_base_trace(block_number: u64, trace: Vec<TransactionTraceWithHa
         .open(base_trace_path(block_number))
         .expect("Failed to open log file");
 
-    serde_json::to_writer_pretty(
-        block_file,
-        &TraceBlockReport {
-            block_num: block_number,
-            result: TraceResult::Success(trace),
-        },
-    )
-    .unwrap_or_else(|_| panic!("failed to write block: {block_number}"));
+    serde_json::to_writer_pretty(block_file, trace)
+        .unwrap_or_else(|_| panic!("failed to write block: {block_number}"));
 }
 
-// todo(xrvdg) add version check
-// change name to mention caching
-pub async fn read_base_trace(block_number: u64) -> Option<TraceBlockReport> {
-    if base_trace_path(block_number).exists() {
-        info!("Reading cached trace for block {block_number}");
+/// Read a cached base trace
+///
+/// Returns None if no valid cached base trace is found.
+/// todo(xrvdg) convert to result once blockifier has been parallelized?
+pub fn read_base_trace(block_number: u64) -> Option<Vec<TransactionTraceWithHash>> {
+    info!("Reading cached trace for block {block_number}");
 
-        let block_file = OpenOptions::new()
-            .read(true)
-            .open(base_trace_path(block_number))
-            .expect("Failed to read base trace");
+    let block_file = OpenOptions::new()
+        .read(true)
+        .open(base_trace_path(block_number))
+        .ok()?;
 
-        Some(serde_json::from_reader(block_file).expect("Couldn't parse JSON"))
-    } else {
-        None
-    }
+    // If parsing fails the file format has changed and the cache is invalidated
+    serde_json::from_reader(block_file).ok()?
 }
 
 pub async fn prepare_directories() {

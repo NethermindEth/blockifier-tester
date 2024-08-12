@@ -45,7 +45,6 @@ impl From<&ProviderError> for TraceResult {
 impl Display for TraceResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
-            // todo(xrvdg) do we want to include the result here?
             TraceResult::Success(_) => write!(f, "TraceResult::Success"),
             TraceResult::OtherError(error) => write!(f, "TraceResult::OtherError: '{}'", error),
             TraceResult::NotFound => write!(f, "TraceResult::NotFound"),

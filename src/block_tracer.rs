@@ -7,8 +7,7 @@ use crate::{
     transaction_tracer::TraceResult,
 };
 
-// todo(xrvdg) try to get rid of clone
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TraceBlockReport {
     pub block_num: u64,
     pub result: TraceResult,
