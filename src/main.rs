@@ -105,7 +105,10 @@ async fn trace_base(
     };
 
     match base_trace {
-        Some(trace) => Ok(trace),
+        Some(trace) => {
+            info!("Using cached trace for block {block_number}");
+            Ok(trace)
+        }
         None => {
             let base_trace_result = base_juno.trace_block(block_number).await;
 

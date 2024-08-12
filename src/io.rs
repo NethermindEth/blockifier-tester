@@ -93,8 +93,6 @@ pub fn log_base_trace(block_number: u64, trace: &Vec<TransactionTraceWithHash>) 
 /// Returns None if no valid cached base trace is found.
 /// todo(xrvdg) convert to result once blockifier has been parallelized?
 pub fn read_base_trace(block_number: u64) -> Option<Vec<TransactionTraceWithHash>> {
-    info!("Reading cached trace for block {block_number}");
-
     let block_file = OpenOptions::new()
         .read(true)
         .open(base_trace_path(block_number))
