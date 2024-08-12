@@ -24,7 +24,7 @@ use env_logger::Env;
 use io::prepare_directories;
 use juno_manager::{JunoBranch, JunoManager, ManagerError};
 use log::{error, info, warn};
-use starknet::core::types::SimulationFlag;
+use starknet::core::types::{SimulationFlag, TransactionTraceWithHash};
 use std::io::Write;
 use trace_comparison::generate_block_comparison;
 use transaction_simulator::{SimulationStrategy, TransactionSimulator};
@@ -69,32 +69,12 @@ async fn execute_traces(
         }
 
         info!("TRACING block {block_number} with Base. It has {tx_count} transactions");
-        let using_cached_trace = !redo_traces && base_trace_path(block_number).exists();
-        let base_trace_result = if !using_cached_trace {
-            base_juno.trace_block(block_number).await
-        } else {
-            Ok(read_base_trace(block_number).await)
-        };
 
-        // Error handling base_trace_result
-        // not using map_err to deal with await
-        let base_trace_result = match base_trace_result {
-            Ok(b) => Ok(b),
-            Err(err) => {
-                // couldn't lift this out because of block_number
-                warn!("{err:?}");
-                log_unexpected_error_report(block_number, &err).await;
-                Err(err)
-            }
-        }?;
+        let base_trace_result = trace_base(redo_traces, block_number, &mut base_juno).await?;
+        // TODO(xrvdg) deal with killing
+        base_juno.ensure_dead().await?;
 
         info!("Switching from Base Juno to Native Juno");
-        // can't drop juno because of the information that it wants first
-        // drop(base_juno);
-        // but almost the same
-        // This can be dropped if we run with two at the same time
-        // This could be left out when using CoW on apple
-        base_juno.ensure_dead().await?;
 
         let mut native_juno = JunoManager::new(JunoBranch::Native).await?;
 
@@ -111,28 +91,6 @@ async fn execute_traces(
         }?;
 
         info!("TRACING block {block_number} with Native. It has {tx_count} transactions");
-
-        // logging about base_trace
-        let base_trace_result = match base_trace_result.result {
-            TraceResult::Success(trace) => {
-                if !using_cached_trace {
-                    // todo(xrvdg)
-                    // Have to clone because it wants to put it in a blocktracereport
-                    log_base_trace(block_number, trace.clone()).await;
-                }
-                trace
-            }
-
-            base_report => {
-                // todo: prettier handling, but low prio.
-                let trace = serde_json::to_string_pretty(&base_report)
-                    .unwrap_or(format!("Serialization failed!\n{base_report:?}"));
-
-                // todo(xrvdg) Early exit, but you can't use panic when doing multiple traces
-                // can now turn this into an error and exit early
-                panic!("Tracing with base juno is always expected to work. Check your base juno bin and config. Error:\n{}",trace);
-            }
-        };
 
         // Invariant now we have a trace block report that we can actuallly use. How can we make this progression in the type?
 
@@ -190,6 +148,58 @@ async fn execute_traces(
     }
 
     Ok(())
+}
+
+// TODO(xrvdg)
+// - rewrite the way it reads the base trace
+//   - using or not using cache is interesting for timing.
+//   - for cache invalidation (should be handled differently) -> check version number
+//   - rewrite in way that makes use of an option to continue or not
+// - move out error reporting
+// - rewriting the cache file (for speed performance or what?)
+// - remove panic
+async fn trace_base(
+    redo_traces: bool,
+    block_number: u64,
+    base_juno: &mut JunoManager,
+) -> Result<Vec<TransactionTraceWithHash>, ManagerError> {
+    let using_cached_trace = !redo_traces && base_trace_path(block_number).exists();
+    let base_trace_result = if !using_cached_trace {
+        base_juno.trace_block(block_number).await
+    } else {
+        Ok(read_base_trace(block_number).await)
+    };
+
+    let base_trace_result = match base_trace_result {
+        Ok(b) => Ok(b),
+        Err(err) => {
+            // couldn't lift this out because of block_number
+            warn!("{err:?}");
+            log_unexpected_error_report(block_number, &err).await;
+            Err(err)
+        }
+    }?;
+    let base_trace_result = match base_trace_result.result {
+        TraceResult::Success(trace) => {
+            if !using_cached_trace {
+                // todo(xrvdg)
+                // Have to clone because it wants to put it in a blocktracereport
+                log_base_trace(block_number, trace.clone()).await;
+            }
+            trace
+        }
+
+        base_report => {
+            // todo: prettier handling, but low prio.
+            let trace = serde_json::to_string_pretty(&base_report)
+                .unwrap_or(format!("Serialization failed!\n{base_report:?}"));
+
+            // todo(xrvdg) Early exit, but you can't use panic when doing multiple traces
+            // can now turn this into an error and exit early
+            panic!("Tracing with base juno is always expected to work. Check your base juno bin and config. Error:\n{}",trace);
+        }
+    };
+    Ok(base_trace_result)
 }
 
 #[tokio::main]
