@@ -15,24 +15,6 @@ pub enum TraceResult {
     Crash { error: String },
 }
 
-// TODO(xrvdg) try to get rid of these again
-impl TraceResult {
-    pub fn is_success(&self) -> bool {
-        match self {
-            TraceResult::Success(_) => true,
-            _ => false,
-        }
-    }
-
-    // What were the naming convention rules about this again?
-    pub fn as_success(self) -> Option<Vec<TransactionTraceWithHash>> {
-        match self {
-            TraceResult::Success(vec) => Some(vec),
-            _ => None,
-        }
-    }
-}
-
 impl From<&ProviderError> for TraceResult {
     fn from(value: &ProviderError) -> Self {
         match value {

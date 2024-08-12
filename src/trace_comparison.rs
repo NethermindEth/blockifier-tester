@@ -4,10 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use starknet::core::types::{StateDiff, TransactionTrace, TransactionTraceWithHash};
 
-use crate::{
-    block_tracer::TraceBlockReport, dependencies::block_report_with_dependencies,
-    transaction_tracer::TraceResult,
-};
+use crate::dependencies::block_report_with_dependencies;
 
 const SAME: &str = "Same";
 const EMPTY: &str = "Empty";
@@ -82,13 +79,11 @@ impl From<ComparisonResult> for Value {
     }
 }
 
-fn trace_block_report_to_json(report: TraceBlockReport) -> Value {
-    let mut traces = report.result.as_success().unwrap_or_default();
-
+fn trace_block_report_to_json(block_num: u64, mut traces: Vec<TransactionTraceWithHash>) -> Value {
     normalize_traces_state_diff(&mut traces);
 
     json!({
-        "block_num": report.block_num,
+        "block_num": block_num,
         "post_response": block_report_with_dependencies(&traces)
     })
 }
@@ -115,21 +110,14 @@ fn normalize_traces_state_diff(traces: &mut Vec<TransactionTraceWithHash>) {
 // Take two JSONs and compare each (key, value) recursively.
 // It will consume the two JSON as well.
 // Store the resutls in an output JSON.
-// TODO(xrvdg) only use on successful blocks
 pub fn generate_block_comparison(
     block_number: u64,
-    base_report: Vec<TransactionTraceWithHash>,
-    native_report: Vec<TransactionTraceWithHash>,
+    base_traces: Vec<TransactionTraceWithHash>,
+    native_traces: Vec<TransactionTraceWithHash>,
 ) -> Value {
     compare_jsons(
-        trace_block_report_to_json(TraceBlockReport {
-            block_num: block_number,
-            result: TraceResult::Success(base_report),
-        }),
-        trace_block_report_to_json(TraceBlockReport {
-            block_num: block_number,
-            result: TraceResult::Success(native_report),
-        }),
+        trace_block_report_to_json(block_number, base_traces),
+        trace_block_report_to_json(block_number, native_traces),
     )
 }
 
