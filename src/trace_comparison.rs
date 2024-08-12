@@ -106,8 +106,8 @@ pub fn generate_block_comparison(
     base_traces: Vec<TransactionTraceWithHash>,
     native_traces: Vec<TransactionTraceWithHash>,
 ) -> Value {
-    let mut base_traces = base_report.post_response.unwrap_or_default();
-    let mut native_traces = native_report.post_response.unwrap_or_default();
+    let mut base_traces = base_traces.clone();
+    let mut native_traces = native_traces.clone();
 
     normalize_traces_state_diff(&mut base_traces);
     normalize_traces_state_diff(&mut native_traces);
@@ -124,7 +124,7 @@ pub fn generate_block_comparison(
     }
 
     json!({
-        "block_num": base_report.block_num,
+        "block_num": block_number,
         "post_response": post_response,
     })
 }
