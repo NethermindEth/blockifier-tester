@@ -711,7 +711,7 @@ mod tests {
             result,
             json!({
                 "trace_root": "Same",
-                "transaction_hash": "Same(0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9)"
+                "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
             })
         );
 
@@ -771,7 +771,7 @@ mod tests {
                         "calls": "Same([1])"
                     }
                 },
-                "transaction_hash": "Same(0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9)"
+                "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
             })
         );
     }
