@@ -103,14 +103,11 @@ fn normalize_traces_state_diff(traces: &mut Vec<TransactionTraceWithHash>) {
 
 pub fn generate_block_comparison(
     block_number: u64,
-    base_traces: Vec<TransactionTraceWithHash>,
-    native_traces: Vec<TransactionTraceWithHash>,
+    base_traces: &mut Vec<TransactionTraceWithHash>,
+    native_traces: &mut Vec<TransactionTraceWithHash>,
 ) -> Value {
-    let mut base_traces = base_traces.clone();
-    let mut native_traces = native_traces.clone();
-
-    normalize_traces_state_diff(&mut base_traces);
-    normalize_traces_state_diff(&mut native_traces);
+    normalize_traces_state_diff(base_traces);
+    normalize_traces_state_diff(native_traces);
 
     let base_block_report = block_report_with_dependencies(&base_traces);
     let native_block_report = block_report_with_dependencies(&native_traces);
@@ -119,7 +116,7 @@ pub fn generate_block_comparison(
 
     if let (Value::Array(base), Value::Array(native)) = (&base_block_report, &native_block_report) {
         for (base_trace, native_trace) in base.iter().zip(native.iter()) {
-            post_response.push(compare_trace(base_trace.clone(), native_trace.clone()));
+            post_response.push(compare_trace(base_trace, native_trace));
         }
     }
 
@@ -131,7 +128,7 @@ pub fn generate_block_comparison(
 
 /// Take two JSONs and compare each (key, value) recursively.
 /// It will consume the two JSON as well.
-/// Store the resutls in an output JSON.
+/// Store the results in an output JSON.
 pub fn compare_jsons(json_1: Value, json_2: Value) -> Value {
     let output = compare_json_values(json_1, json_2);
     clean_json_value(output)
@@ -264,28 +261,24 @@ fn compare_storage_entries(base_diffs: Value, native_diffs: Value) -> Value {
 /// Compares the trace of two block reports.
 /// If the trace roots are different, it compares the contract dependencies and storage dependencies.
 /// Otherwise, it skips comparison for contract dependencies and storage dependencies.
-fn compare_trace(base_trace: Value, native_trace: Value) -> Value {
-    let base_trace_root = base_trace["trace_root"].clone();
-    let native_trace_root = native_trace["trace_root"].clone();
-
-    let trace_root_comparison = compare_jsons(base_trace_root, native_trace_root);
-    let transaction_hash_comparison = compare_jsons(
-        base_trace["transaction_hash"].clone(),
-        native_trace["transaction_hash"].clone(),
+fn compare_trace(base_trace: &Value, native_trace: &Value) -> Value {
+    let trace_root_comparison = compare_jsons(
+        base_trace["trace_root"].clone(),
+        native_trace["trace_root"].clone(),
     );
     let is_different = contains_key(&trace_root_comparison, &String::from("Different"));
 
     if !is_different {
         json!({
-            "transaction_hash": transaction_hash_comparison,
-            "trace_root": "Same"
+            "transaction_hash": base_trace["transaction_hash"],
+            "trace_root": "Same",
         })
     } else {
         json!({
+            "transaction_hash": base_trace["transaction_hash"],
+            "trace_root": trace_root_comparison,
             "contract_dependencies": compare_jsons(base_trace["contract_dependencies"].clone(), native_trace["contract_dependencies"].clone()),
             "storage_dependencies": compare_jsons(base_trace["storage_dependencies"].clone(), native_trace["storage_dependencies"].clone()),
-            "transaction_hash": transaction_hash_comparison,
-            "trace_root": trace_root_comparison.clone()
         })
     }
 }
@@ -745,7 +738,7 @@ mod tests {
             "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
         });
         let native_trace = base_trace.clone();
-        let result = compare_trace(base_trace, native_trace);
+        let result = compare_trace(&base_trace, &native_trace);
         assert_eq!(
             result,
             json!({
@@ -791,7 +784,7 @@ mod tests {
             "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
         });
 
-        let result = compare_trace(base_trace, native_trace);
+        let result = compare_trace(&base_trace, &native_trace);
         assert_eq!(
             result,
             json!({
