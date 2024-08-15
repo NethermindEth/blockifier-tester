@@ -63,7 +63,6 @@ pub trait TransactionSimulator {
 }
 
 impl TransactionSimulator for JunoManager {
-    /// Returns a list of transactions to simulate. Note that [`Transaction::L1Handler`] transactions are currently skipped.
     async fn get_transactions_to_simulate(
         &mut self,
         block: &MaybePendingBlockWithTxs,
@@ -86,22 +85,23 @@ impl TransactionSimulator for JunoManager {
                 i + 1,
                 hash_to_hex(&tx_hash)
             );
-            if let Transaction::L1Handler(_) = transaction {
-                debug!(
-                    "Skipping L1Handler transaction simulation, {:?}",
-                    tx_hash.to_string()
-                );
-                continue;
-            }
             let expected_result = self
                 .rpc_client
                 .get_transaction_receipt(tx_hash)
                 .await?
                 .into();
 
+            let broadcasted_tx =
+                match block_transaction_to_broadcasted_transaction(self, transaction, block_id)
+                    .await
+                {
+                    Ok(tx) => Some(tx),
+                    Err(ManagerError::L1HandlerTransaction) => None,
+                    Err(e) => return Err(e),
+                };
+
             result.push(TransactionToSimulate {
-                tx: block_transaction_to_broadcasted_transaction(self, transaction, block_id)
-                    .await?,
+                tx: broadcasted_tx,
                 hash: tx_hash,
                 expected_result,
             })
@@ -150,42 +150,29 @@ impl TransactionSimulator for JunoManager {
         }?;
 
         let mut found_crash = false;
+        let mut simulation_index = 0;
         let mut report = vec![];
-        for tx in block.transactions() {
-            let tx_hash = tx.transaction_hash();
-            let index = transactions
-                .iter()
-                .position(|transaction| transaction.hash.eq(tx_hash));
-
-            if let Some(i) = index {
-                let simulated_result = if i < simulation_results.len() {
-                    get_simulated_transaction_result(&simulation_results[i])
-                } else if found_crash {
-                    TransactionResult::Unreached
-                } else {
-                    found_crash = true;
-                    TransactionResult::Crash
-                };
-                let expected_result = &transactions[i].expected_result;
-                report.push(SimulationReport {
-                    tx_hash: *tx_hash,
-                    simulated_result,
-                    expected_result: expected_result.clone(),
-                });
-            } else if let Transaction::L1Handler(skipped_tx) = tx {
-                let expected_result = self
-                    .rpc_client
-                    .get_transaction_receipt(skipped_tx.transaction_hash)
-                    .await?
-                    .into();
-                report.push(SimulationReport {
-                    tx_hash: *tx_hash,
-                    simulated_result: TransactionResult::L1Handler,
-                    expected_result,
-                });
+        for i in 0..transactions.len() {
+            let tx_to_simulate = &transactions[i];
+            let simulated_result = if tx_to_simulate.tx.is_none() {
+                // This transaction was not simulated, so there is no simulation result
+                TransactionResult::L1Handler
+            } else if i < simulation_results.len() {
+                let result =
+                    get_simulated_transaction_result(&simulation_results[simulation_index]);
+                simulation_index += 1;
+                result
+            } else if found_crash {
+                TransactionResult::Unreached
             } else {
-                debug!("Skipping simulation report, transaction was not simulated for: {:?}", tx_hash.to_string());
-            }
+                found_crash = true;
+                TransactionResult::Crash
+            };
+            report.push(SimulationReport {
+                tx_hash: tx_to_simulate.hash,
+                simulated_result,
+                expected_result: tx_to_simulate.expected_result.clone(),
+            });
         }
 
         Ok(BlockSimulationReport {
@@ -202,7 +189,10 @@ impl TransactionSimulator for JunoManager {
         transactions: &[TransactionToSimulate],
         simulation_flags: &[SimulationFlag],
     ) -> Result<Vec<SimulatedTransaction>, ManagerError> {
-        let broadcasted_transactions = transactions.iter().map(|tx| tx.tx.clone()).collect_vec();
+        let broadcasted_transactions = transactions
+            .iter()
+            .filter_map(|tx| tx.tx.clone())
+            .collect_vec();
         for i in 0..transactions.len() {
             let transactions_to_try = &broadcasted_transactions[0..transactions.len() - i];
             info!("Trying {} transactions", transactions_to_try.len());
@@ -230,7 +220,10 @@ impl TransactionSimulator for JunoManager {
     ) -> Result<Vec<SimulatedTransaction>, ManagerError> {
         let mut results = vec![];
 
-        let broadcasted_transactions = transactions.iter().map(|tx| tx.tx.clone()).collect_vec();
+        let broadcasted_transactions = transactions
+            .iter()
+            .filter_map(|tx| tx.tx.clone())
+            .collect_vec();
         for i in 0..transactions.len() {
             let transactions_to_try = &broadcasted_transactions[0..i + 1];
             info!("Trying {} transactions", transactions_to_try.len());
@@ -264,7 +257,10 @@ impl TransactionSimulator for JunoManager {
                 _ => "<block_id is not a number>".into(),
             }
         );
-        let broadcasted_transactions = transactions.iter().map(|tx| tx.tx.clone()).collect_vec();
+        let broadcasted_transactions = transactions
+            .iter()
+            .filter_map(|tx| tx.tx.clone())
+            .collect_vec();
         let mut known_succesful_results = vec![];
         let mut known_failure_length = transactions.len() + 1;
         let mut i = known_failure_length / 2;
@@ -390,7 +386,7 @@ impl SimulationReport {
 }
 
 pub struct TransactionToSimulate {
-    tx: BroadcastedTransaction,
+    tx: Option<BroadcastedTransaction>,
     pub hash: FieldElement,
     expected_result: TransactionResult,
 }
@@ -429,27 +425,30 @@ async fn block_transaction_to_broadcasted_transaction(
                 }),
             )),
         },
-        Transaction::L1Handler(_) => Err(ManagerError::Internal("L1Handler".to_string())),
+        Transaction::L1Handler(_) => Err(ManagerError::L1HandlerTransaction)?,
         Transaction::Declare(declare_transaction) => {
             Ok(BroadcastedTransaction::Declare(match declare_transaction {
-                DeclareTransaction::V0(_) => panic!("V0"),
+                DeclareTransaction::V0(_) => Err(ManagerError::Internal(String::from("V0")))?,
                 DeclareTransaction::V1(tx) => {
                     let contract_class = juno_manager
                         .rpc_client
                         .get_class(block_id, tx.class_hash)
                         .await
                         .map_err(|_| ManagerError::Internal(String::from("class not found")))?;
-                    if let ContractClass::Legacy(contract_class) = contract_class {
-                        BroadcastedDeclareTransaction::V1(BroadcastedDeclareTransactionV1 {
-                            sender_address: tx.sender_address,
-                            max_fee: tx.max_fee,
-                            signature: tx.signature.clone(),
-                            nonce: tx.nonce,
-                            contract_class: Arc::new(contract_class),
-                            is_query: false,
-                        })
-                    } else {
-                        panic!("V1 declare can't find legacy contract class")
+                    match contract_class {
+                        ContractClass::Legacy(contract_class) => {
+                            BroadcastedDeclareTransaction::V1(BroadcastedDeclareTransactionV1 {
+                                sender_address: tx.sender_address,
+                                max_fee: tx.max_fee,
+                                signature: tx.signature.clone(),
+                                nonce: tx.nonce,
+                                contract_class: Arc::new(contract_class),
+                                is_query: false,
+                            })
+                        }
+                        _ => Err(ManagerError::Internal(String::from(
+                            "V1 declare can't find legacy contract class",
+                        )))?,
                     }
                 }
                 DeclareTransaction::V2(tx) => {
@@ -458,18 +457,21 @@ async fn block_transaction_to_broadcasted_transaction(
                         .get_class(block_id, tx.class_hash)
                         .await
                         .map_err(|_| ManagerError::Internal(String::from("class not found")))?;
-                    if let ContractClass::Sierra(contract_class) = contract_class {
-                        BroadcastedDeclareTransaction::V2(BroadcastedDeclareTransactionV2 {
-                            sender_address: tx.sender_address,
-                            max_fee: tx.max_fee,
-                            signature: tx.signature.clone(),
-                            nonce: tx.nonce,
-                            compiled_class_hash: tx.compiled_class_hash,
-                            contract_class: Arc::new(contract_class),
-                            is_query: false,
-                        })
-                    } else {
-                        panic!("V2 declare can't find sierra contract class")
+                    match contract_class {
+                        ContractClass::Sierra(contract_class) => {
+                            BroadcastedDeclareTransaction::V2(BroadcastedDeclareTransactionV2 {
+                                sender_address: tx.sender_address,
+                                max_fee: tx.max_fee,
+                                signature: tx.signature.clone(),
+                                nonce: tx.nonce,
+                                compiled_class_hash: tx.compiled_class_hash,
+                                contract_class: Arc::new(contract_class),
+                                is_query: false,
+                            })
+                        }
+                        _ => Err(ManagerError::Internal(String::from(
+                            "V2 declare can't find sierra contract class",
+                        )))?,
                     }
                 }
                 DeclareTransaction::V3(tx) => {
@@ -478,23 +480,26 @@ async fn block_transaction_to_broadcasted_transaction(
                         .get_class(block_id, tx.class_hash)
                         .await
                         .map_err(|_| ManagerError::Internal(String::from("class not found")))?;
-                    if let ContractClass::Sierra(contract_class) = contract_class {
-                        BroadcastedDeclareTransaction::V3(BroadcastedDeclareTransactionV3 {
-                            sender_address: tx.sender_address,
-                            signature: tx.signature.clone(),
-                            nonce: tx.nonce,
-                            compiled_class_hash: tx.compiled_class_hash,
-                            contract_class: Arc::new(contract_class),
-                            account_deployment_data: tx.account_deployment_data.clone(),
-                            fee_data_availability_mode: tx.fee_data_availability_mode,
-                            nonce_data_availability_mode: tx.nonce_data_availability_mode,
-                            paymaster_data: tx.paymaster_data.clone(),
-                            resource_bounds: tx.resource_bounds.clone(),
-                            tip: tx.tip,
-                            is_query: false,
-                        })
-                    } else {
-                        panic!("V3 declare can't find sierra contract class")
+                    match contract_class {
+                        ContractClass::Sierra(contract_class) => {
+                            BroadcastedDeclareTransaction::V3(BroadcastedDeclareTransactionV3 {
+                                sender_address: tx.sender_address,
+                                signature: tx.signature.clone(),
+                                nonce: tx.nonce,
+                                compiled_class_hash: tx.compiled_class_hash,
+                                contract_class: Arc::new(contract_class),
+                                account_deployment_data: tx.account_deployment_data.clone(),
+                                fee_data_availability_mode: tx.fee_data_availability_mode,
+                                nonce_data_availability_mode: tx.nonce_data_availability_mode,
+                                paymaster_data: tx.paymaster_data.clone(),
+                                resource_bounds: tx.resource_bounds.clone(),
+                                tip: tx.tip,
+                                is_query: false,
+                            })
+                        }
+                        _ => Err(ManagerError::Internal(String::from(
+                            "V3 declare can't find sierra contract class",
+                        )))?,
                     }
                 }
             }))
