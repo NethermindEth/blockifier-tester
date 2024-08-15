@@ -1,7 +1,4 @@
-use std::{
-    cmp::Ordering,
-    collections::{BTreeMap, VecDeque},
-};
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -266,9 +263,8 @@ fn compare_trace(base_trace: &Value, native_trace: &Value) -> Value {
         base_trace["trace_root"].clone(),
         native_trace["trace_root"].clone(),
     );
-    let is_different = contains_key(&trace_root_comparison, &String::from("Different"));
 
-    if !is_different {
+    if value_is_same(&trace_root_comparison) {
         json!({
             "transaction_hash": base_trace["transaction_hash"],
             "trace_root": "Same",
@@ -281,34 +277,6 @@ fn compare_trace(base_trace: &Value, native_trace: &Value) -> Value {
             "storage_dependencies": compare_jsons(base_trace["storage_dependencies"].clone(), native_trace["storage_dependencies"].clone()),
         })
     }
-}
-
-/// BFS to check whether target key is present in JSON object
-fn contains_key(object: &Value, target_key: &String) -> bool {
-    let mut queue = VecDeque::new();
-    queue.push_back(object);
-
-    while let Some(current_object) = queue.pop_front() {
-        if let Some(map) = current_object.as_object() {
-            for (key, value) in map {
-                if key.cmp(target_key) == Ordering::Equal {
-                    return true;
-                }
-
-                if value.is_object() {
-                    queue.push_back(value);
-                } else if value.is_array() {
-                    for item in value.as_array().unwrap() {
-                        if item.is_object() {
-                            queue.push_back(item);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    false
 }
 
 fn clean_json_value(val: Value) -> Value {
