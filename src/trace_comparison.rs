@@ -125,15 +125,14 @@ pub fn generate_block_comparison(
 }
 
 /// Take two JSONs and compare each (key, value) recursively.
-/// It will consume the two JSON as well.
 /// Store the results in an output JSON.
-pub fn compare_jsons(json_1: Value, json_2: Value) -> Value {
+pub fn compare_jsons(json_1: &Value, json_2: &Value) -> Value {
     let output = compare_json_values(json_1, json_2);
     clean_json_value(output)
 }
 
-fn compare_json_values(val_1: Value, val_2: Value) -> Value {
-    match (val_1, val_2) {
+fn compare_json_values(val_1: &Value, val_2: &Value) -> Value {
+    match (val_1.clone(), val_2.clone()) {
         (Value::Object(obj_1), Value::Object(obj_2)) => compare_json_objects(obj_1, obj_2),
         (Value::Array(arr_1), Value::Array(arr_2)) => compare_json_arrays(arr_1, arr_2),
         (val_1, val_2) if val_1 == val_2 => ComparisonResult::new_same(val_1).into(),
@@ -158,7 +157,7 @@ fn compare_json_objects(obj_1: Map<String, Value>, mut obj_2: Map<String, Value>
                     // We are blatantly ignoring execution resources since they won't be the same
                     // for the near future.
                     "execution_resources" => ComparisonResult::new_same(val_1).into(),
-                    _ => compare_json_values(val_1, val_2),
+                    _ => compare_json_values(&val_1, &val_2),
                 };
                 output.insert(key_1, compare_result)
             }
@@ -191,7 +190,7 @@ fn compare_json_arrays(arr_1: Vec<Value>, arr_2: Vec<Value>) -> Value {
     let output: Vec<Value> = arr_1
         .into_iter()
         .zip(arr_2)
-        .map(|e| compare_json_values(e.0, e.1))
+        .map(|e| compare_json_values(&e.0, &e.1))
         .collect();
 
     Value::Array(output)
@@ -239,8 +238,8 @@ fn compare_storage_entries(base_diffs: Value, native_diffs: Value) -> Value {
     for (base_key, base_val) in base_diffs {
         let comp = if let Some(native_val) = native_diffs.remove(&base_key) {
             compare_json_values(
-                kv_to_json(base_key.clone(), base_val),
-                kv_to_json(base_key, native_val),
+                &kv_to_json(base_key.clone(), base_val),
+                &kv_to_json(base_key, native_val),
             )
         } else {
             ComparisonResult::new_different_base_only(kv_to_json(base_key, base_val)).into()
@@ -260,10 +259,8 @@ fn compare_storage_entries(base_diffs: Value, native_diffs: Value) -> Value {
 /// If the trace roots are different, it compares the contract dependencies and storage dependencies.
 /// Otherwise, it skips comparison for contract dependencies and storage dependencies.
 fn compare_trace(base_trace: &Value, native_trace: &Value) -> Value {
-    let trace_root_comparison = compare_jsons(
-        base_trace["trace_root"].clone(),
-        native_trace["trace_root"].clone(),
-    );
+    let trace_root_comparison =
+        compare_jsons(&base_trace["trace_root"], &native_trace["trace_root"]);
 
     if value_is_same(&trace_root_comparison) {
         json!({
@@ -274,8 +271,8 @@ fn compare_trace(base_trace: &Value, native_trace: &Value) -> Value {
         json!({
             "transaction_hash": base_trace["transaction_hash"],
             "trace_root": trace_root_comparison,
-            "contract_dependencies": compare_jsons(base_trace["contract_dependencies"].clone(), native_trace["contract_dependencies"].clone()),
-            "storage_dependencies": compare_jsons(base_trace["storage_dependencies"].clone(), native_trace["storage_dependencies"].clone()),
+            "contract_dependencies": compare_jsons(&base_trace["contract_dependencies"], &native_trace["contract_dependencies"]),
+            "storage_dependencies": compare_jsons(&base_trace["storage_dependencies"], &native_trace["storage_dependencies"]),
         })
     }
 }
@@ -360,7 +357,7 @@ mod tests {
             ],
         });
 
-        let result = compare_jsons(base, native);
+        let result = compare_jsons(&base, &native);
 
         assert_eq!(result, same_object_repr(4));
     }
@@ -375,7 +372,7 @@ mod tests {
             "key1": "value1-2",
         });
 
-        let result = compare_jsons(base, native);
+        let result = compare_jsons(&base, &native);
 
         assert_eq!(
             result,
@@ -400,7 +397,7 @@ mod tests {
             "key2": "value2",
         });
 
-        let result = compare_jsons(base, native);
+        let result = compare_jsons(&base, &native);
 
         assert_eq!(
             result,
@@ -427,7 +424,7 @@ mod tests {
 
         let native = json!(["value1", "value2-2",]);
 
-        let result = compare_jsons(base, native);
+        let result = compare_jsons(&base, &native);
 
         assert_eq!(
             result,
@@ -449,7 +446,7 @@ mod tests {
 
         let native = json!(["value1", "value2", "value3",]);
 
-        let result = compare_jsons(base, native);
+        let result = compare_jsons(&base, &native);
 
         assert_eq!(
             result,
@@ -492,7 +489,7 @@ mod tests {
           }
         );
 
-        let result = compare_jsons(base, native);
+        let result = compare_jsons(&base, &native);
 
         assert_eq!(
             result,
@@ -528,7 +525,7 @@ mod tests {
         let base = json!([]);
         let native = json!([]);
 
-        let result = compare_jsons(base, native);
+        let result = compare_jsons(&base, &native);
 
         assert_eq!(result, json!(same_array_repr(0)));
     }
