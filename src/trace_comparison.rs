@@ -109,13 +109,14 @@ pub fn generate_block_comparison(
     let base_block_report = block_report_with_dependencies(&base_traces);
     let native_block_report = block_report_with_dependencies(&native_traces);
 
-    let mut post_response = vec![];
-
-    if let (Value::Array(base), Value::Array(native)) = (&base_block_report, &native_block_report) {
-        for (base_trace, native_trace) in base.iter().zip(native.iter()) {
-            post_response.push(compare_trace(base_trace, native_trace));
-        }
-    }
+    let post_response = match (&base_block_report, &native_block_report) {
+        (Value::Array(base), Value::Array(native)) => base
+            .iter()
+            .zip(native.iter())
+            .map(|(base_trace, native_trace)| compare_trace(base_trace, native_trace))
+            .collect(),
+        _ => Vec::new(),
+    };
 
     json!({
         "block_num": block_number,
