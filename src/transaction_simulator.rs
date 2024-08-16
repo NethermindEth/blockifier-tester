@@ -157,6 +157,7 @@ impl TransactionSimulator for JunoManager {
             let tx_to_simulate = &transactions[i];
             let simulated_result = if tx_to_simulate.tx.is_none() {
                 // This transaction was not simulated, so there is no simulation result
+                // Currently, this will only happen for L1Handler transactions
                 TransactionResult::L1Handler
             } else if i < simulation_results.len() {
                 let result =
