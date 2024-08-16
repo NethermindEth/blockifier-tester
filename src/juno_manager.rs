@@ -35,6 +35,7 @@ pub enum ManagerError {
     Provider(ProviderError),
     Internal(String),
     IO(std::io::Error),
+    /// L1HandlerTransaction is not handled yet
     L1HandlerTransaction,
 }
 

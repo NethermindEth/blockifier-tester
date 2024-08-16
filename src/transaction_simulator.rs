@@ -96,6 +96,7 @@ impl TransactionSimulator for JunoManager {
                     .await
                 {
                     Ok(tx) => Some(tx),
+                    // Remove this once we have a way to handle L1Handler transactions
                     Err(ManagerError::L1HandlerTransaction) => None,
                     Err(e) => return Err(e),
                 };
