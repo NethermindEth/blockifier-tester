@@ -428,13 +428,13 @@ async fn block_transaction_to_broadcasted_transaction(
         Transaction::L1Handler(_) => Err(ManagerError::L1HandlerTransaction)?,
         Transaction::Declare(declare_transaction) => {
             Ok(BroadcastedTransaction::Declare(match declare_transaction {
-                DeclareTransaction::V0(_) => Err(ManagerError::Internal(String::from("V0")))?,
+                DeclareTransaction::V0(_) => Err(ManagerError::Internal("V0".to_string()))?,
                 DeclareTransaction::V1(tx) => {
                     let contract_class = juno_manager
                         .rpc_client
                         .get_class(block_id, tx.class_hash)
                         .await
-                        .map_err(|_| ManagerError::Internal(String::from("class not found")))?;
+                        .map_err(|_| ManagerError::Internal("class not found".to_string()))?;
                     match contract_class {
                         ContractClass::Legacy(contract_class) => {
                             BroadcastedDeclareTransaction::V1(BroadcastedDeclareTransactionV1 {
@@ -446,9 +446,9 @@ async fn block_transaction_to_broadcasted_transaction(
                                 is_query: false,
                             })
                         }
-                        _ => Err(ManagerError::Internal(String::from(
-                            "V1 declare can't find legacy contract class",
-                        )))?,
+                        _ => Err(ManagerError::Internal(
+                            "V1 declare can't find legacy contract class".to_string(),
+                        ))?,
                     }
                 }
                 DeclareTransaction::V2(tx) => {
@@ -456,7 +456,7 @@ async fn block_transaction_to_broadcasted_transaction(
                         .rpc_client
                         .get_class(block_id, tx.class_hash)
                         .await
-                        .map_err(|_| ManagerError::Internal(String::from("class not found")))?;
+                        .map_err(|_| ManagerError::Internal("class not found".to_string()))?;
                     match contract_class {
                         ContractClass::Sierra(contract_class) => {
                             BroadcastedDeclareTransaction::V2(BroadcastedDeclareTransactionV2 {
@@ -469,9 +469,9 @@ async fn block_transaction_to_broadcasted_transaction(
                                 is_query: false,
                             })
                         }
-                        _ => Err(ManagerError::Internal(String::from(
-                            "V2 declare can't find sierra contract class",
-                        )))?,
+                        _ => Err(ManagerError::Internal(
+                            "V2 declare can't find sierra contract class".to_string(),
+                        ))?,
                     }
                 }
                 DeclareTransaction::V3(tx) => {
@@ -479,7 +479,7 @@ async fn block_transaction_to_broadcasted_transaction(
                         .rpc_client
                         .get_class(block_id, tx.class_hash)
                         .await
-                        .map_err(|_| ManagerError::Internal(String::from("class not found")))?;
+                        .map_err(|_| ManagerError::Internal("class not found".to_string()))?;
                     match contract_class {
                         ContractClass::Sierra(contract_class) => {
                             BroadcastedDeclareTransaction::V3(BroadcastedDeclareTransactionV3 {
@@ -497,9 +497,9 @@ async fn block_transaction_to_broadcasted_transaction(
                                 is_query: false,
                             })
                         }
-                        _ => Err(ManagerError::Internal(String::from(
-                            "V3 declare can't find sierra contract class",
-                        )))?,
+                        _ => Err(ManagerError::Internal(
+                            "V3 declare can't find sierra contract class".to_string(),
+                        ))?,
                     }
                 }
             }))
