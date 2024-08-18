@@ -1,18 +1,23 @@
 use std::fmt::Display;
+use std::sync::Arc;
 
 use log::{debug, info};
 
 use itertools::Itertools;
 use num_bigint::BigUint;
 use serde::Serialize;
-use starknet::core::types::SimulationFlag;
+use starknet::core::types::{
+    BlockTag, BroadcastedDeclareTransaction, BroadcastedDeclareTransactionV1,
+    BroadcastedDeclareTransactionV2, BroadcastedDeclareTransactionV3, ContractClass,
+    SimulationFlag,
+};
 use starknet::{
     core::types::{
         BlockId, BroadcastedDeployAccountTransaction, BroadcastedDeployAccountTransactionV1,
         BroadcastedDeployAccountTransactionV3, BroadcastedInvokeTransaction,
         BroadcastedInvokeTransactionV1, BroadcastedInvokeTransactionV3, BroadcastedTransaction,
-        DeployAccountTransaction, ExecuteInvocation, ExecutionResult, FieldElement,
-        InvokeTransaction, MaybePendingBlockWithTxs, MaybePendingTransactionReceipt,
+        DeclareTransaction, DeployAccountTransaction, ExecuteInvocation, ExecutionResult,
+        FieldElement, InvokeTransaction, MaybePendingBlockWithTxs, MaybePendingTransactionReceipt,
         SimulatedTransaction, Transaction, TransactionTrace,
     },
     providers::Provider,
@@ -68,6 +73,11 @@ impl TransactionSimulator for JunoManager {
 
         let mut result = vec![];
         let max_transaction = block.transactions().len();
+        let block_id = match block {
+            MaybePendingBlockWithTxs::Block(block) => BlockId::Number(block.block_number),
+            MaybePendingBlockWithTxs::PendingBlock(_) => BlockId::Tag(BlockTag::Pending),
+        };
+
         for (i, transaction) in block.transactions().iter().enumerate() {
             let tx_hash = get_block_transaction_hash(transaction);
             debug!(
@@ -81,8 +91,18 @@ impl TransactionSimulator for JunoManager {
                 .await?
                 .into();
 
+            let broadcasted_tx =
+                match block_transaction_to_broadcasted_transaction(self, transaction, block_id)
+                    .await
+                {
+                    Ok(tx) => Some(tx),
+                    // Remove this once we have a way to handle L1Handler transactions
+                    Err(ManagerError::L1HandlerTransaction) => None,
+                    Err(e) => return Err(e),
+                };
+
             result.push(TransactionToSimulate {
-                tx: block_transaction_to_broadcasted_transaction(transaction)?,
+                tx: broadcasted_tx,
                 hash: tx_hash,
                 expected_result,
             })
@@ -131,11 +151,19 @@ impl TransactionSimulator for JunoManager {
         }?;
 
         let mut found_crash = false;
+        let mut simulation_index = 0;
         let mut report = vec![];
         for i in 0..transactions.len() {
-            let tx = &transactions[i];
-            let simulated_result = if i < simulation_results.len() {
-                get_simulated_transaction_result(&simulation_results[i])
+            let tx_to_simulate = &transactions[i];
+            let simulated_result = if tx_to_simulate.tx.is_none() {
+                // This transaction was not simulated, so there is no simulation result
+                // Currently, this will only happen for L1Handler transactions
+                TransactionResult::L1Handler
+            } else if i < simulation_results.len() {
+                let result =
+                    get_simulated_transaction_result(&simulation_results[simulation_index]);
+                simulation_index += 1;
+                result
             } else if found_crash {
                 TransactionResult::Unreached
             } else {
@@ -143,9 +171,9 @@ impl TransactionSimulator for JunoManager {
                 TransactionResult::Crash
             };
             report.push(SimulationReport {
-                tx_hash: tx.hash,
+                tx_hash: tx_to_simulate.hash,
                 simulated_result,
-                expected_result: tx.expected_result.clone(),
+                expected_result: tx_to_simulate.expected_result.clone(),
             });
         }
 
@@ -163,7 +191,10 @@ impl TransactionSimulator for JunoManager {
         transactions: &[TransactionToSimulate],
         simulation_flags: &[SimulationFlag],
     ) -> Result<Vec<SimulatedTransaction>, ManagerError> {
-        let broadcasted_transactions = transactions.iter().map(|tx| tx.tx.clone()).collect_vec();
+        let broadcasted_transactions = transactions
+            .iter()
+            .filter_map(|tx| tx.tx.clone())
+            .collect_vec();
         for i in 0..transactions.len() {
             let transactions_to_try = &broadcasted_transactions[0..transactions.len() - i];
             info!("Trying {} transactions", transactions_to_try.len());
@@ -191,7 +222,10 @@ impl TransactionSimulator for JunoManager {
     ) -> Result<Vec<SimulatedTransaction>, ManagerError> {
         let mut results = vec![];
 
-        let broadcasted_transactions = transactions.iter().map(|tx| tx.tx.clone()).collect_vec();
+        let broadcasted_transactions = transactions
+            .iter()
+            .filter_map(|tx| tx.tx.clone())
+            .collect_vec();
         for i in 0..transactions.len() {
             let transactions_to_try = &broadcasted_transactions[0..i + 1];
             info!("Trying {} transactions", transactions_to_try.len());
@@ -225,7 +259,10 @@ impl TransactionSimulator for JunoManager {
                 _ => "<block_id is not a number>".into(),
             }
         );
-        let broadcasted_transactions = transactions.iter().map(|tx| tx.tx.clone()).collect_vec();
+        let broadcasted_transactions = transactions
+            .iter()
+            .filter_map(|tx| tx.tx.clone())
+            .collect_vec();
         let mut known_succesful_results = vec![];
         let mut known_failure_length = transactions.len() + 1;
         let mut i = known_failure_length / 2;
@@ -351,13 +388,15 @@ impl SimulationReport {
 }
 
 pub struct TransactionToSimulate {
-    tx: BroadcastedTransaction,
+    tx: Option<BroadcastedTransaction>,
     pub hash: FieldElement,
     expected_result: TransactionResult,
 }
 
-fn block_transaction_to_broadcasted_transaction(
+async fn block_transaction_to_broadcasted_transaction(
+    juno_manager: &JunoManager,
     transaction: &Transaction,
+    block_id: BlockId,
 ) -> Result<BroadcastedTransaction, ManagerError> {
     match transaction {
         Transaction::Invoke(invoke_transaction) => match invoke_transaction {
@@ -388,30 +427,84 @@ fn block_transaction_to_broadcasted_transaction(
                 }),
             )),
         },
-        Transaction::L1Handler(_) => Err(ManagerError::Internal("L1Handler".to_string())),
-        Transaction::Declare(_declare_transaction) => {
-            Err(ManagerError::Internal("Declare".to_string()))
-            // BroadcastedTransaction::Declare(match declare_transaction {
-            //     DeclareTransaction::V0(_) => panic!("V0"),
-            //     DeclareTransaction::V1(tx) => {
-            //         BroadcastedDeclareTransaction::V1(BroadcastedDeclareTransactionV1 {
-            //             sender_address: tx.sender_address,
-            //             max_fee: tx.max_fee,
-            //             signature: tx.signature.clone(),
-            //             nonce: tx.nonce,
-            //             contract_class: todo!("contract class"), DO NOT USE todo!
-            //             is_query: false,
-            //         })
-            //     }
-            //     DeclareTransaction::V2(_tx) => {
-            //         todo!("Declare v2")
-            //         // BroadcastedDeclareTransaction::V2()
-            //     }
-            //     DeclareTransaction::V3(_tx) => {
-            //         todo!("Declare v3")
-            //         // BroadcastedDeclareTransaction::V3()
-            //     }
-            // })
+        Transaction::L1Handler(_) => Err(ManagerError::L1HandlerTransaction)?,
+        Transaction::Declare(declare_transaction) => {
+            Ok(BroadcastedTransaction::Declare(match declare_transaction {
+                DeclareTransaction::V0(_) => Err(ManagerError::Internal("V0".to_string()))?,
+                DeclareTransaction::V1(tx) => {
+                    let contract_class = juno_manager
+                        .rpc_client
+                        .get_class(block_id, tx.class_hash)
+                        .await
+                        .map_err(|_| ManagerError::Internal("class not found".to_string()))?;
+                    match contract_class {
+                        ContractClass::Legacy(contract_class) => {
+                            BroadcastedDeclareTransaction::V1(BroadcastedDeclareTransactionV1 {
+                                sender_address: tx.sender_address,
+                                max_fee: tx.max_fee,
+                                signature: tx.signature.clone(),
+                                nonce: tx.nonce,
+                                contract_class: Arc::new(contract_class),
+                                is_query: false,
+                            })
+                        }
+                        _ => Err(ManagerError::Internal(
+                            "V1 declare can't find legacy contract class".to_string(),
+                        ))?,
+                    }
+                }
+                DeclareTransaction::V2(tx) => {
+                    let contract_class = juno_manager
+                        .rpc_client
+                        .get_class(block_id, tx.class_hash)
+                        .await
+                        .map_err(|_| ManagerError::Internal("class not found".to_string()))?;
+                    match contract_class {
+                        ContractClass::Sierra(contract_class) => {
+                            BroadcastedDeclareTransaction::V2(BroadcastedDeclareTransactionV2 {
+                                sender_address: tx.sender_address,
+                                max_fee: tx.max_fee,
+                                signature: tx.signature.clone(),
+                                nonce: tx.nonce,
+                                compiled_class_hash: tx.compiled_class_hash,
+                                contract_class: Arc::new(contract_class),
+                                is_query: false,
+                            })
+                        }
+                        _ => Err(ManagerError::Internal(
+                            "V2 declare can't find sierra contract class".to_string(),
+                        ))?,
+                    }
+                }
+                DeclareTransaction::V3(tx) => {
+                    let contract_class = juno_manager
+                        .rpc_client
+                        .get_class(block_id, tx.class_hash)
+                        .await
+                        .map_err(|_| ManagerError::Internal("class not found".to_string()))?;
+                    match contract_class {
+                        ContractClass::Sierra(contract_class) => {
+                            BroadcastedDeclareTransaction::V3(BroadcastedDeclareTransactionV3 {
+                                sender_address: tx.sender_address,
+                                signature: tx.signature.clone(),
+                                nonce: tx.nonce,
+                                compiled_class_hash: tx.compiled_class_hash,
+                                contract_class: Arc::new(contract_class),
+                                account_deployment_data: tx.account_deployment_data.clone(),
+                                fee_data_availability_mode: tx.fee_data_availability_mode,
+                                nonce_data_availability_mode: tx.nonce_data_availability_mode,
+                                paymaster_data: tx.paymaster_data.clone(),
+                                resource_bounds: tx.resource_bounds.clone(),
+                                tip: tx.tip,
+                                is_query: false,
+                            })
+                        }
+                        _ => Err(ManagerError::Internal(
+                            "V3 declare can't find sierra contract class".to_string(),
+                        ))?,
+                    }
+                }
+            }))
         }
         Transaction::Deploy(_) => Err(ManagerError::Internal("Deploy".to_string())),
         Transaction::DeployAccount(tx) => Ok(BroadcastedTransaction::DeployAccount(match tx {

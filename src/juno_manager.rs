@@ -35,6 +35,8 @@ pub enum ManagerError {
     Provider(ProviderError),
     Internal(String),
     IO(std::io::Error),
+    /// L1HandlerTransaction is not handled yet
+    L1HandlerTransaction,
 }
 
 impl From<ProviderError> for ManagerError {
@@ -55,6 +57,7 @@ impl Display for ManagerError {
             ManagerError::Provider(err) => write!(f, "Manager error: {}", err),
             ManagerError::Internal(err) => write!(f, "Internal error: {}", err),
             ManagerError::IO(err) => write!(f, "IO error: {}", err),
+            ManagerError::L1HandlerTransaction => write!(f, "L1HandlerTransaction"),
         }
     }
 }
