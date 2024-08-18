@@ -66,7 +66,7 @@ async fn execute_traces(
             continue;
         }
 
-        let mut base_trace_result =
+        let base_trace_result =
             trace_base(redo_traces, block_number, tx_count, &mut base_juno).await?;
 
         info!("Switching from Base Juno to Native Juno");
@@ -75,9 +75,9 @@ async fn execute_traces(
         info!("TRACING block {block_number} with Native. It has {tx_count} transactions");
         let native_trace = trace_native(block_number, tx_count, &simulation_flags).await?;
 
-        if let Some(mut native_trace) = native_trace {
+        if let Some(native_trace) = native_trace {
             let comparison =
-                generate_block_comparison(block_number, &mut base_trace_result, &mut native_trace);
+                generate_block_comparison(block_number, base_trace_result, native_trace);
             log_comparison_report(block_number, comparison).await;
         }
     }
