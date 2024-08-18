@@ -1,3 +1,4 @@
+use core::panic;
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -79,15 +80,6 @@ impl From<ComparisonResult> for Value {
     }
 }
 
-fn trace_block_report_to_json(block_num: u64, mut traces: Vec<TransactionTraceWithHash>) -> Value {
-    normalize_traces_state_diff(&mut traces);
-
-    json!({
-        "block_num": block_num,
-        "post_response": block_report_with_dependencies(&traces)
-    })
-}
-
 fn normalize_traces_state_diff(traces: &mut Vec<TransactionTraceWithHash>) {
     let normalize = |maybe_state_diff: &mut Option<StateDiff>| {
         if let Some(state_diff) = maybe_state_diff {
@@ -107,27 +99,99 @@ fn normalize_traces_state_diff(traces: &mut Vec<TransactionTraceWithHash>) {
     }
 }
 
-// Take two JSONs and compare each (key, value) recursively.
-// It will consume the two JSON as well.
-// Store the resutls in an output JSON.
 pub fn generate_block_comparison(
     block_number: u64,
-    base_traces: Vec<TransactionTraceWithHash>,
-    native_traces: Vec<TransactionTraceWithHash>,
+    mut base_traces: Vec<TransactionTraceWithHash>,
+    mut native_traces: Vec<TransactionTraceWithHash>,
 ) -> Value {
-    compare_jsons(
-        trace_block_report_to_json(block_number, base_traces),
-        trace_block_report_to_json(block_number, native_traces),
-    )
+    normalize_traces_state_diff(&mut base_traces);
+    normalize_traces_state_diff(&mut native_traces);
+
+    let base_block_report = block_report_with_dependencies(&base_traces);
+    let native_block_report = block_report_with_dependencies(&native_traces);
+
+    // ToDo: Not taking into account arrays with different length
+    // ToDo: Not taking into account different order in the transactions
+    let post_response: Vec<Value> = match (base_block_report, native_block_report) {
+        (Value::Array(base), Value::Array(native)) => base
+            .into_iter()
+            .zip(native.into_iter())
+            .map(|(base_tx_trace, native_tx_trace)| {
+                generate_transaction_comparions(base_tx_trace, native_tx_trace)
+            })
+            .collect(),
+        // ToDo: Should we handle this panic accordingly
+        _ => panic!("Expecting arrays "),
+    };
+
+    json!({
+        "block_num": block_number,
+        "post_response": post_response,
+    })
 }
 
+/// Compares the trace root of two transactions
+/// If the trace roots are different, it compares the contract dependencies and storage dependencies.
+/// Otherwise, it skips comparison for contract dependencies and storage dependencies.
+fn generate_transaction_comparions(base_tx_trace: Value, native_tx_trace: Value) -> Value {
+    // Helper function to compare individual keys
+    fn compare_traces_key(
+        base_trace: &mut Map<String, Value>,
+        native_trace: &mut Map<String, Value>,
+        key: &str,
+    ) -> Value {
+        let base = base_trace.remove(key).unwrap();
+        let native = native_trace.remove(key).unwrap();
+        compare_jsons(base, native)
+    }
+
+    let (mut base_trace, mut native_trace) = match (base_tx_trace, native_tx_trace) {
+        (Value::Object(base), Value::Object(native)) => (base, native),
+        _ => panic!("base trace and native trace are expected to be objects"),
+    };
+
+    let trace_comparison = compare_traces_key(&mut base_trace, &mut native_trace, "trace_root");
+
+    let tx_hash = {
+        let hash = base_trace.get("transaction_hash").unwrap().to_owned();
+        let tx_hash_comparison =
+            compare_traces_key(&mut base_trace, &mut native_trace, "transaction_hash");
+        if value_is_same(&tx_hash_comparison) {
+            hash
+        } else {
+            tx_hash_comparison
+        }
+    };
+
+    if value_is_same(&trace_comparison) {
+        json!({
+            "transaction_hash": tx_hash,
+            "trace_root": trace_comparison,
+        })
+    } else {
+        let contract_dependencies =
+            compare_traces_key(&mut base_trace, &mut native_trace, "contract_dependencies");
+        let storage_dependencies =
+            compare_traces_key(&mut base_trace, &mut native_trace, "storage_dependencies");
+
+        json!({
+            "transaction_hash": tx_hash,
+            "trace_root": trace_comparison,
+            "contract_dependencies": contract_dependencies,
+            "storage_dependencies": storage_dependencies,
+        })
+    }
+}
+
+/// Take two JSONs and compare each (key, value) recursively.
+/// Store the results in an output JSON.
 pub fn compare_jsons(json_1: Value, json_2: Value) -> Value {
     let output = compare_json_values(json_1, json_2);
     clean_json_value(output)
 }
 
 fn compare_json_values(val_1: Value, val_2: Value) -> Value {
-    match (val_1, val_2) {
+    match (val_1.clone(), val_2.clone()) {
         (Value::Object(obj_1), Value::Object(obj_2)) => compare_json_objects(obj_1, obj_2),
         (Value::Array(arr_1), Value::Array(arr_2)) => compare_json_arrays(arr_1, arr_2),
         (val_1, val_2) if val_1 == val_2 => ComparisonResult::new_same(val_1).into(),
@@ -654,6 +718,97 @@ mod tests {
                 serde_json::to_string_pretty(&result).unwrap()
             )
         }
+    }
+
+    #[test]
+    fn test_generate_block_comparison() {
+        let base_trace = json!({
+            "contract_dependencies": "[0]",
+            "storage_dependencies": "[0]",
+            "trace_root": {
+                "execute_invocation": {
+                    "call_type": "CALL",
+                    "calldata": "[8]",
+                    "caller_address": "0x0",
+                    "calls": [{
+                        "call_type": "CALL",
+                        "calldata": "[4]",
+                        "caller_address": "0x9f481dc204eef7d51f908fb6243be9a0d96d872053233dccdf131109b6e398",
+                        "calls": []
+                    }]
+                },
+            },
+            "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
+        });
+        let native_trace = base_trace.clone();
+        let result = generate_transaction_comparions(base_trace, native_trace);
+        assert_eq!(
+            result,
+            json!({
+                "trace_root": "Same({1})",
+                "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
+            })
+        );
+
+        let base_trace = json!({
+            "contract_dependencies": "[0]",
+            "storage_dependencies": "[0]",
+            "trace_root": {
+                "execute_invocation": {
+                    "call_type": "CALL",
+                    "calldata": "[8]",
+                    "caller_address": "0x1",
+                    "calls": [{
+                        "call_type": "CALL",
+                        "calldata": "[4]",
+                        "caller_address": "0x9f481dc204eef7d51f908fb6243be9a0d96d872053233dccdf131109b6e398",
+                        "calls": []
+                    }]
+                },
+            },
+            "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
+        });
+        let native_trace = json!({
+            "contract_dependencies": "[0]",
+            "storage_dependencies": "[0]",
+            "trace_root": {
+                "execute_invocation": {
+                    "call_type": "CALL",
+                    "calldata": "[8]",
+                    "caller_address": "0x0",
+                    "calls": [{
+                        "call_type": "CALL",
+                        "calldata": "[4]",
+                        "caller_address": "0x9f481dc204eef7d51f908fb6243be9a0d96d872053233dccdf131109b6e398",
+                        "calls": []
+                    }]
+                },
+            },
+            "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
+        });
+
+        let result = generate_transaction_comparions(base_trace, native_trace);
+        assert_eq!(
+            result,
+            json!({
+                "contract_dependencies": "Same([0])",
+                "storage_dependencies": "Same([0])",
+                "trace_root": {
+                    "execute_invocation": {
+                        "call_type": "Same(CALL)",
+                        "calldata": "Same([8])",
+                        "caller_address": {
+                            "Different": {
+                                "base": "0x1",
+                                "native": "0x0"
+                            }
+                        },
+                        "calls": "Same([1])"
+                    }
+                },
+                "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
+            })
+        );
     }
 
     fn same_array_repr(len: usize) -> String {
