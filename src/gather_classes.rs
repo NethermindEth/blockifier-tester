@@ -4,7 +4,8 @@
 
 use crate::{
     io::{
-        self, block_num_from_path, deserialize_or, path_for_overall_report, path_for_report, try_deserialize_or, try_serialize,
+        self, block_num_from_path, path_for_overall_report, path_for_report, try_deserialize,
+        try_serialize,
     },
     juno_manager::ManagerError,
     utils::{self, felt_to_hex, val_or_err},
@@ -27,7 +28,6 @@ use anyhow::{anyhow, Context};
 use itertools::Itertools;
 use starknet::core::types::FieldElement;
 use std::fs::OpenOptions;
-
 
 use serde_json::Value;
 
@@ -54,6 +54,10 @@ impl ClassHashesReport {
             totals: HashMap::<ClassHash, Count>::new(),
             blocks: HashSet::new(),
         }
+    }
+
+    fn contains_block(&self, block_num: &u64) -> bool {
+        self.blocks.contains(block_num)
     }
 
     /// Returns the number of counts added or an error.
@@ -92,7 +96,7 @@ impl ClassHashesReport {
 impl core::fmt::Display for ClassHashesReport {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut map_vec = self.report.iter().collect_vec();
-        map_vec.sort_by(|(class_hash_a, _table_a), (class_hash_b, _table_b)| {
+        map_vec.sort_by(|(class_hash_a, _), (class_hash_b, _)| {
             let count_a = self.totals[class_hash_a];
             let count_b = self.totals[class_hash_b];
             count_a.cmp(&count_b)
@@ -129,12 +133,13 @@ impl core::fmt::Display for ClassHashesReport {
 /// Scans the `./results` folder for block comparisons and updates class_hashes report.
 pub async fn gather_class_hashes() -> Result<(), ManagerError> {
     let force_generate = false;
+
     let mut overall_report =
-        deserialize_or(&path_for_overall_report(), ClassHashesReport::new);
+        try_deserialize(path_for_overall_report()).unwrap_or(ClassHashesReport::new());
 
     let compare_paths = get_comparison_blocks()
         .into_iter()
-        .filter(|(block_num, _path)| !overall_report.blocks.contains(block_num))
+        .filter(|(block_num, _path)| !overall_report.contains_block(block_num))
         .collect_vec();
     info!("New blocks to add: {}", compare_paths.len());
     process_compare_paths(&mut overall_report, compare_paths, force_generate);
@@ -162,8 +167,12 @@ fn get_comparison_blocks() -> Vec<(u64, PathBuf)> {
     paths
         .into_iter()
         .map(|path| {
-            let block_num = block_num_from_path(path.as_path()).unwrap_or_else(|_| panic!("Failed to get block_num from path: `{}`",
-                    path.to_str().unwrap()));
+            let block_num = block_num_from_path(path.as_path()).unwrap_or_else(|_| {
+                panic!(
+                    "Failed to get block_num from path: `{}`",
+                    path.to_str().unwrap()
+                )
+            });
             (block_num, path)
         })
         .collect_vec()
@@ -208,7 +217,9 @@ fn process_compare_paths(
         );
 
         let maybe_block_report = match force_generate {
-            false => try_deserialize_or(&path_for_report(block_num), || generate_report(&path)),
+            false => {
+                try_deserialize(&path_for_report(block_num)).or_else(|_| generate_report(&path))
+            }
             true => generate_report(&path),
         };
 

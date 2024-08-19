@@ -153,7 +153,7 @@ pub async fn prepare_directories() {
     future::join_all(paths.iter().map(tokio::fs::create_dir_all)).await;
 }
 
-pub fn try_deserialize<T, P>(path: &P) -> Result<T, anyhow::Error>
+pub fn try_deserialize<T, P>(path: P) -> Result<T, anyhow::Error>
 where
     T: for<'a> Deserialize<'a>,
     P: AsRef<Path>,
@@ -165,47 +165,9 @@ where
     }
     let file = OpenOptions::new()
         .read(true)
-        .open(path)
+        .open(path.as_ref())
         .context(format!("Opening file: {}", path_str))?;
     serde_json::from_reader(file).context(format!("Deserializing from file: {}", path_str))
-}
-
-/// Attempts to deserialize from `path` and return the result.
-/// If deserialization fails, returns the result of `f`.
-///
-/// If `f` is a closure that returns `T`, use `deserialize_or`.
-pub fn try_deserialize_or<T, F, P>(path: &P, f: F) -> Result<T, anyhow::Error>
-where
-    T: for<'a> Deserialize<'a>,
-    F: Fn() -> Result<T, anyhow::Error>,
-    P: AsRef<Path>,
-{
-    match try_deserialize(path) {
-        Ok(obj) => Ok(obj),
-        Err(err) => {
-            debug!("Failed to deserialize: {err}");
-            f()
-        }
-    }
-}
-
-/// Attempts to deserialize from `path` and return the result.
-/// If deserialization fails, returns the result of `f`.
-///
-/// If `f` is a closure that returns `Result<T, anyhow::Error>`, use `try_deserialize_or`.
-pub fn deserialize_or<T, F, P>(path: &P, f: F) -> T
-where
-    T: for<'a> Deserialize<'a>,
-    F: Fn() -> T,
-    P: AsRef<Path>,
-{
-    match try_deserialize(path) {
-        Ok(obj) => obj,
-        Err(err) => {
-            debug!("Failed to deserialize: {err:?}");
-            f()
-        }
-    }
 }
 
 /// Attempts to serialize `obj` to `path`.
