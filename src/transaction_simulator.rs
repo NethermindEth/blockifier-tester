@@ -4,7 +4,6 @@ use std::sync::Arc;
 use log::{debug, info};
 
 use itertools::Itertools;
-use num_bigint::BigUint;
 use serde::Serialize;
 use starknet::core::types::{
     BlockTag, BroadcastedDeclareTransaction, BroadcastedDeclareTransactionV1,
@@ -24,6 +23,7 @@ use starknet::{
 };
 
 use crate::juno_manager::{JunoManager, ManagerError};
+use crate::utils::felt_to_hex;
 
 #[allow(dead_code)]
 pub enum SimulationStrategy {
@@ -81,9 +81,9 @@ impl TransactionSimulator for JunoManager {
         for (i, transaction) in block.transactions().iter().enumerate() {
             let tx_hash = get_block_transaction_hash(transaction);
             debug!(
-                "({}/{max_transaction}) Receipt for 0x{}",
+                "({}/{max_transaction}) Receipt for {}",
                 i + 1,
-                hash_to_hex(&tx_hash)
+                felt_to_hex(&tx_hash, true)
             );
             let expected_result = self
                 .rpc_client
@@ -349,11 +349,7 @@ pub fn hex_serialize<S>(val: &FieldElement, serializer: S) -> Result<S::Ok, S::E
 where
     S: serde::Serializer,
 {
-    serializer.serialize_str(&format!("0x{}", hash_to_hex(val)))
-}
-
-fn hash_to_hex(h: &FieldElement) -> String {
-    BigUint::from_bytes_be(&h.to_bytes_be()).to_str_radix(16)
+    serializer.serialize_str(&felt_to_hex(val, true))
 }
 
 pub struct BlockSimulationReport {

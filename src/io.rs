@@ -21,10 +21,6 @@ pub fn path_for_overall_report() -> PathBuf {
     PathBuf::from("results/class_hashes/overall_report.json".to_string())
 }
 
-pub fn path_for_report(block_num: u64) -> PathBuf {
-    PathBuf::from(format!("results/class_hashes/report-{block_num}.json"))
-}
-
 pub fn successful_comparison_glob() -> String {
     "results/comparison-*.json".to_string()
 }

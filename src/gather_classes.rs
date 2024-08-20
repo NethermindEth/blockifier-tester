@@ -4,30 +4,28 @@
 
 use crate::{
     io::{
-        self, block_num_from_path, path_for_overall_report, path_for_report, try_deserialize,
+        self, block_num_from_path, path_for_overall_report, try_deserialize,
         try_serialize,
     },
     juno_manager::ManagerError,
-    utils::{self, felt_to_hex, val_or_err},
+    utils::{self, felt_to_hex},
 };
 
 use glob::glob;
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 
-use crate::trace_comparison::{DIFFERENT, SAME};
+use crate::trace_comparison::DIFFERENT;
 
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
-    io::Read,
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
 use anyhow::{anyhow, Context};
 use itertools::Itertools;
 use starknet::core::types::FieldElement;
-use std::fs::OpenOptions;
 
 use serde_json::Value;
 
@@ -60,6 +58,7 @@ impl ClassHashesReport {
         self.blocks.contains(block_num)
     }
 
+    #[allow(dead_code)]
     /// Returns the number of counts added or an error.
     fn update(&mut self, report: &ClassHashesReport) -> Result<usize, anyhow::Error> {
         let new_blocks_len = report.blocks.union(&self.blocks).count();
@@ -132,8 +131,6 @@ impl core::fmt::Display for ClassHashesReport {
 
 /// Scans the `./results` folder for block comparisons and updates class_hashes report.
 pub async fn gather_class_hashes() -> Result<(), ManagerError> {
-    let force_generate = false;
-
     let mut overall_report =
         try_deserialize(path_for_overall_report()).unwrap_or(ClassHashesReport::new());
 
@@ -142,7 +139,7 @@ pub async fn gather_class_hashes() -> Result<(), ManagerError> {
         .filter(|(block_num, _path)| !overall_report.contains_block(block_num))
         .collect_vec();
     info!("New blocks to add: {}", compare_paths.len());
-    process_compare_paths(&mut overall_report, compare_paths, force_generate);
+    process_compare_paths(&mut overall_report, compare_paths);
 
     info!("{overall_report}");
 
@@ -179,14 +176,11 @@ fn get_comparison_blocks() -> Vec<(u64, PathBuf)> {
 }
 
 /// Updates overall_report to include data from block reports.
-/// Side effects: Creates reports for each block read from each path in `file_paths` if they do not already exist.
-/// `force_generate` : If false, attempts to deserialize reports instead of generating them, otherwise always generates block reports.
 ///
 /// Params: `file_paths` Vector of (block_num, file_path).
 fn process_compare_paths(
     overall_report: &mut ClassHashesReport,
     file_paths: Vec<(u64, PathBuf)>,
-    force_generate: bool,
 ) {
     if file_paths.is_empty() {
         return;
@@ -215,36 +209,26 @@ fn process_compare_paths(
             "Processing path: `{}`",
             path.file_name().unwrap().to_str().unwrap()
         );
+        processed += 1;
 
-        let maybe_block_report = match force_generate {
-            false => {
-                try_deserialize(&path_for_report(block_num)).or_else(|_| generate_report(&path))
-            }
-            true => generate_report(&path),
-        };
+        let json_result: Result<Value, _> = try_deserialize(path);
+        if let Err(err) = json_result {
+            warn!("Failed to process file with err: {err}");
+            failures += 1;
+            continue;
+        }
+        let json_obj = json_result.unwrap();
 
-        match maybe_block_report {
+        let update_result = update_report(overall_report, &json_obj, block_num);
+        match update_result {
             Err(err) => {
-                warn!("Failed to process file with err: {err}");
+                info!("{err}");
                 failures += 1;
             }
-            Ok(block_report) => {
-                let _ = try_serialize_block_report(block_num, &block_report, force_generate)
-                    .map_err(|err| warn!("{err:?}"));
-                processed += 1;
-
-                let update_result = overall_report.update(&block_report);
-                match update_result {
-                    Err(err) => {
-                        info!("{err}");
-                        failures += 1;
-                    }
-                    Ok(updates) => {
-                        info!("Updates to overall report from block {block_num}: {updates}");
-                        let _ = try_serialize(path_for_overall_report(), &overall_report)
-                            .inspect_err(|err| warn!("{err}"));
-                    }
-                }
+            Ok(updates) => {
+                info!("Updates to overall report from block {block_num}: {updates}");
+                let _ = try_serialize(path_for_overall_report(), &overall_report)
+                    .inspect_err(|err| warn!("{err}"));
             }
         }
     }
@@ -256,48 +240,12 @@ fn process_compare_paths(
     );
 }
 
-fn generate_report<P>(path: P) -> Result<ClassHashesReport, anyhow::Error>
-where
-    P: AsRef<Path>,
-{
-    let path_str = path.as_ref().to_str().expect("failed to unwrap path");
-
-    let mut comparison_file = OpenOptions::new()
-        .read(true)
-        .open(path.as_ref())
-        .context(format!("Reading comparison file: '{}'", path_str,))
-        .inspect_err(|err| {
-            warn!("Error reading file: {err}");
-        })?;
-
-    let mut data = String::new();
-    let _data_len = comparison_file.read_to_string(&mut data)?;
-    let json_obj: Value = serde_json::from_str(data.as_str()).expect("unwrapping json_obj");
-
-    let json_block_num = block_num_from_json(&json_obj);
-    let path_block_num = block_num_from_path(path_str);
-    let block_num = val_or_err(path_block_num, json_block_num)?;
-
-    let mut report = ClassHashesReport::new();
-    update_report(&mut report, &json_obj, block_num)?;
-    assert!(report.blocks.len() == 1 && report.blocks.contains(&block_num));
-    Ok(report)
-}
-
 /// Returns: Either `Some(updates)` where `updates` is the number of updates made to the report or an Error.
 fn update_report(
     report: &mut ClassHashesReport,
     obj: &Value,
     block_num: u64,
 ) -> Result<usize, anyhow::Error> {
-    if let Value::String(same) = obj {
-        // TODO (#72) Rethink handling this.
-        debug!("File only has a string object. It should be \"same\": `{obj}`");
-        assert!(same == &format!("{}({{{}}}))", SAME, block_num));
-        warn!("This is not expected. Execution resources should differ.");
-        return Err(anyhow!("Native and Base were the same."));
-    }
-
     if report.blocks.contains(&block_num) {
         return Err(
             anyhow!("Report already contains block").context(format!("block_num: {block_num}"))
@@ -375,43 +323,4 @@ fn get_tuple_from_call(call: &Value) -> Result<(EntryPoint, ClassHash), anyhow::
         values.push(felt_version);
     }
     Ok((values[0], values[1]))
-}
-
-/// Checks that the report corresponds to the block_num.
-/// Then, if no report exists or `overwrite` is `true`, tries to serialize the report.
-fn try_serialize_block_report(
-    block_num: u64,
-    report: &ClassHashesReport,
-    overwrite: bool,
-) -> Result<(), anyhow::Error> {
-    assert!(report.blocks.len() == 1 && report.blocks.contains(&block_num));
-
-    let report_path = path_for_report(block_num);
-    if overwrite || !report_path.exists() {
-        try_serialize(path_for_report(block_num), report).context(format!("block_num: {block_num}"))
-    } else {
-        Err(anyhow!("Skipped"))
-    }
-}
-
-fn block_num_from_json(obj: &Value) -> Result<u64, anyhow::Error> {
-    let re = regex::Regex::new(r"Same\((?<inner>.*?)\)").unwrap();
-    match obj.get("block_num") {
-        Some(Value::String(block_string)) => {
-            match re.captures(block_string).map(|caps| caps.name("inner")) {
-                Some(Some(inner_match)) => inner_match
-                    .as_str()
-                    .parse::<u64>()
-                    .context("Convert match to u64."),
-                _ => Err(anyhow!("Failed to match regex for block_num.")),
-            }
-        }
-        Some(Value::Number(block_num)) => match block_num.as_u64() {
-            None => Err(anyhow!(
-                "Failed to convert block_num from json Value::Number."
-            )),
-            Some(block) => Ok(block),
-        },
-        _ => Err(anyhow!("Failed to get block_num from json object.")),
-    }
 }

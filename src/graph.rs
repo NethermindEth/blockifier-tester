@@ -1,11 +1,11 @@
 use anyhow::Context;
 use itertools::Itertools;
 use log::{info, warn};
-use num_bigint::BigUint;
 use petgraph::visit::Walker;
 use starknet::core::types::{ContractStorageDiffItem, FieldElement, TransactionTraceWithHash};
 use std::io::Write;
 use std::{collections::HashMap, fs::OpenOptions, path::Path};
+use crate::utils::felt_to_hex;
 
 use petgraph::{
     graph::{Graph, NodeIndex},
@@ -284,13 +284,6 @@ fn graph_to_vecs(graph: Graph<FieldElement, i32>) -> Vec<Vec<String>> {
         table.push(row);
     }
     table
-}
-
-fn felt_to_hex(value: &FieldElement, with_prefix: bool) -> String {
-    match with_prefix {
-        true => format!("0x{}", felt_to_hex(value, false)),
-        false => BigUint::from_bytes_be(&value.to_bytes_be()).to_str_radix(16),
-    }
 }
 
 #[cfg(test)]
