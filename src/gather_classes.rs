@@ -3,10 +3,7 @@
 // TODO (#72) Make async.
 
 use crate::{
-    io::{
-        self, block_num_from_path, path_for_overall_report, try_deserialize,
-        try_serialize,
-    },
+    io::{self, block_num_from_path, path_for_overall_report, try_deserialize, try_serialize},
     juno_manager::ManagerError,
     utils::{self, felt_to_hex},
 };
@@ -131,7 +128,7 @@ impl core::fmt::Display for ClassHashesReport {
 
 /// Scans the `./results` folder for block comparisons and updates class_hashes report.
 pub async fn gather_class_hashes() -> Result<(), ManagerError> {
-    let mut overall_report =
+    let overall_report =
         try_deserialize(path_for_overall_report()).unwrap_or(ClassHashesReport::new());
 
     let compare_paths = get_comparison_blocks()
@@ -139,7 +136,7 @@ pub async fn gather_class_hashes() -> Result<(), ManagerError> {
         .filter(|(block_num, _path)| !overall_report.contains_block(block_num))
         .collect_vec();
     info!("New blocks to add: {}", compare_paths.len());
-    process_compare_paths(&mut overall_report, compare_paths);
+    let overall_report = process_compare_paths(overall_report, compare_paths);
 
     info!("{overall_report}");
 
@@ -164,12 +161,9 @@ fn get_comparison_blocks() -> Vec<(u64, PathBuf)> {
     paths
         .into_iter()
         .map(|path| {
-            let block_num = block_num_from_path(path.as_path()).unwrap_or_else(|_| {
-                panic!(
-                    "Failed to get block_num from path: `{}`",
-                    path.to_str().unwrap()
-                )
-            });
+            let block_num = block_num_from_path(path.as_path())
+                .context(format!("path: `{}`", path.to_str().unwrap()))
+                .expect("Failed to get block_num from path.");
             (block_num, path)
         })
         .collect_vec()
@@ -179,13 +173,9 @@ fn get_comparison_blocks() -> Vec<(u64, PathBuf)> {
 ///
 /// Params: `file_paths` Vector of (block_num, file_path).
 fn process_compare_paths(
-    overall_report: &mut ClassHashesReport,
+    overall_report: ClassHashesReport,
     file_paths: Vec<(u64, PathBuf)>,
-) {
-    if file_paths.is_empty() {
-        return;
-    }
-
+) -> ClassHashesReport {
     let total = file_paths.len();
     let get_stat = |prefix, value| {
         format!(
@@ -197,6 +187,7 @@ fn process_compare_paths(
     let mut failures = 0;
     let mut processed = 0;
 
+    let mut overall_report = overall_report;
     // TODO (#72) Potential speedup: Process each file with `Process(path) -> ClassHashesReport` in parallel, then merge ClassHashesReport together.
     for (block_num, path) in file_paths.into_iter() {
         info!(
@@ -219,7 +210,7 @@ fn process_compare_paths(
         }
         let json_obj = json_result.unwrap();
 
-        let update_result = update_report(overall_report, &json_obj, block_num);
+        let update_result = update_report(&mut overall_report, &json_obj, block_num);
         match update_result {
             Err(err) => {
                 info!("{err}");
@@ -238,6 +229,7 @@ fn process_compare_paths(
         get_stat("Successes", processed - failures),
         get_stat("Failures", failures)
     );
+    overall_report
 }
 
 /// Returns: Either `Some(updates)` where `updates` is the number of updates made to the report or an Error.
