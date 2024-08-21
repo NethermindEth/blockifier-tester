@@ -17,14 +17,6 @@ use log::{debug, info, warn};
 
 use crate::juno_manager::ManagerError;
 
-pub fn path_for_overall_report() -> PathBuf {
-    PathBuf::from("results/class_hashes/overall_report.json".to_string())
-}
-
-pub fn successful_comparison_glob() -> String {
-    "results/comparison-*.json".to_string()
-}
-
 pub fn block_num_from_path<P>(path: P) -> Result<u64, anyhow::Error>
 where
     P: AsRef<Path>,
@@ -42,6 +34,14 @@ where
     let caps = re.captures(file_name).context(context.clone())?;
     let block_match = caps.name("block_num").context(context.clone())?;
     block_match.as_str().parse::<u64>().context(context)
+}
+
+pub fn path_for_overall_report() -> PathBuf {
+    PathBuf::from("results/class_hashes/overall_report.json".to_string())
+}
+
+pub fn successful_comparison_glob() -> String {
+    "results/comparison-*.json".to_string()
 }
 
 pub fn succesful_comparison_path(block_num: u64) -> PathBuf {
