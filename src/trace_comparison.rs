@@ -130,7 +130,7 @@ pub fn generate_block_comparison(
     })
 }
 
-fn compare_traces(base_traces: &Vec<Value>, native_traces: &Vec<Value>) -> Value {
+fn compare_traces(base_traces: &[Value], native_traces: &[Value]) -> Value {
     fn create_hash_map(traces: &[Value]) -> HashMap<String, usize> {
         traces
             .iter()
@@ -170,6 +170,7 @@ fn compare_traces(base_traces: &Vec<Value>, native_traces: &Vec<Value>) -> Value
             );
             base_idx += 1;
         } else {
+            // There are both base and native transactions left
             let base_tx = &base_traces[base_idx];
             let native_tx = &native_traces[native_idx];
 
@@ -207,9 +208,9 @@ fn compare_traces(base_traces: &Vec<Value>, native_traces: &Vec<Value>) -> Value
                 }
                 base_idx = base_match_idx;
             } else {
-                // No match found, we mark native as different until base is empty
+                // No match found, we keep adding base transactions first
                 result.push(ComparisonResult::new_different_base_only(base_tx.clone()).into());
-                base_idx += 1; // We skip the native transaction
+                base_idx += 1;
             }
         }
     }
