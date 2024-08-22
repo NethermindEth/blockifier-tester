@@ -12,13 +12,14 @@ mod transaction_tracer;
 use crate::cli::{Cli, Commands};
 use crate::io::{
     crashed_comparison_path, log_base_trace, log_comparison_report, log_crash_report,
-    log_unexpected_error_report, read_base_trace, succesful_comparison_path,
+    log_unexpected_error_report, read_base_trace, succesful_comparison_path, log_trace
 };
 use block_tracer::BlockTracer;
 use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
 use clap::Parser;
 use core::panic;
+use std::path::PathBuf;
 use dependencies::simulation_report_dependencies;
 use env_logger::Env;
 use io::prepare_directories;
@@ -74,6 +75,15 @@ async fn execute_traces(
 
         info!("TRACING block {block_number} with Native. It has {tx_count} transactions");
         let native_trace = trace_native(block_number, tx_count, &simulation_flags).await?;
+        match &native_trace {
+            Some(trace) => {
+let path_string = format!("results/native/trace-{block_number}.json");
+let path_buf = PathBuf::from(path_string.as_str());
+              log_trace(block_number, trace, path_buf.as_path());
+            },
+            None => (),
+        }
+
 
         if let Some(native_trace) = native_trace {
             let comparison =

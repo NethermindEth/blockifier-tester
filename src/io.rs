@@ -1,7 +1,7 @@
 use futures::future;
 use serde_json::Value;
 use starknet::core::types::TransactionTraceWithHash;
-use std::{fs::OpenOptions, path::PathBuf};
+use std::{fs::OpenOptions, path::{Path, PathBuf}};
 use tokio::{
     fs::OpenOptions as AsyncOpenOptions,
     io::{AsyncWriteExt, BufWriter},
@@ -71,6 +71,20 @@ pub async fn log_unexpected_error_report(block_number: u64, err: &ManagerError) 
     if let Err(write_err) = log_file.write_all(format!("{err:?}").as_bytes()).await {
         warn!("Failed to write err with error: '{write_err}'");
     }
+}
+
+pub fn log_trace(block_number: u64, trace: &Vec<TransactionTraceWithHash>, path : &Path) {
+    info!("Log trace for block {block_number}");
+
+    let block_file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(path)
+        .expect("Failed to open log file");
+
+    serde_json::to_writer_pretty(block_file, trace)
+        .unwrap_or_else(|_| panic!("failed to write block: {block_number}"));
 }
 
 // Creates a file in ./results/base/trace-{`block_number`}.json with the block trace by Base Juno
