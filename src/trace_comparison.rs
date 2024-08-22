@@ -1,5 +1,5 @@
 use core::panic;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -128,6 +128,93 @@ pub fn generate_block_comparison(
         "block_num": block_number,
         "post_response": post_response,
     })
+}
+
+fn compare_traces(base_traces: &Vec<Value>, native_traces: &Vec<Value>) -> Value {
+    fn create_hash_map(traces: &[Value]) -> HashMap<String, usize> {
+        traces
+            .iter()
+            .enumerate()
+            .map(|(idx, trace)| {
+                (
+                    trace["transaction_hash"]
+                        .as_str()
+                        .expect("Transaction hash is not a string")
+                        .to_string(),
+                    idx,
+                )
+            })
+            .collect()
+    }
+
+    let mut result = Vec::new();
+    let mut base_idx = 0;
+    let mut native_idx = 0;
+
+    // To look up indices of transaction hashes, in the event that the ordering is different
+    let base_hash_map = create_hash_map(base_traces);
+    let native_hash_map = create_hash_map(native_traces);
+
+    while base_idx < base_traces.len() || native_idx < native_traces.len() {
+        if base_idx >= base_traces.len() {
+            // Only native transactions left
+            result.push(
+                ComparisonResult::new_different_native_only(native_traces[native_idx].clone())
+                    .into(),
+            );
+            native_idx += 1;
+        } else if native_idx >= native_traces.len() {
+            // Only base transactions left
+            result.push(
+                ComparisonResult::new_different_base_only(base_traces[base_idx].clone()).into(),
+            );
+            base_idx += 1;
+        } else {
+            let base_tx = &base_traces[base_idx];
+            let native_tx = &native_traces[native_idx];
+
+            let (base_tx_hash, native_tx_hash) = (
+                base_tx["transaction_hash"]
+                    .as_str()
+                    .expect("Transaction hash is not a string"),
+                native_tx["transaction_hash"]
+                    .as_str()
+                    .expect("Transaction hash is not a string"),
+            );
+
+            if base_tx_hash == native_tx_hash {
+                result.push(generate_transaction_comparions(
+                    base_tx.clone(),
+                    native_tx.clone(),
+                ));
+                base_idx += 1;
+                native_idx += 1;
+            } else if let Some(&native_match_idx) = native_hash_map.get(base_tx_hash) {
+                // Found a match for base transaction in native
+                for i in native_idx..native_match_idx {
+                    result.push(
+                        ComparisonResult::new_different_native_only(native_traces[i].clone())
+                            .into(),
+                    );
+                }
+                native_idx = native_match_idx;
+            } else if let Some(&base_match_idx) = base_hash_map.get(native_tx_hash) {
+                // Found a match for native transaction in base
+                for i in base_idx..base_match_idx {
+                    result.push(
+                        ComparisonResult::new_different_base_only(base_traces[i].clone()).into(),
+                    );
+                }
+                base_idx = base_match_idx;
+            } else {
+                // No match found, we mark native as different until base is empty
+                result.push(ComparisonResult::new_different_base_only(base_tx.clone()).into());
+                base_idx += 1; // We skip the native transaction
+            }
+        }
+    }
+
+    Value::Array(result)
 }
 
 /// Compares the trace root of two transactions
