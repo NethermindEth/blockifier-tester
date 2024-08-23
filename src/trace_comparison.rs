@@ -165,27 +165,27 @@ fn compare_traces(base_traces: &[Value], native_traces: &[Value]) -> Value {
             base_idx += 1;
         } else {
             // There are both base and native transactions left
-            let base_tx = &base_traces[base_idx];
-            let native_tx = &native_traces[native_idx];
+            let base_trace = &base_traces[base_idx];
+            let native_trace = &native_traces[native_idx];
 
-            let base_tx_hash = base_tx["transaction_hash"]
+            let base_tx_hash = base_trace["transaction_hash"]
                 .as_str()
-                .expect("Transaction hash is not a string");
-            let native_tx_hash = native_tx["transaction_hash"]
+                .expect("Base transaction hash is not a string");
+            let native_tx_hash = native_trace["transaction_hash"]
                 .as_str()
-                .expect("Transaction hash is not a string");
+                .expect("Native transaction hash is not a string");
 
             if base_tx_hash == native_tx_hash {
-                let base_map = base_tx
+                let base_map = base_trace
                     .as_object()
                     .expect("Base trace is not an object")
                     .clone();
-                let native_map = native_tx
+                let native_map = native_trace
                     .as_object()
                     .expect("Native trace is not an object")
                     .clone();
 
-                result.push(generate_transaction_comparions(
+                result.push(generate_transaction_comparisons(
                     base_map,
                     native_map,
                     base_tx_hash,
@@ -211,7 +211,7 @@ fn compare_traces(base_traces: &[Value], native_traces: &[Value]) -> Value {
                 base_idx = base_match_idx;
             } else {
                 // No match found, we keep adding base transactions first
-                result.push(ComparisonResult::new_different_base_only(base_tx.clone()).into());
+                result.push(ComparisonResult::new_different_base_only(base_trace.clone()).into());
                 base_idx += 1;
             }
         }
@@ -223,7 +223,7 @@ fn compare_traces(base_traces: &[Value], native_traces: &[Value]) -> Value {
 /// Compares the trace root of two transactions
 /// If the trace roots are different, it compares the contract dependencies and storage dependencies.
 /// Otherwise, it skips comparison for contract dependencies and storage dependencies.
-fn generate_transaction_comparions(
+fn generate_transaction_comparisons(
     mut base_trace: Map<String, Value>,
     mut native_trace: Map<String, Value>,
     tx_hash: &str,
@@ -821,7 +821,7 @@ mod tests {
         let native_trace = base_trace.clone();
         let base = base_trace.as_object().unwrap();
         let native = native_trace.as_object().unwrap();
-        let result = generate_transaction_comparions(
+        let result = generate_transaction_comparisons(
             base.clone(),
             native.clone(),
             "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9",
@@ -873,7 +873,7 @@ mod tests {
 
         let base = base_trace.as_object().unwrap();
         let native = native_trace.as_object().unwrap();
-        let result = generate_transaction_comparions(
+        let result = generate_transaction_comparisons(
             base.clone(),
             native.clone(),
             "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9",
