@@ -23,8 +23,8 @@ use clap::Parser;
 use core::panic;
 use dependencies::simulation_report_dependencies;
 use env_logger::Env;
-use io::prepare_directories;
-use juno_manager::{JunoBranch, JunoManager, ManagerError};
+use io::{config_path, prepare_directories};
+use juno_manager::{Config, JunoBranch, JunoManager, ManagerError, Network};
 use log::{error, info, warn};
 use starknet::core::types::{SimulationFlag, TransactionTraceWithHash};
 use std::io::Write;
@@ -49,38 +49,49 @@ fn setup_env_logger() {
 async fn execute_traces(
     start_block: u64,
     end_block: u64,
+    network: Network,
     redo_comparison: bool,
     redo_traces: bool,
     simulation_flags: Vec<SimulationFlag>,
 ) -> Result<(), ManagerError> {
-    let mut base_juno = JunoManager::new(JunoBranch::Base).await?;
+    let config = Config::from_path(&config_path())
+        .map_err(|e| ManagerError::Internal(format!("Failed to load config: '{e:?}'")))?;
+
+    let mut base_juno = JunoManager::new(JunoBranch::Base, config.clone(), network).await;
+    base_juno.start_juno().await?;
+
     let blocks_with_tx_count =
         get_sorted_blocks_with_tx_count(&mut base_juno, start_block, end_block)
             .await
             .unwrap();
 
+    let mut native_juno = JunoManager::new(JunoBranch::Native, config, network).await;
     for (block_number, tx_count) in blocks_with_tx_count {
         if !redo_comparison
-            && (succesful_comparison_path(block_number).exists()
-                || crashed_comparison_path(block_number).exists())
+            && (succesful_comparison_path(block_number, network).exists()
+                || crashed_comparison_path(block_number, network).exists())
         {
             info!("Skipping comparison for block {block_number} because it's already logged (use --redo-comp to do anyways)");
             continue;
         }
 
+        base_juno.start_juno().await?;
         let base_trace_result =
             trace_base(redo_traces, block_number, tx_count, &mut base_juno).await?;
+        base_juno.stop_juno().await?;
 
         info!("Switching from Base Juno to Native Juno");
-        base_juno.ensure_dead().await?;
 
+        native_juno.start_juno().await?;
         info!("TRACING block {block_number} with Native. It has {tx_count} transactions");
-        let native_trace = trace_native(block_number, tx_count, &simulation_flags).await?;
+        let native_trace =
+            trace_native(block_number, tx_count, &simulation_flags, &mut native_juno).await?;
+        native_juno.stop_juno().await?;
 
         if let Some(native_trace) = native_trace {
             let comparison =
                 generate_block_comparison(block_number, base_trace_result, native_trace);
-            log_comparison_report(block_number, comparison).await;
+            log_comparison_report(block_number, network, comparison).await;
         }
     }
 
@@ -101,9 +112,11 @@ async fn trace_base(
 ) -> Result<Vec<TransactionTraceWithHash>, ManagerError> {
     info!("TRACING block {block_number} with Base. It has {tx_count} transactions");
 
-    let base_trace = match redo_traces {
-        true => None,
-        false => read_base_trace(block_number),
+    let network = base_juno.network;
+    let base_trace = if redo_traces {
+        None
+    } else {
+        read_base_trace(block_number, network)
     };
 
     match base_trace {
@@ -119,14 +132,14 @@ async fn trace_base(
                 Ok(b) => Ok(b),
                 Err(err) => {
                     warn!("{err:?}");
-                    log_unexpected_error_report(block_number, &err).await;
+                    log_unexpected_error_report(block_number, network, &err).await;
                     Err(err)
                 }
             }?;
 
             match base_trace_result.result {
                 TraceResult::Success(trace) => {
-                    log_base_trace(block_number, &trace);
+                    log_base_trace(block_number, network, &trace);
                     Ok(trace)
                 }
 
@@ -147,17 +160,18 @@ async fn trace_native(
     block_number: u64,
     tx_count: u64,
     simulation_flags: &[SimulationFlag],
+    native_juno: &mut JunoManager,
 ) -> Result<Option<Vec<TransactionTraceWithHash>>, ManagerError> {
-    let mut native_juno = JunoManager::new(JunoBranch::Native).await?;
-
     let native_trace_result = native_juno.trace_block(block_number).await;
+
+    let network = native_juno.network;
 
     // todo(xrvdg) can we lift this out when reworking error?
     let native_trace_result = match native_trace_result {
         Ok(b) => Ok(b),
         Err(err) => {
             warn!("{err:?}");
-            log_unexpected_error_report(block_number, &err).await;
+            log_unexpected_error_report(block_number, network, &err).await;
             Err(err)
         }
     }?;
@@ -179,8 +193,8 @@ async fn trace_native(
             info!("SIMULATING block {block_number} with Native. It has {tx_count} transactions");
 
             // We make sure Native Juno get properly killed before proceeding.
-            native_juno.ensure_dead().await?;
-            native_juno.ensure_usable().await?;
+            native_juno.stop_juno().await?;
+            native_juno.start_juno().await?;
             let result = native_juno
                 .simulate_block(block_number, SimulationStrategy::Binary, simulation_flags)
                 .await;
@@ -198,7 +212,7 @@ async fn trace_native(
                         result.simulated_reports.len()
                     );
                     let reports_with_dependencies = simulation_report_dependencies(&result);
-                    log_crash_report(block_number, reports_with_dependencies);
+                    log_crash_report(block_number, network, reports_with_dependencies);
                 }
                 Err(err) => error!("Error simulating transactions: {}", err),
             };
@@ -218,13 +232,17 @@ async fn main() -> Result<(), ManagerError> {
 
     let redo_base_trace = cli.redo_base_trace;
 
-    let mut simulation_flags = vec![];
+    let network = match cli.network.as_deref() {
+        Some("mainnet") | None => Network::Mainnet,
+        Some("sepolia") => Network::Sepolia,
+        Some(other) => panic!("invalid network as argument: {other}"),
+    };
 
+    let mut simulation_flags = vec![];
     if cli.skip_validate {
         info!("Running a simulation with SKIP_VALIDATE flag");
         simulation_flags.push(SimulationFlag::SkipValidate)
     }
-
     if cli.skip_fee_charge {
         info!("Running a simulation with SKIP_FEE_CHARGE flag");
         simulation_flags.push(SimulationFlag::SkipFeeCharge)
@@ -242,6 +260,7 @@ async fn main() -> Result<(), ManagerError> {
                     execute_traces(
                         block_num,
                         block_num + 1,
+                        network,
                         redo_comparison,
                         redo_base_trace,
                         simulation_flags,
@@ -259,6 +278,7 @@ async fn main() -> Result<(), ManagerError> {
                     execute_traces(
                         start_block_num,
                         end_block_num,
+                        network,
                         redo_comparison,
                         redo_base_trace,
                         simulation_flags,
@@ -267,8 +287,7 @@ async fn main() -> Result<(), ManagerError> {
                   }
         }
 
-        Commands::GatherClassHashes {
-        } => {
+        Commands::GatherClassHashes {} => {
             if redo_base_trace || redo_comparison {
                 // todo: Handle re-tracing before gathering classes or remove flags from this subcommand.
                 panic!("Not supported");

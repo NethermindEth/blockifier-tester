@@ -19,7 +19,7 @@ pub trait BlockTracer {
 
 impl BlockTracer for JunoManager {
     async fn trace_block(&mut self, block_num: u64) -> Result<TraceBlockReport, ManagerError> {
-        self.ensure_usable().await?;
+        self.start_juno().await?;
 
         let block_id = BlockId::Number(block_num);
         debug!("rpc call to trace_block_transactions {block_num}");

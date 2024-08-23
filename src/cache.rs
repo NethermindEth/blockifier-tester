@@ -28,7 +28,7 @@ pub async fn get_sorted_blocks_with_tx_count(
     cache_data.sort_by(|lhs, rhs| lhs.0.cmp(&rhs.0));
 
     let mut result = vec![];
-    juno_manager.ensure_usable().await?;
+    juno_manager.start_juno().await?;
 
     // For each block, use its cached result if present, and if not then ask juno and add it to the cache data
     for block_num in block_start..block_end {

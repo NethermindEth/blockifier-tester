@@ -66,13 +66,35 @@ impl Display for ManagerError {
 pub struct Config {
     juno_path: String,
     juno_native_path: String,
-    juno_database_path: String,
+    juno_mainnet_database_path: String,
+    juno_sepolia_database_path: String,
 }
 impl Config {
-    fn from_path(path: &Path) -> Result<Self, anyhow::Error> {
+    pub fn from_path(path: &Path) -> Result<Self, anyhow::Error> {
         let config_str = std::fs::read_to_string(path)
             .with_context(|| format!("Reading config path: {path:?}"))?;
         Ok(toml::from_str::<Config>(config_str.as_str())?)
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Network {
+    Mainnet,
+    Sepolia,
+}
+
+// impl ToString for Network {
+//     fn to_string(&self) -> String {
+//         match &self {
+//         }
+//     }
+// }
+impl Display for Network {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Network::Mainnet => write!(f, "mainnet"),
+            Network::Sepolia => write!(f, "sepolia"),
+        }
     }
 }
 
@@ -80,30 +102,31 @@ pub struct JunoManager {
     pub branch: JunoBranch,
     pub process: Option<Child>,
     pub rpc_client: JsonRpcClient<HttpTransport>,
+    pub network: Network,
     juno_path: String,
     juno_native_path: String,
     juno_database_path: String,
 }
 
 impl JunoManager {
-    pub async fn new(branch: JunoBranch) -> Result<Self, ManagerError> {
-        let config = Config::from_path(Path::new("./config.toml"))
-            .map_err(|e| ManagerError::Internal(format!("Failed to create config: '{e:?}'")))?;
+    pub async fn new(branch: JunoBranch, config: Config, network: Network) -> Self {
+        let database_path = if matches!(network, Network::Mainnet) {
+            config.juno_mainnet_database_path
+        } else {
+            config.juno_sepolia_database_path
+        };
 
-        let mut juno_manager = JunoManager {
+        let juno_manager = JunoManager {
             branch,
             process: None,
             rpc_client: Self::create_rpc_client(),
             juno_path: config.juno_path,
             juno_native_path: config.juno_native_path,
-            juno_database_path: config.juno_database_path,
+            juno_database_path: database_path,
+            network,
         };
 
-        juno_manager.ensure_usable().await?;
-        if juno_manager.process.is_none() {
-            warn!("Didn't create a new Juno instance because an existing one was found");
-        }
-        Ok(juno_manager)
+        juno_manager
     }
 
     pub fn create_rpc_client() -> JsonRpcClient<HttpTransport> {
@@ -121,10 +144,18 @@ impl JunoManager {
                 self.branch.to_string().to_lowercase()
             ))
             .unwrap();
+
         let juno_err_file = juno_out_file.try_clone().unwrap();
+
         let process = match self.branch {
             JunoBranch::Base => Command::new(&self.juno_path)
-                .args(["--http", "--db-path", &self.juno_database_path])
+                .args([
+                    "--http",
+                    "--db-path",
+                    &self.juno_database_path,
+                    "--network",
+                    &self.network.to_string(),
+                ])
                 .stdin(Stdio::null())
                 .stdout(juno_out_file)
                 .stderr(juno_err_file)
@@ -136,6 +167,8 @@ impl JunoManager {
                     "--disable-sync",
                     "--db-path",
                     &self.juno_database_path,
+                    "--network",
+                    &self.network.to_string(),
                 ])
                 .stdin(Stdio::null())
                 .stdout(juno_out_file)
@@ -148,7 +181,7 @@ impl JunoManager {
         self.process = Some(process);
     }
 
-    pub async fn ensure_usable(&mut self) -> Result<(), ManagerError> {
+    pub async fn start_juno(&mut self) -> Result<(), ManagerError> {
         let ping_result = self.rpc_client.block_number().await;
 
         if let Ok(block_number) = ping_result {
@@ -216,7 +249,7 @@ impl JunoManager {
         )))
     }
 
-    pub async fn ensure_dead(&mut self) -> Result<(), ManagerError> {
+    pub async fn stop_juno(&mut self) -> Result<(), ManagerError> {
         info!("Killing {} Juno... (by ensure_dead)", self.branch);
         if let Some(process) = self.process.take() {
             terminate_process(process).await
@@ -230,7 +263,7 @@ impl JunoManager {
         &mut self,
         block_id: BlockId,
     ) -> Result<u64, ManagerError> {
-        self.ensure_usable().await?;
+        self.start_juno().await?;
         Ok(self
             .rpc_client
             .get_block_transaction_count(block_id)
@@ -241,7 +274,7 @@ impl JunoManager {
         &mut self,
         block_id: BlockId,
     ) -> Result<MaybePendingBlockWithTxs, ManagerError> {
-        self.ensure_usable().await?;
+        self.start_juno().await?;
         self.rpc_client
             .get_block_with_txs(block_id)
             .await

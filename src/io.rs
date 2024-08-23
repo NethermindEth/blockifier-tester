@@ -15,7 +15,7 @@ use tokio::{
 
 use log::{debug, info, warn};
 
-use crate::juno_manager::ManagerError;
+use crate::juno_manager::{ManagerError, Network};
 
 pub fn block_num_from_path<P>(path: P) -> Result<u64, anyhow::Error>
 where
@@ -36,6 +36,10 @@ where
     block_match.as_str().parse::<u64>().context(context)
 }
 
+pub fn config_path() -> PathBuf {
+    PathBuf::from("./config.toml")
+}
+
 pub fn path_for_overall_report() -> PathBuf {
     PathBuf::from("results/class_hashes/overall_report.json".to_string())
 }
@@ -44,25 +48,28 @@ pub fn successful_comparison_glob() -> String {
     "results/comparison-*.json".to_string()
 }
 
-pub fn succesful_comparison_path(block_num: u64) -> PathBuf {
-    PathBuf::from(format!("results/comparison-{}.json", block_num))
+pub fn succesful_comparison_path(block_num: u64, network: Network) -> PathBuf {
+    PathBuf::from(format!("results-{}/comparison-{}.json", network, block_num))
 }
 
-pub fn crashed_comparison_path(block_num: u64) -> PathBuf {
-    PathBuf::from(format!("results/crash-{}.json", block_num))
+pub fn crashed_comparison_path(block_num: u64, network: Network) -> PathBuf {
+    PathBuf::from(format!("results-{}/crash-{}.json", network, block_num))
 }
 
-pub fn unexpected_error_comparison_path(block_num: u64) -> PathBuf {
-    PathBuf::from(format!("results/unexpected-error-{}.json", block_num))
+pub fn unexpected_error_comparison_path(block_num: u64, network: Network) -> PathBuf {
+    PathBuf::from(format!(
+        "results-{}/unexpected-error-{}.json",
+        network, block_num
+    ))
 }
 
-pub fn base_trace_path(block_num: u64) -> PathBuf {
-    PathBuf::from(format!("results/base/trace-{}.json", block_num))
+pub fn base_trace_path(block_num: u64, network: Network) -> PathBuf {
+    PathBuf::from(format!("results-{network}/base/trace-{}.json", block_num))
 }
 
 // Creates a file in ./results/trace-{`block_number`}.json with the a full trace comparison between
 // base blockifier and native blockifier results
-pub async fn log_comparison_report(block_number: u64, comparison: Value) {
+pub async fn log_comparison_report(block_number: u64, network: Network, comparison: Value) {
     let mut buffer = Vec::new();
     serde_json::to_writer_pretty(&mut buffer, &comparison).unwrap();
 
@@ -70,7 +77,7 @@ pub async fn log_comparison_report(block_number: u64, comparison: Value) {
         .create(true)
         .write(true)
         .truncate(true)
-        .open(succesful_comparison_path(block_number))
+        .open(succesful_comparison_path(block_number, network))
         .await
         .expect("Failed to open log file");
 
@@ -79,13 +86,13 @@ pub async fn log_comparison_report(block_number: u64, comparison: Value) {
     writer.flush().await.unwrap();
 }
 
-pub fn log_crash_report(block_number: u64, report: serde_json::Value) {
+pub fn log_crash_report(block_number: u64, network: Network, report: serde_json::Value) {
     info!("Log report for block {block_number}");
     let block_file = OpenOptions::new()
         .create(true)
         .write(true)
         .truncate(true)
-        .open(crashed_comparison_path(block_number))
+        .open(crashed_comparison_path(block_number, network))
         .expect("Failed to open log file");
 
     serde_json::to_writer_pretty(block_file, &report)
@@ -93,12 +100,12 @@ pub fn log_crash_report(block_number: u64, report: serde_json::Value) {
 }
 
 // Creates a file in ./results/crash-{`block_number`}.json with the failure reason
-pub async fn log_unexpected_error_report(block_number: u64, err: &ManagerError) {
+pub async fn log_unexpected_error_report(block_number: u64, network: Network, err: &ManagerError) {
     let mut log_file = AsyncOpenOptions::new()
         .create(true)
         .write(true)
         .truncate(true)
-        .open(unexpected_error_comparison_path(block_number))
+        .open(unexpected_error_comparison_path(block_number, network))
         .await
         .expect("Failed to open log file");
     if let Err(write_err) = log_file.write_all(format!("{err:?}").as_bytes()).await {
@@ -107,14 +114,14 @@ pub async fn log_unexpected_error_report(block_number: u64, err: &ManagerError) 
 }
 
 // Creates a file in ./results/base/trace-{`block_number`}.json with the block trace by Base Juno
-pub fn log_base_trace(block_number: u64, trace: &Vec<TransactionTraceWithHash>) {
+pub fn log_base_trace(block_number: u64, network: Network, trace: &Vec<TransactionTraceWithHash>) {
     info!("Log trace for block {block_number}");
 
     let block_file = OpenOptions::new()
         .create(true)
         .write(true)
         .truncate(true)
-        .open(base_trace_path(block_number))
+        .open(base_trace_path(block_number, network))
         .expect("Failed to open log file");
 
     serde_json::to_writer_pretty(block_file, trace)
@@ -125,10 +132,13 @@ pub fn log_base_trace(block_number: u64, trace: &Vec<TransactionTraceWithHash>) 
 ///
 /// Returns None if no valid cached base trace is found.
 /// todo(xrvdg) convert to result once blockifier has been parallelized?
-pub fn read_base_trace(block_number: u64) -> Option<Vec<TransactionTraceWithHash>> {
+pub fn read_base_trace(
+    block_number: u64,
+    network: Network,
+) -> Option<Vec<TransactionTraceWithHash>> {
     let block_file = OpenOptions::new()
         .read(true)
-        .open(base_trace_path(block_number))
+        .open(base_trace_path(block_number, network))
         .ok()?;
 
     // If parsing fails the file format has changed and the cache is invalidated
@@ -138,15 +148,17 @@ pub fn read_base_trace(block_number: u64) -> Option<Vec<TransactionTraceWithHash
 pub async fn prepare_directories() {
     debug!("Preparing directories");
     let paths = [
-        "./results",
-        "./cache",
-        "./results/base",
-        "./results/native",
-        "./results/dependencies",
-        "./results/class_hashes",
-    ];
+        |net| format!("./results-{net}"),
+        |net| format!("./cache-{net}"),
+        |net| format!("./results-{net}/base"),
+        |net| format!("./results-{net}/native"),
+        |net| format!("./results-{net}/dependencies"),
+        |net| format!("./results-{net}/class_hashes"),
+    ]
+    .into_iter()
+    .flat_map(|f| [f(Network::Mainnet), f(Network::Sepolia)]);
 
-    future::join_all(paths.iter().map(tokio::fs::create_dir_all)).await;
+    future::join_all(paths.map(tokio::fs::create_dir_all)).await;
 }
 
 pub fn try_deserialize<T, P>(path: P) -> Result<T, anyhow::Error>
