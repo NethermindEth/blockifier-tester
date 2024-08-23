@@ -4,7 +4,10 @@ use anyhow::Context;
 use log::{debug, info, warn};
 use starknet::core::types::BlockId;
 
-use crate::juno_manager::{JunoManager, ManagerError};
+use crate::{
+    io::cache_path,
+    juno_manager::{JunoManager, ManagerError},
+};
 
 /// returns a list of (block number, transaction count), sorted by ascending transaction count
 /// draws from and updates ./cache/block_tx_counts if necessary
@@ -15,9 +18,9 @@ pub async fn get_sorted_blocks_with_tx_count(
     block_start: u64,
     block_end: u64,
 ) -> Result<Vec<(u64, u64)>, ManagerError> {
-    let cache_path = Path::new("./cache/block_tx_counts");
+    let cache_path = cache_path(juno_manager.network);
     // First load the entire cache
-    let cache_data = read_block_tx_counts_cache(cache_path);
+    let cache_data = read_block_tx_counts_cache(&cache_path);
     match &cache_data {
         Ok(data) => info!("Got cache with {} elements", data.len()),
         Err(err) => warn!("Got err {err}"),
@@ -47,7 +50,7 @@ pub async fn get_sorted_blocks_with_tx_count(
     }
 
     // Write the data back to the cache, including any new results found from juno
-    if let Err(err) = write_block_tx_counts_cache(cache_path, &cache_data).await {
+    if let Err(err) = write_block_tx_counts_cache(&cache_path, &cache_data).await {
         warn!(
             "Failed to write block_tx_counts to cache: '{}': '{}'",
             cache_path.to_str().expect("failed to unwrap cache_path"),

@@ -36,6 +36,10 @@ where
     block_match.as_str().parse::<u64>().context(context)
 }
 
+pub fn cache_path(network: Network) -> PathBuf {
+    PathBuf::from(format!("./cache/{}_block_tx_counts", network))
+}
+
 pub fn config_path() -> PathBuf {
     PathBuf::from("./config.toml")
 }
@@ -148,8 +152,8 @@ pub fn read_base_trace(
 pub async fn prepare_directories() {
     debug!("Preparing directories");
     let paths = [
+        |_| format!("./cache"),
         |net| format!("./results-{net}"),
-        |net| format!("./cache-{net}"),
         |net| format!("./results-{net}/base"),
         |net| format!("./results-{net}/native"),
         |net| format!("./results-{net}/dependencies"),
