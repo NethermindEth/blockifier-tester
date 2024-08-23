@@ -1,7 +1,14 @@
 target/
-config.toml
-base_juno_out.log
-native_juno_out.log
 .vscode/
 .idea/
 .DS_Store
+
+# Unique per machine
+config.toml
+base_juno_out.log
+native_juno_out.log
+
+# Compiled Native Contracts
+native_cache/
+# Information about blocks per transaction
+cache/
