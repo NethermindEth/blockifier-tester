@@ -109,14 +109,11 @@ pub fn generate_block_comparison(
     let base_block_report = block_report_with_dependencies(&base_traces);
     let native_block_report = block_report_with_dependencies(&native_traces);
 
-    let base_traces = base_block_report
-        .as_array()
-        .expect("Base block report is not an array");
-    let native_traces = native_block_report
-        .as_array()
-        .expect("Native block report is not an array");
-
-    let post_response = compare_traces(base_traces, native_traces);
+    let post_response = match (base_block_report.as_array(), native_block_report.as_array()) {
+        (Some(base), Some(native)) => compare_traces(base, native),
+        // TODO: Should we handle this panic accordingly
+        _ => panic!("base block report and native block report are expected to be arrays"),
+    };
 
     json!({
         "block_num": block_number,
@@ -151,7 +148,7 @@ fn compare_traces(base_traces: &[Value], native_traces: &[Value]) -> Value {
     let mut base_idx = 0;
     let mut native_idx = 0;
 
-    // To look up indices of transaction hashes, in the event that the ordering is different
+    // To look up indices of transaction hashes, in the event that the ordering of transactions is different
     let base_hash_map = create_hash_map(base_traces);
     let native_hash_map = create_hash_map(native_traces);
 
