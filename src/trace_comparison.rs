@@ -6,9 +6,9 @@ use starknet::core::types::{StateDiff, TransactionTrace, TransactionTraceWithHas
 
 use crate::dependencies::block_report_with_dependencies;
 
-const SAME: &str = "Same";
-const EMPTY: &str = "Empty";
-const DIFFERENT: &str = "Different";
+pub const SAME: &str = "Same";
+pub const EMPTY: &str = "Empty";
+pub const DIFFERENT: &str = "Different";
 
 #[derive(Serialize, Deserialize)]
 pub enum ComparisonResult {
