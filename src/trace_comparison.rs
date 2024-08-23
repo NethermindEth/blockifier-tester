@@ -124,6 +124,12 @@ pub fn generate_block_comparison(
     })
 }
 
+/// Compares two lists of transaction traces (base and native):
+/// 1. Iterates through both lists simultaneously, comparing transactions by hash:
+///    - If hashes match, compares transactions directly.
+///    - If mismatch, searches for matching transaction in the other list.
+/// 2. Handles unmatched transactions by comparing with "Empty" and adjusting indices,
+///    with a preference for base transactions.
 fn compare_traces(base_traces: &[Value], native_traces: &[Value]) -> Value {
     fn create_hash_map(traces: &[Value]) -> HashMap<String, usize> {
         traces
