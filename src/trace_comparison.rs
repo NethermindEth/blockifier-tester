@@ -1,4 +1,3 @@
-use core::panic;
 use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Serialize};
@@ -7,9 +6,9 @@ use starknet::core::types::{StateDiff, TransactionTrace, TransactionTraceWithHas
 
 use crate::dependencies::block_report_with_dependencies;
 
-pub const SAME: &str = "Same";
-pub const EMPTY: &str = "Empty";
-pub const DIFFERENT: &str = "Different";
+const SAME: &str = "Same";
+const EMPTY: &str = "Empty";
+const DIFFERENT: &str = "Different";
 
 #[derive(Serialize, Deserialize)]
 pub enum ComparisonResult {
@@ -110,19 +109,14 @@ pub fn generate_block_comparison(
     let base_block_report = block_report_with_dependencies(&base_traces);
     let native_block_report = block_report_with_dependencies(&native_traces);
 
-    // ToDo: Not taking into account arrays with different length
-    // ToDo: Not taking into account different order in the transactions
-    let post_response: Vec<Value> = match (base_block_report, native_block_report) {
-        (Value::Array(base), Value::Array(native)) => base
-            .into_iter()
-            .zip(native)
-            .map(|(base_tx_trace, native_tx_trace)| {
-                generate_transaction_comparions(base_tx_trace, native_tx_trace)
-            })
-            .collect(),
-        // ToDo: Should we handle this panic accordingly
-        _ => panic!("Expecting arrays "),
-    };
+    let base_traces = base_block_report
+        .as_array()
+        .expect("Base block report is not an array");
+    let native_traces = native_block_report
+        .as_array()
+        .expect("Native block report is not an array");
+
+    let post_response = compare_traces(base_traces, native_traces);
 
     json!({
         "block_num": block_number,
@@ -184,9 +178,19 @@ fn compare_traces(base_traces: &[Value], native_traces: &[Value]) -> Value {
             );
 
             if base_tx_hash == native_tx_hash {
+                let mut base_map = base_tx
+                    .as_object()
+                    .expect("Base trace is not an object")
+                    .clone();
+                let mut native_map = native_tx
+                    .as_object()
+                    .expect("Native trace is not an object")
+                    .clone();
+
                 result.push(generate_transaction_comparions(
-                    base_tx.clone(),
-                    native_tx.clone(),
+                    &mut base_map,
+                    &mut native_map,
+                    base_tx_hash,
                 ));
                 base_idx += 1;
                 native_idx += 1;
@@ -221,7 +225,11 @@ fn compare_traces(base_traces: &[Value], native_traces: &[Value]) -> Value {
 /// Compares the trace root of two transactions
 /// If the trace roots are different, it compares the contract dependencies and storage dependencies.
 /// Otherwise, it skips comparison for contract dependencies and storage dependencies.
-fn generate_transaction_comparions(base_tx_trace: Value, native_tx_trace: Value) -> Value {
+fn generate_transaction_comparions(
+    base_trace: &mut Map<String, Value>,
+    native_trace: &mut Map<String, Value>,
+    tx_hash: &str,
+) -> Value {
     // Helper function to compare individual keys
     fn compare_traces_key(
         base_trace: &mut Map<String, Value>,
@@ -233,23 +241,7 @@ fn generate_transaction_comparions(base_tx_trace: Value, native_tx_trace: Value)
         compare_jsons(base, native)
     }
 
-    let (mut base_trace, mut native_trace) = match (base_tx_trace, native_tx_trace) {
-        (Value::Object(base), Value::Object(native)) => (base, native),
-        _ => panic!("base trace and native trace are expected to be objects"),
-    };
-
-    let trace_comparison = compare_traces_key(&mut base_trace, &mut native_trace, "trace_root");
-
-    let tx_hash = {
-        let hash = base_trace.get("transaction_hash").unwrap().to_owned();
-        let tx_hash_comparison =
-            compare_traces_key(&mut base_trace, &mut native_trace, "transaction_hash");
-        if value_is_same(&tx_hash_comparison) {
-            hash
-        } else {
-            tx_hash_comparison
-        }
-    };
+    let trace_comparison = compare_traces_key(base_trace, native_trace, "trace_root");
 
     if value_is_same(&trace_comparison) {
         json!({
@@ -258,9 +250,9 @@ fn generate_transaction_comparions(base_tx_trace: Value, native_tx_trace: Value)
         })
     } else {
         let contract_dependencies =
-            compare_traces_key(&mut base_trace, &mut native_trace, "contract_dependencies");
+            compare_traces_key(base_trace, native_trace, "contract_dependencies");
         let storage_dependencies =
-            compare_traces_key(&mut base_trace, &mut native_trace, "storage_dependencies");
+            compare_traces_key(base_trace, native_trace, "storage_dependencies");
 
         json!({
             "transaction_hash": tx_hash,
@@ -810,7 +802,7 @@ mod tests {
 
     #[test]
     fn test_generate_block_comparison() {
-        let base_trace = json!({
+        let mut base_trace = json!({
             "contract_dependencies": "[0]",
             "storage_dependencies": "[0]",
             "trace_root": {
@@ -828,8 +820,14 @@ mod tests {
             },
             "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
         });
-        let native_trace = base_trace.clone();
-        let result = generate_transaction_comparions(base_trace, native_trace);
+        let mut native_trace = base_trace.clone();
+        let base = base_trace.as_object_mut().unwrap();
+        let native = native_trace.as_object_mut().unwrap();
+        let result = generate_transaction_comparions(
+            base,
+            native,
+            "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9",
+        );
         assert_eq!(
             result,
             json!({
@@ -838,7 +836,7 @@ mod tests {
             })
         );
 
-        let base_trace = json!({
+        let mut base_trace = json!({
             "contract_dependencies": "[0]",
             "storage_dependencies": "[0]",
             "trace_root": {
@@ -856,7 +854,7 @@ mod tests {
             },
             "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
         });
-        let native_trace = json!({
+        let mut native_trace = json!({
             "contract_dependencies": "[0]",
             "storage_dependencies": "[0]",
             "trace_root": {
@@ -875,7 +873,13 @@ mod tests {
             "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
         });
 
-        let result = generate_transaction_comparions(base_trace, native_trace);
+        let base = base_trace.as_object_mut().unwrap();
+        let native = native_trace.as_object_mut().unwrap();
+        let result = generate_transaction_comparions(
+            base,
+            native,
+            "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9",
+        );
         assert_eq!(
             result,
             json!({
