@@ -69,7 +69,7 @@ impl TransactionSimulator for JunoManager {
     ) -> Result<Vec<TransactionToSimulate>, ManagerError> {
         // Make sure it is usable just at the beginning since the RPC call
         // shouldn't crash the node ever (Native unrelated)
-        self.ensure_usable().await?;
+        self.start_juno().await?;
 
         let mut result = vec![];
         let max_transaction = block.transactions().len();
@@ -198,7 +198,7 @@ impl TransactionSimulator for JunoManager {
         for i in 0..transactions.len() {
             let transactions_to_try = &broadcasted_transactions[0..transactions.len() - i];
             info!("Trying {} transactions", transactions_to_try.len());
-            self.ensure_usable().await?;
+            self.start_juno().await?;
             let simulation_result = self
                 .rpc_client
                 .simulate_transactions(block_id, transactions_to_try, simulation_flags)
@@ -207,7 +207,7 @@ impl TransactionSimulator for JunoManager {
             if simulation_result.is_ok() {
                 return Ok(simulation_result?);
             } else {
-                self.ensure_dead().await?;
+                self.stop_juno().await?;
             }
         }
         Ok(vec![])
@@ -229,7 +229,7 @@ impl TransactionSimulator for JunoManager {
         for i in 0..transactions.len() {
             let transactions_to_try = &broadcasted_transactions[0..i + 1];
             info!("Trying {} transactions", transactions_to_try.len());
-            self.ensure_usable().await?;
+            self.start_juno().await?;
             let simulation_result = self
                 .rpc_client
                 .simulate_transactions(block_id, transactions_to_try, simulation_flags)
@@ -239,7 +239,7 @@ impl TransactionSimulator for JunoManager {
                 results = simulation_result.unwrap();
             } else {
                 // Wait for current juno process to die so that a new one can be safely started
-                self.ensure_dead().await?;
+                self.stop_juno().await?;
                 return Ok(results);
             }
         }
@@ -274,7 +274,7 @@ impl TransactionSimulator for JunoManager {
             );
             info!("Trying {} transactions", i);
             let transactions_to_try = &broadcasted_transactions[0..i];
-            self.ensure_usable().await?;
+            self.start_juno().await?;
             let simulation_result = self
                 .rpc_client
                 .simulate_transactions(block_id, transactions_to_try, simulation_flags)
@@ -291,7 +291,7 @@ impl TransactionSimulator for JunoManager {
                 }
                 Err(error) => {
                     debug!("Error simulating {i} transactions: {:?}", error);
-                    self.ensure_dead().await?;
+                    self.stop_juno().await?;
                     if i - 1 <= known_succesful_results.len() {
                         return Ok(known_succesful_results);
                     } else {
