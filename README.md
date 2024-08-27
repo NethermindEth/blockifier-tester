@@ -43,11 +43,13 @@ Then, to obtain the native version, clone the project again, _switch to `native2
 export CAIRO_NATIVE_RUNTIME_LIBRARY=/<absolute_path_to>/cairo_native/target/release/libcairo_native_runtime.a
 ```
 
-Finally, Juno must be in sync and have Starknet latest blockchain history. To achieve this you can either:
+### Getting network
 
-1. (recommended) Manually download a snapshot from [here](https://github.com/NethermindEth/juno). Be sure that the snapshot you are downloading is recent enough.
+Finally, Juno must be in sync with the latest blockchain history for whichever network you're using. To achieve this you can either:
 
-2. Sync Juno manually (around 4 to 5 days in optimal conditions)
+1. (recommended) Manually download a snapshot from [here](https://github.com/NethermindEth/juno?tab=readme-ov-file#-snapshots) (direct links: [Starknet](https://juno-snapshots.nethermind.dev/files/mainnet/latest), [Sepolia](https://juno-snapshots.nethermind.dev/files/sepolia/latest)). Be sure that the snapshot you are downloading is recent enough.
+
+2. Sync Juno manually (for Starknet this will take around 4 to 5 days in optimal conditions)
 
 ### Config
 
@@ -56,7 +58,8 @@ In the `config.toml` located at the project root set the following variables\*:
 ```toml
 juno_path = "<path to base Juno executable>"
 juno_native_path = "<path to native Juno executable>"
-juno_database_path = "<path to Juno's database>" # correlates to `--db-path` argument passed to Juno
+juno_mainnet_database_path = "<path to Juno's database for the mainnet network>" # correlates to `--db-path` argument passed to Juno
+juno_sepolia_database_path = "<path to Juno's database for the sepolia network>" # correlates to `--db-path` argument passed to Juno
 ```
 
 It is recommended that you use absolute paths and avoid `$HOME` and `~`
@@ -66,7 +69,8 @@ Example `config.toml`:
 ```toml
 juno_path = "/home/pwhite/repos/juno/build/juno"
 juno_native_path = "/home/pwhite/repos/native_juno/build/juno"
-juno_database_path = "/home/pwhite/snapshots/juno_mainnet"
+juno_mainnet_database_path = "/home/pwhite/snapshots/juno_mainnet"
+juno_sepolia_database_path = "/home/pwhite/snapshots/juno_sepolia"
 ```
 
 ### Git LFS
