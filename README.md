@@ -18,11 +18,11 @@ For each block it will:
 1. attempt to trace the block with Native Juno
 2. if the trace had no failures\*\* then
 3. the block will be traced with Base Juno and
-4. a comparison between the two results will be written in `./results/trace-<block_number>`.
+4. a comparison between the two results will be written in `./results-<network>/trace-<block_number>`.
 
-Otherwise, if there was a failure, the block will be scanned (using binary search) until the faulty transaction is found. The report will be written in `./results/block-<block_number>`.
+Otherwise, if there was a failure, the block will be scanned (using binary search) until the faulty transaction is found. The report will be written in `./results-<network>/block-<block_number>`.
 
-Please note that everything in `./results/` is being tracked using [Git LFS](#git-lfs) to remove noise from the codebase.
+Please note that everything in `./results-<network>/` is being tracked using [Git LFS](#git-lfs) to remove noise from the codebase.
 
 > \*Blocks are sorted in ascending order of how many transactions they have to avoid having to run many long RPC calls before we can get any results.
 
@@ -75,7 +75,7 @@ juno_sepolia_database_path = "/home/pwhite/snapshots/juno_sepolia"
 
 ### Git LFS
 
-To mantain all results in the same repo and use github as a synced db we used Git LFS. It is used to keep track of all files in the `./results/` directory. Follow install instructions [here](https://git-lfs.com/).
+To mantain all results in the same repo and use github as a synced db we used Git LFS. It is used to keep track of all files in the `./results-<network>/` directory. Follow install instructions [here](https://git-lfs.com/).
 
 ## Usage
 
@@ -95,7 +95,7 @@ or
 target/cprof/juno_compare_traces range 610508 611000
 ```
 
-Once the tester has traced a block, it will store the output in `./results/<name>.json` and it won't re-do it again unless explicetly told with the `redo-comp` flag.
+Once the tester has traced a block, it will store the output in `./results-<network>/<name>.json` and it won't re-do it again unless explicetly told with the `redo-comp` flag.
 The tool has many other options like this, please run the CLI with `--help` to get detailed information of all the commands and options.
 
 ```bash
