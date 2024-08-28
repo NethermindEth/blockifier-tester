@@ -51,6 +51,10 @@ pub fn path_for_overall_report(network: Network) -> PathBuf {
     ))
 }
 
+pub fn path_for_fee_transfers(network: Network, block : u64) -> PathBuf {
+    PathBuf::from(format!("results-{network}/fee_transfers/{block}.csv"))
+}
+
 pub fn successful_comparison_glob(network: Network) -> String {
     format!("results-{}/comparison-*.json", network)
 }
@@ -161,12 +165,13 @@ pub fn read_base_trace(
 pub async fn prepare_directories() {
     debug!("Preparing directories");
     let paths = [
-        |_| format!("./cache"),
+        |_| "./cache".to_string(),
         |net| format!("./results-{net}"),
         |net| format!("./results-{net}/base"),
         |net| format!("./results-{net}/native"),
         |net| format!("./results-{net}/dependencies"),
         |net| format!("./results-{net}/class_hashes"),
+        |net| format!("./results-{net}/fee_transfers"),
     ]
     .into_iter()
     .flat_map(|f| [f(Network::Mainnet), f(Network::Sepolia)]);

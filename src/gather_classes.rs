@@ -145,7 +145,7 @@ pub async fn gather_class_hashes(network: Network) -> Result<(), anyhow::Error >
 }
 
 /// Returns Vec<block_num, comparison_file_path> for each results/comparison-*.json.
-fn get_comparison_blocks(network: Network) -> Vec<(u64, PathBuf)> {
+pub fn get_comparison_blocks(network: Network) -> Vec<(u64, PathBuf)> {
     let results_glob = io::successful_comparison_glob(network);
     let (errors, mut paths): (Vec<_>, Vec<_>) = glob(results_glob.as_str())
         .expect("Failed to glob comparison results.")

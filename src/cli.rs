@@ -46,6 +46,14 @@ pub enum Commands {
         about = "Trims extraneous \"Same\" values from a comparison file."
     )]
     GatherClassHashes {},
+
+    #[command(
+        about = "Scans comparison files for fee transfers and dumps information."
+    )]
+    FeeTransfers {
+      /// Block number of comparison file and base trace to analyze.
+      block_num : u64
+    },
     Trim {
       block_num : u64,
       /// Keep same values within `level` of a different value.
