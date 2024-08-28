@@ -1,3 +1,4 @@
+mod analyse_fee_transfers;
 mod block_tracer;
 mod cache;
 mod cli;
@@ -17,7 +18,8 @@ use crate::io::{
     crashed_comparison_path, log_base_trace, log_comparison_report, log_crash_report,
     log_unexpected_error_report, read_base_trace, succesful_comparison_path,
 };
-use anyhow::{anyhow, Context};
+use analyse_fee_transfers::analyse_at_fee_transfers;
+use anyhow::anyhow;
 use block_tracer::BlockTracer;
 use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
@@ -323,6 +325,20 @@ async fn main() -> Result<(), anyhow::Error> {
                         => gather
             }
         }
+
+        Commands::FeeTransfers{ block_num } => {
+            if redo_base_trace || redo_comparison {
+                // todo: Handle re-tracing before gathering classes or remove flags from this subcommand.
+                warn!("Flags 'redo_base_trace' and 'redo_comparison' are not supported for this sub command.");
+            }
+            // todo: Handle tracing blocks before looking at fee transfers to ensure all comparison files exist or optionally skip.
+            tokio::select! {
+                sigterm = tokio::signal::ctrl_c() => sigterm.map_err(|e| e.into()),
+                transfer_fees =
+                        analyse_at_fee_transfers(block_num, network)
+                        => transfer_fees
+            }
+        },
 
         Commands::Trim {
             block_num,
