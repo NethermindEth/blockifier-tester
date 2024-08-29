@@ -89,9 +89,12 @@ async fn execute_traces(
         native_juno.stop_juno().await?;
 
         if let Some(native_trace) = native_trace {
-            let comparison =
-                generate_block_comparison(block_number, base_trace_result, native_trace);
-            log_comparison_report(block_number, network, comparison).await;
+            match generate_block_comparison(block_number, base_trace_result, native_trace) {
+                Ok(comparison) => log_comparison_report(block_number, network, comparison).await,
+                Err(err) => {
+                    warn!("Error generating block comparison for block {block_number}: {err}")
+                }
+            }
         }
     }
 
