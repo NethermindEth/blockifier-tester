@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use starknet::core::types::{StateDiff, TransactionTrace, TransactionTraceWithHash};
 
-use crate::dependencies::block_report_with_dependencies;
+use crate::{dependencies::block_report_with_dependencies, juno_manager::ManagerError};
 
 pub const SAME: &str = "Same";
 pub const EMPTY: &str = "Empty";
@@ -102,23 +102,22 @@ pub fn generate_block_comparison(
     block_number: u64,
     mut base_traces: Vec<TransactionTraceWithHash>,
     mut native_traces: Vec<TransactionTraceWithHash>,
-) -> Value {
+) -> Result<Value, ManagerError> {
     normalize_traces_state_diff(&mut base_traces);
     normalize_traces_state_diff(&mut native_traces);
 
     let base_block_report = block_report_with_dependencies(&base_traces);
     let native_block_report = block_report_with_dependencies(&native_traces);
 
-    let post_response = match (base_block_report.as_array(), native_block_report.as_array()) {
-        (Some(base), Some(native)) => compare_traces(base, native),
-        // TODO: Should we handle this panic accordingly
-        _ => panic!("base block report and native block report are expected to be arrays"),
-    };
-
-    json!({
-        "block_num": block_number,
-        "post_response": post_response,
-    })
+    match (base_block_report.as_array(), native_block_report.as_array()) {
+        (Some(base), Some(native)) => Ok(json!({
+            "block_num": block_number,
+            "post_response": compare_traces(base, native),
+        })),
+        _ => Err(ManagerError::Internal(
+            "base block report and native block report are expected to be arrays".to_string(),
+        )),
+    }
 }
 
 /// Compares two lists of transaction traces (base and native):
