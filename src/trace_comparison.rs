@@ -1,11 +1,10 @@
-use core::panic;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use starknet::core::types::{StateDiff, TransactionTrace, TransactionTraceWithHash};
 
-use crate::dependencies::block_report_with_dependencies;
+use crate::{dependencies::block_report_with_dependencies, juno_manager::ManagerError};
 
 pub const SAME: &str = "Same";
 pub const EMPTY: &str = "Empty";
@@ -103,37 +102,146 @@ pub fn generate_block_comparison(
     block_number: u64,
     mut base_traces: Vec<TransactionTraceWithHash>,
     mut native_traces: Vec<TransactionTraceWithHash>,
-) -> Value {
+) -> Result<Value, ManagerError> {
     normalize_traces_state_diff(&mut base_traces);
     normalize_traces_state_diff(&mut native_traces);
 
     let base_block_report = block_report_with_dependencies(&base_traces);
     let native_block_report = block_report_with_dependencies(&native_traces);
 
-    // ToDo: Not taking into account arrays with different length
-    // ToDo: Not taking into account different order in the transactions
-    let post_response: Vec<Value> = match (base_block_report, native_block_report) {
-        (Value::Array(base), Value::Array(native)) => base
-            .into_iter()
-            .zip(native)
-            .map(|(base_tx_trace, native_tx_trace)| {
-                generate_transaction_comparions(base_tx_trace, native_tx_trace)
-            })
-            .collect(),
-        // ToDo: Should we handle this panic accordingly
-        _ => panic!("Expecting arrays "),
-    };
+    match (base_block_report, native_block_report) {
+        (Value::Array(base), Value::Array(native)) => Ok(json!({
+            "block_num": block_number,
+            "post_response": compare_traces(base, native)?,
+        })),
+        _ => Err(ManagerError::Internal(
+            "base block report and native block report are expected to be arrays".to_string(),
+        )),
+    }
+}
 
-    json!({
-        "block_num": block_number,
-        "post_response": post_response,
-    })
+/// Compares two lists of transaction traces (base and native):
+/// 1. Iterates through both lists simultaneously, comparing transactions by hash:
+///    - If hashes match, compares transactions directly.
+///    - If mismatch, searches for matching transaction in the other list.
+/// 2. Handles unmatched transactions by comparing with "Empty" and adjusting indices,
+///    with a preference for base transactions.
+fn compare_traces(
+    mut base_traces: Vec<Value>,
+    mut native_traces: Vec<Value>,
+) -> Result<Value, ManagerError> {
+    fn create_hash_map(traces: &[Value]) -> HashMap<String, usize> {
+        traces
+            .iter()
+            .enumerate()
+            .map(|(idx, trace)| {
+                (
+                    trace["transaction_hash"]
+                        .as_str()
+                        .expect("Transaction hash is not a string")
+                        .to_string(),
+                    idx,
+                )
+            })
+            .collect()
+    }
+
+    let mut compare_traces_result = Vec::new();
+    let mut base_idx = 0;
+    let mut native_idx = 0;
+
+    // To look up indices of transaction hashes, in the event that the ordering of transactions is different
+    let base_hash_map = create_hash_map(&base_traces);
+    let native_hash_map = create_hash_map(&native_traces);
+
+    while base_idx < base_traces.len() || native_idx < native_traces.len() {
+        match (
+            base_traces.get_mut(base_idx),
+            native_traces.get_mut(native_idx),
+        ) {
+            // Both base and native transactions are empty
+            (None, None) => break,
+            // Only base transactions left
+            (Some(base_trace), None) => {
+                compare_traces_result
+                    .push(ComparisonResult::new_different_base_only(base_trace.take()).into());
+                base_idx += 1;
+            }
+            // Only native transactions left
+            (None, Some(native_trace)) => {
+                compare_traces_result
+                    .push(ComparisonResult::new_different_native_only(native_trace.take()).into());
+                native_idx += 1;
+            }
+            // There are both base and native transactions left
+            (Some(base_trace), Some(native_trace)) => {
+                let (base_tx_hash, native_tx_hash) = match (
+                    base_trace["transaction_hash"].clone(),
+                    native_trace["transaction_hash"].clone(),
+                ) {
+                    (Value::String(base), Value::String(native)) => (base, native),
+                    _ => {
+                        return Err(ManagerError::Internal(
+                            "Base trace and native trace are expected to be strings".to_string(),
+                        ));
+                    }
+                };
+
+                if base_tx_hash == native_tx_hash {
+                    let (base_trace, native_trace) = match (base_trace.take(), native_trace.take())
+                    {
+                        (Value::Object(base), Value::Object(native)) => (base, native),
+                        _ => {
+                            return Err(ManagerError::Internal(
+                                "Base trace and native trace are expected to be objects".to_owned(),
+                            ))
+                        }
+                    };
+                    compare_traces_result.push(generate_transaction_comparisons(
+                        base_trace,
+                        native_trace,
+                        &base_tx_hash,
+                    ));
+                    base_idx += 1;
+                    native_idx += 1;
+                } else if let Some(&native_match_idx) = native_hash_map.get(&base_tx_hash) {
+                    // Found a match for base transaction in native
+                    for i in native_idx..native_match_idx {
+                        compare_traces_result.push(
+                            ComparisonResult::new_different_native_only(native_traces[i].take())
+                                .into(),
+                        );
+                    }
+                    native_idx = native_match_idx;
+                } else if let Some(&base_match_idx) = base_hash_map.get(&native_tx_hash) {
+                    // Found a match for native transaction in base
+                    for i in base_idx..base_match_idx {
+                        compare_traces_result.push(
+                            ComparisonResult::new_different_base_only(base_traces[i].take()).into(),
+                        );
+                    }
+                    base_idx = base_match_idx;
+                } else {
+                    // No match found, we keep adding base transactions first
+                    compare_traces_result
+                        .push(ComparisonResult::new_different_base_only(base_trace.take()).into());
+                    base_idx += 1;
+                }
+            }
+        }
+    }
+
+    Ok(Value::Array(compare_traces_result))
 }
 
 /// Compares the trace root of two transactions
 /// If the trace roots are different, it compares the contract dependencies and storage dependencies.
 /// Otherwise, it skips comparison for contract dependencies and storage dependencies.
-fn generate_transaction_comparions(base_tx_trace: Value, native_tx_trace: Value) -> Value {
+fn generate_transaction_comparisons(
+    mut base_trace: Map<String, Value>,
+    mut native_trace: Map<String, Value>,
+    tx_hash: &str,
+) -> Value {
     // Helper function to compare individual keys
     fn compare_traces_key(
         base_trace: &mut Map<String, Value>,
@@ -145,23 +253,7 @@ fn generate_transaction_comparions(base_tx_trace: Value, native_tx_trace: Value)
         compare_jsons(base, native)
     }
 
-    let (mut base_trace, mut native_trace) = match (base_tx_trace, native_tx_trace) {
-        (Value::Object(base), Value::Object(native)) => (base, native),
-        _ => panic!("base trace and native trace are expected to be objects"),
-    };
-
     let trace_comparison = compare_traces_key(&mut base_trace, &mut native_trace, "trace_root");
-
-    let tx_hash = {
-        let hash = base_trace.get("transaction_hash").unwrap().to_owned();
-        let tx_hash_comparison =
-            compare_traces_key(&mut base_trace, &mut native_trace, "transaction_hash");
-        if value_is_same(&tx_hash_comparison) {
-            hash
-        } else {
-            tx_hash_comparison
-        }
-    };
 
     if value_is_same(&trace_comparison) {
         json!({
@@ -741,7 +833,13 @@ mod tests {
             "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
         });
         let native_trace = base_trace.clone();
-        let result = generate_transaction_comparions(base_trace, native_trace);
+        let base = base_trace.as_object().unwrap();
+        let native = native_trace.as_object().unwrap();
+        let result = generate_transaction_comparisons(
+            base.clone(),
+            native.clone(),
+            "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9",
+        );
         assert_eq!(
             result,
             json!({
@@ -787,7 +885,13 @@ mod tests {
             "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
         });
 
-        let result = generate_transaction_comparions(base_trace, native_trace);
+        let base = base_trace.as_object().unwrap();
+        let native = native_trace.as_object().unwrap();
+        let result = generate_transaction_comparisons(
+            base.clone(),
+            native.clone(),
+            "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9",
+        );
         assert_eq!(
             result,
             json!({
@@ -808,6 +912,231 @@ mod tests {
                 },
                 "transaction_hash": "0x2b843f740cfcc46d581299e3b3353008d8025aa9973fb8506caf6e8daa1d8c9"
             })
+        );
+    }
+
+    fn create_tx(hash: &str) -> Value {
+        json!({
+            "contract_dependencies": "[0]",
+            "storage_dependencies": "[0]",
+            "trace_root": {
+                "execute_invocation": {
+                    "call_type": "CALL",
+                    "calldata": "[8]",
+                    "caller_address": "0x0",
+                    "calls": [{
+                        "call_type": "CALL",
+                        "calldata": "[4]",
+                        "caller_address": "0x9f481dc204eef7d51f908fb6243be9a0d96d872053233dccdf131109b6e398",
+                        "calls": []
+                    }]
+                },
+            },
+            "transaction_hash": hash,
+        })
+    }
+
+    #[test]
+    fn test_identical_traces() {
+        let base = vec![create_tx("tx1"), create_tx("tx2"), create_tx("tx3")];
+        let native = base.clone();
+        let result = compare_traces(base, native).unwrap();
+        let result_arr = result.as_array().unwrap();
+
+        assert_eq!(result_arr.len(), 3);
+        assert_eq!(result_arr[0]["transaction_hash"], "tx1");
+        assert_eq!(result_arr[1]["transaction_hash"], "tx2");
+        assert_eq!(result_arr[2]["transaction_hash"], "tx3");
+    }
+
+    #[test]
+    fn test_missing_transaction_in_native() {
+        let base = vec![create_tx("tx1"), create_tx("tx2"), create_tx("tx3")];
+        let native = vec![create_tx("tx1"), create_tx("tx2")];
+        let result = compare_traces(base, native).unwrap();
+        let result_arr = result.as_array().unwrap(); // tx1 tx2 tx3
+
+        assert_eq!(result_arr.len(), 3);
+        assert_eq!(result_arr[0]["transaction_hash"], "tx1");
+        assert_eq!(result_arr[1]["transaction_hash"], "tx2");
+        assert_eq!(result_arr[2]["Different"]["native"], "Empty");
+        assert_eq!(
+            result_arr[2]["Different"]["base"]["transaction_hash"],
+            "tx3"
+        );
+
+        let base = vec![create_tx("tx1"), create_tx("tx2"), create_tx("tx3")];
+        let native = vec![create_tx("tx1"), create_tx("tx3")];
+        let result = compare_traces(base, native).unwrap();
+        let result_arr = result.as_array().unwrap(); // tx1 tx2 tx3
+
+        assert_eq!(result_arr.len(), 3);
+        assert_eq!(result_arr[0]["transaction_hash"], "tx1");
+        assert_eq!(result_arr[1]["Different"]["native"], "Empty");
+        assert_eq!(
+            result_arr[1]["Different"]["base"]["transaction_hash"],
+            "tx2"
+        );
+        assert_eq!(result_arr[2]["transaction_hash"], "tx3");
+    }
+
+    #[test]
+    fn test_missing_transaction_in_base() {
+        let base = vec![create_tx("tx1"), create_tx("tx2")];
+        let native = vec![create_tx("tx1"), create_tx("tx2"), create_tx("tx3")];
+        let result = compare_traces(base, native).unwrap();
+        let result_arr = result.as_array().unwrap(); // tx1 tx2 tx3
+        assert_eq!(result_arr.len(), 3);
+        assert_eq!(result_arr[0]["transaction_hash"], "tx1");
+        assert_eq!(result_arr[1]["transaction_hash"], "tx2");
+        assert_eq!(result_arr[2]["Different"]["base"], "Empty");
+        assert_eq!(
+            result_arr[2]["Different"]["native"]["transaction_hash"],
+            "tx3"
+        );
+
+        let base = vec![create_tx("tx1"), create_tx("tx3")];
+        let native = vec![create_tx("tx1"), create_tx("tx2"), create_tx("tx3")];
+        let result = compare_traces(base, native).unwrap();
+        let result_arr = result.as_array().unwrap(); // tx1 tx2 tx3
+
+        assert_eq!(result_arr.len(), 3);
+        assert_eq!(result_arr[0]["transaction_hash"], "tx1");
+        assert_eq!(result_arr[1]["Different"]["base"], "Empty");
+        assert_eq!(
+            result_arr[1]["Different"]["native"]["transaction_hash"],
+            "tx2"
+        );
+        assert_eq!(result_arr[2]["transaction_hash"], "tx3");
+    }
+
+    #[test]
+    fn test_missing_transaction_in_both() {
+        let base = vec![create_tx("tx1"), create_tx("tx2"), create_tx("tx3")];
+        let native = vec![create_tx("tx1"), create_tx("tx4"), create_tx("tx5")];
+        let result = compare_traces(base, native).unwrap();
+        let result_arr = result.as_array().unwrap(); // tx1 tx2 tx3 tx4 tx5
+
+        assert_eq!(result_arr.len(), 5);
+        assert_eq!(result_arr[0]["transaction_hash"], "tx1");
+        assert_eq!(result_arr[1]["Different"]["native"], "Empty");
+        assert_eq!(
+            result_arr[1]["Different"]["base"]["transaction_hash"],
+            "tx2"
+        );
+        assert_eq!(result_arr[2]["Different"]["native"], "Empty");
+        assert_eq!(
+            result_arr[2]["Different"]["base"]["transaction_hash"],
+            "tx3"
+        );
+        assert_eq!(result_arr[3]["Different"]["base"], "Empty");
+        assert_eq!(
+            result_arr[3]["Different"]["native"]["transaction_hash"],
+            "tx4"
+        );
+        assert_eq!(result_arr[4]["Different"]["base"], "Empty");
+        assert_eq!(
+            result_arr[4]["Different"]["native"]["transaction_hash"],
+            "tx5"
+        );
+    }
+
+    #[test]
+    fn test_completely_different_transactions() {
+        let base = vec![create_tx("tx1"), create_tx("tx2")];
+        let native = vec![create_tx("tx3"), create_tx("tx4")];
+        let result = compare_traces(base, native).unwrap();
+        let result_arr = result.as_array().unwrap(); // tx1 tx2 tx3 tx4
+
+        assert_eq!(result_arr.len(), 4);
+        assert_eq!(result_arr[0]["Different"]["native"], "Empty");
+        assert_eq!(
+            result_arr[0]["Different"]["base"]["transaction_hash"],
+            "tx1"
+        );
+        assert_eq!(result_arr[1]["Different"]["native"], "Empty");
+        assert_eq!(
+            result_arr[1]["Different"]["base"]["transaction_hash"],
+            "tx2"
+        );
+        assert_eq!(result_arr[2]["Different"]["base"], "Empty");
+        assert_eq!(
+            result_arr[2]["Different"]["native"]["transaction_hash"],
+            "tx3"
+        );
+        assert_eq!(result_arr[3]["Different"]["base"], "Empty");
+        assert_eq!(
+            result_arr[3]["Different"]["native"]["transaction_hash"],
+            "tx4"
+        );
+    }
+
+    #[test]
+    fn test_mixed_scenario() {
+        let base = vec![
+            create_tx("tx1"),
+            create_tx("tx2"),
+            create_tx("tx4"),
+            create_tx("tx5"),
+        ];
+        let native = vec![
+            create_tx("tx1"),
+            create_tx("tx3"),
+            create_tx("tx4"),
+            create_tx("tx6"),
+        ];
+        let result = compare_traces(base, native).unwrap();
+        let result_arr = result.as_array().unwrap(); // tx1, tx2, tx3, tx4, tx5, tx6
+
+        assert_eq!(result_arr.len(), 6);
+        assert_eq!(result_arr[0]["transaction_hash"], "tx1");
+        assert_eq!(result_arr[1]["Different"]["native"], "Empty");
+        assert_eq!(
+            result_arr[1]["Different"]["base"]["transaction_hash"],
+            "tx2"
+        );
+        assert_eq!(result_arr[2]["Different"]["base"], "Empty");
+        assert_eq!(
+            result_arr[2]["Different"]["native"]["transaction_hash"],
+            "tx3"
+        );
+        assert_eq!(result_arr[3]["transaction_hash"], "tx4");
+        assert_eq!(result_arr[4]["Different"]["native"], "Empty");
+        assert_eq!(
+            result_arr[4]["Different"]["base"]["transaction_hash"],
+            "tx5"
+        );
+        assert_eq!(result_arr[5]["Different"]["base"], "Empty");
+        assert_eq!(
+            result_arr[5]["Different"]["native"]["transaction_hash"],
+            "tx6"
+        );
+    }
+
+    #[test]
+    fn test_empty_traces() {
+        let base: Vec<Value> = vec![];
+        let native: Vec<Value> = vec![];
+        let result = compare_traces(base, native).unwrap();
+        assert_eq!(result, json!([]));
+    }
+
+    #[test]
+    fn test_one_empty_trace() {
+        let base = vec![create_tx("tx1"), create_tx("tx2")];
+        let native: Vec<Value> = vec![];
+        let result = compare_traces(base, native).unwrap();
+        let result_arr = result.as_array().unwrap();
+        assert_eq!(result_arr.len(), 2);
+        assert_eq!(result_arr[0]["Different"]["native"], "Empty");
+        assert_eq!(
+            result_arr[0]["Different"]["base"]["transaction_hash"],
+            "tx1"
+        );
+        assert_eq!(result_arr[1]["Different"]["native"], "Empty");
+        assert_eq!(
+            result_arr[1]["Different"]["base"]["transaction_hash"],
+            "tx2"
         );
     }
 
