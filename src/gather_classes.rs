@@ -5,7 +5,7 @@
 use crate::{
     io::{self, block_num_from_path, path_for_overall_report, try_deserialize, try_serialize},
     juno_manager::ManagerError,
-    trace_comparison::SAME,
+    trace_comparison::string_is_same,
     utils::{self, felt_to_hex},
 };
 
@@ -275,7 +275,7 @@ fn get_calls<'a>(obj: &'a Value) -> Box<dyn Iterator<Item = &Value> + 'a> {
     // TODO (#72) Put debug logging here under a core::option_env flag so it is normally hidden.
     match obj {
         Value::String(string) => {
-            if string.starts_with(SAME) {
+            if string_is_same(string) {
                 Box::new(::std::iter::empty())
             } else {
                 panic!("unexpected string: {}", string)
