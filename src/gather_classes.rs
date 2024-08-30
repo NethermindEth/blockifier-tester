@@ -247,14 +247,18 @@ fn update_report(
     }
 
     let mut updates = 0;
-    for transaction in obj["post_response"].as_array().expect("expected array") {
+    let transactions = obj["post_response"]
+        .as_array()
+        .ok_or(anyhow!("expected array"))?;
+    for transaction in transactions {
         let root_call = &transaction["trace_root"]["execute_invocation"];
         if let Value::Null = root_call {
             // Most likely, this "trace_root" has no "execute_invocation".
             debug!("skipping transaction: `{transaction}`");
             continue;
         }
-        for call in get_calls(root_call) {
+        let calls = get_calls(root_call).context("Failed to get calls from root_call")?;
+        for call in calls {
             let maybe_kvp = get_tuple_from_call(call);
             match maybe_kvp {
                 Ok(kvp) => {
@@ -272,42 +276,46 @@ fn update_report(
 }
 
 // Converts recursive calls to value.get("calls") to a boxed iterator.
-fn get_calls<'a>(obj: &'a Value) -> Box<dyn Iterator<Item = &Value> + 'a> {
+fn get_calls<'a>(obj: &'a Value) -> Result<Box<dyn Iterator<Item = &Value> + 'a>, anyhow::Error> {
     // TODO (#72) Put debug logging here under a core::option_env flag so it is normally hidden.
     match obj {
         Value::String(string) => {
             if string_is_same(string) {
-                Box::new(::std::iter::empty())
+                Ok(Box::new(::std::iter::empty()))
             } else {
-                panic!("unexpected string: {}", string)
+                Err(anyhow!("unexpected string: {}", string))
             }
         }
         Value::Array(call_list) => {
             let nested_calls = call_list
                 .iter()
-                .flat_map(|inner_call| get_calls(inner_call));
-            Box::new(call_list.iter().chain(nested_calls))
+                .map(|inner_call| get_calls(inner_call))
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
+                .flatten();
+            Ok(Box::new(call_list.iter().chain(nested_calls)))
         }
         Value::Object(obj_map) => {
             if let Some(Value::Object(diff_map)) = obj_map.get(DIFFERENT) {
-                let base_list = diff_map.get("base").expect("difference should have base");
+                let base_list = diff_map
+                    .get("base")
+                    .ok_or(anyhow!("difference should have base"))?;
                 let native_list = diff_map
                     .get("native")
-                    .expect("difference should have native");
+                    .ok_or(anyhow!("difference should have native"))?;
                 // TODO (#72) Compare and get diffs. For now we just chain.
-                Box::new(get_calls(base_list).chain(get_calls(native_list)))
+                Ok(Box::new(
+                    get_calls(base_list)?.chain(get_calls(native_list)?),
+                ))
             } else if let Some(calls_value) = obj_map.get("calls") {
                 get_calls(calls_value)
             } else if let Some(_val) = obj_map.get("revert_reason") {
-                Box::new(::std::iter::empty())
+                Ok(Box::new(::std::iter::empty()))
             } else {
-                // TODO (#72) Handle errors gracefully.
-                warn!("unexpected: `{}`", obj);
-                panic!();
+                Err(anyhow!("unexpected object: `{}`", obj))
             }
         }
-        // TODO (#72) Handle errors gracefully.
-        _ => panic!("unexpected!"),
+        _ => Err(anyhow!("unexpected value: `{}`", obj)),
     }
 }
 
