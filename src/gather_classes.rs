@@ -5,7 +5,7 @@
 use crate::{
     io::{self, block_num_from_path, path_for_overall_report, try_deserialize, try_serialize},
     juno_manager::ManagerError,
-    trace_comparison::{value_is_same, SAME},
+    trace_comparison::SAME,
     utils::{self, felt_to_hex},
 };
 
