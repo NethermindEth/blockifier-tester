@@ -398,6 +398,16 @@ mod tests {
     }
 
     #[test]
+    fn test_get_calls_revert_reason() {
+        let obj = json!({
+            "revert_reason": "Same(0x08c379a000000000000000000000000000000000000000000000000000000000)",
+        });
+
+        let calls: Vec<&Value> = get_calls(&obj).collect();
+        assert_eq!(calls.len(), 0);
+    }
+
+    #[test]
     fn test_get_calls_nested() {
         let obj = json!({
             "call_type": "Same(DELEGATE)",
