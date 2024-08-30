@@ -299,7 +299,7 @@ async fn main() -> Result<(), ManagerError> {
             tokio::select! {
                 sigterm = tokio::signal::ctrl_c() => sigterm.map_err(|e| e.into()),
                 gather =
-                        gather_classes::gather_class_hashes()
+                        gather_classes::gather_class_hashes(network)
                         => gather
             }
         }

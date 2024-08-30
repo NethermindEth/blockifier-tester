@@ -44,12 +44,15 @@ pub fn config_path() -> PathBuf {
     PathBuf::from("./config.toml")
 }
 
-pub fn path_for_overall_report() -> PathBuf {
-    PathBuf::from("results/class_hashes/overall_report.json".to_string())
+pub fn path_for_overall_report(network: Network) -> PathBuf {
+    PathBuf::from(format!(
+        "results-{}/class_hashes/overall_report.json",
+        network
+    ))
 }
 
-pub fn successful_comparison_glob() -> String {
-    "results/comparison-*.json".to_string()
+pub fn successful_comparison_glob(network: Network) -> String {
+    format!("results-{}/comparison-*.json", network)
 }
 
 pub fn succesful_comparison_path(block_num: u64, network: Network) -> PathBuf {
