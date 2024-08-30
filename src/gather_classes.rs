@@ -5,6 +5,7 @@
 use crate::{
     io::{self, block_num_from_path, path_for_overall_report, try_deserialize, try_serialize},
     juno_manager::{ManagerError, Network},
+    trace_comparison::string_is_same,
     utils::{self, felt_to_hex},
 };
 
@@ -274,7 +275,13 @@ fn update_report(
 fn get_calls<'a>(obj: &'a Value) -> Box<dyn Iterator<Item = &Value> + 'a> {
     // TODO (#72) Put debug logging here under a core::option_env flag so it is normally hidden.
     match obj {
-        Value::String(_same) => Box::new(::std::iter::empty()),
+        Value::String(string) => {
+            if string_is_same(string) {
+                Box::new(::std::iter::empty())
+            } else {
+                panic!("unexpected string: {}", string)
+            }
+        }
         Value::Array(call_list) => {
             let nested_calls = call_list
                 .iter()
@@ -316,4 +323,170 @@ fn get_tuple_from_call(call: &Value) -> Result<(EntryPoint, ClassHash), anyhow::
         values.push(felt_version);
     }
     Ok((values[0], values[1]))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_class_hashes_report_update_count() {
+        let mut report = ClassHashesReport::new();
+        let class_hash = FieldElement::from_hex_be("0x123").unwrap();
+        let entry_point = FieldElement::from_hex_be("0x456").unwrap();
+
+        report.update_count(class_hash, entry_point, 5);
+        assert_eq!(report.report[&class_hash][&entry_point], 5);
+        assert_eq!(report.totals[&class_hash], 5);
+
+        report.update_count(class_hash, entry_point, 3);
+        assert_eq!(report.report[&class_hash][&entry_point], 8);
+        assert_eq!(report.totals[&class_hash], 8);
+    }
+
+    #[test]
+    fn test_class_hashes_report_add_fields() {
+        let mut report = ClassHashesReport::new();
+        let class_hash = FieldElement::from_hex_be("0x789").unwrap();
+        let entry_point = FieldElement::from_hex_be("0xabc").unwrap();
+
+        report.add_fields(class_hash, entry_point);
+        assert_eq!(report.report[&class_hash][&entry_point], 1);
+        assert_eq!(report.totals[&class_hash], 1);
+
+        report.add_fields(class_hash, entry_point);
+        assert_eq!(report.report[&class_hash][&entry_point], 2);
+        assert_eq!(report.totals[&class_hash], 2);
+    }
+
+    #[test]
+    fn test_get_tuple_from_call() {
+        let call = json!({
+            "entry_point_selector": "0x123",
+            "class_hash": "0x456"
+        });
+
+        let result = get_tuple_from_call(&call).unwrap();
+        assert_eq!(result.0, FieldElement::from_hex_be("0x123").unwrap());
+        assert_eq!(result.1, FieldElement::from_hex_be("0x456").unwrap());
+    }
+
+    #[test]
+    fn test_get_calls() {
+        let obj = json!({
+            "calls": ["Same", "Same"]
+        });
+
+        let calls: Vec<&Value> = get_calls(&obj).collect();
+        assert_eq!(calls.len(), 2);
+    }
+
+    #[test]
+    fn test_get_calls_different() {
+        let obj = json!({
+            "calls": [{
+                "Different": {
+                    "base": "dsa",
+                    "native": "asd"
+                }
+            }]
+        });
+        let calls: Vec<&Value> = get_calls(&obj).collect();
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0]["Different"]["base"], "dsa");
+        assert_eq!(calls[0]["Different"]["native"], "asd");
+    }
+
+    #[test]
+    fn test_get_calls_revert_reason() {
+        let obj = json!({
+            "revert_reason": "Same(0x08c379a000000000000000000000000000000000000000000000000000000000)",
+        });
+
+        let calls: Vec<&Value> = get_calls(&obj).collect();
+        assert_eq!(calls.len(), 0);
+    }
+
+    #[test]
+    fn test_get_calls_nested() {
+        let obj = json!({
+            "call_type": "Same(DELEGATE)",
+            "calldata": "Same([15])",
+            "caller_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+            "calls": [
+            {
+                "call_type": "Same(DELEGATE)",
+                "calldata": "Same([14])",
+                "caller_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+                "calls": [
+                "Same({12})",
+                {
+                    "call_type": "Same(CALL)",
+                    "calldata": "Same([11])",
+                    "caller_address": "Same(0x4270219d365d6b017231b52e92b3fb5d7c8378b05e9abc97724537a80e93b0f)",
+                    "calls": "Same([0])",
+                    "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)",
+                    "contract_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+                    "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+                    "entry_point_type": "Same(EXTERNAL)",
+                    "execution_resources": "Same({5})",
+                    "messages": "Same([0])",
+                    "result": "Same([4])"
+                },
+                "Same({12})",
+                "Same({12})",
+                "Same({12})"
+                ],
+            }
+        ]});
+
+        let calls: Vec<&Value> = get_calls(&obj).collect();
+        assert_eq!(calls.len(), 6);
+    }
+
+    #[test]
+    fn test_get_calls_nested_different() {
+        let obj = json!({
+                "calls": {
+                    "Different": {
+                        "base": [
+                        {
+                            "calls": [
+                            {
+                                "calls": [],
+                            },
+                            {
+                              "calls": [
+                                {
+                                  "calls": [
+                                    {
+                                      "calls": [],
+                                    }
+                                  ],
+                                }
+                              ],
+                            },
+                            {
+                              "calls": [],
+                            },
+                            {
+                              "calls": [],
+                            },
+                            {
+                              "calls": [],
+                            },
+                            {
+                              "calls": [],
+                            }
+                          ],
+                        }
+                      ],
+                      "native": "Empty"
+                    }
+                }
+        });
+        let calls: Vec<&Value> = get_calls(&obj).collect();
+        assert_eq!(calls.len(), 9);
+    }
 }

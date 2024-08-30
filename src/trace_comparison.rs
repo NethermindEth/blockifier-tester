@@ -445,8 +445,12 @@ fn clean_json_array(arr: Vec<Value>) -> Value {
     }
 }
 
+pub(crate) fn string_is_same(string: &str) -> bool {
+    string.starts_with(SAME)
+}
+
 fn value_is_same(val: &Value) -> bool {
-    matches!(val, Value::String(str) if str.starts_with(SAME))
+    matches!(val, Value::String(str) if string_is_same(str))
 }
 
 #[cfg(test)]
