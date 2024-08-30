@@ -4,7 +4,7 @@
 
 use crate::{
     io::{self, block_num_from_path, path_for_overall_report, try_deserialize, try_serialize},
-    juno_manager::ManagerError,
+    juno_manager::{ManagerError, Network},
     trace_comparison::string_is_same,
     utils::{self, felt_to_hex},
 };
@@ -128,27 +128,27 @@ impl core::fmt::Display for ClassHashesReport {
 }
 
 /// Scans the `./results` folder for block comparisons and updates class_hashes report.
-pub async fn gather_class_hashes() -> Result<(), ManagerError> {
+pub async fn gather_class_hashes(network: Network) -> Result<(), ManagerError> {
     let overall_report =
-        try_deserialize(path_for_overall_report()).unwrap_or(ClassHashesReport::new());
+        try_deserialize(path_for_overall_report(network)).unwrap_or(ClassHashesReport::new());
 
-    let compare_paths = get_comparison_blocks()
+    let compare_paths = get_comparison_blocks(network)
         .into_iter()
         .filter(|(block_num, _path)| !overall_report.contains_block(block_num))
         .collect_vec();
     info!("New blocks to add: {}", compare_paths.len());
-    let overall_report = process_compare_paths(overall_report, compare_paths);
+    let overall_report = process_compare_paths(overall_report, compare_paths, network);
 
     info!("{overall_report}");
 
     info!("Serializing...");
-    try_serialize(path_for_overall_report(), &overall_report)
+    try_serialize(path_for_overall_report(network), &overall_report)
         .map_err(|err| ManagerError::Internal(format!("{err:?}")))
 }
 
 /// Returns Vec<block_num, comparison_file_path> for each results/comparison-*.json.
-fn get_comparison_blocks() -> Vec<(u64, PathBuf)> {
-    let results_glob = io::successful_comparison_glob();
+fn get_comparison_blocks(network: Network) -> Vec<(u64, PathBuf)> {
+    let results_glob = io::successful_comparison_glob(network);
     let (errors, mut paths): (Vec<_>, Vec<_>) = glob(results_glob.as_str())
         .expect("Failed to glob comparison results.")
         .partition_map(From::from);
@@ -176,6 +176,7 @@ fn get_comparison_blocks() -> Vec<(u64, PathBuf)> {
 fn process_compare_paths(
     overall_report: ClassHashesReport,
     file_paths: Vec<(u64, PathBuf)>,
+    network: Network,
 ) -> ClassHashesReport {
     let total = file_paths.len();
     let get_stat = |prefix, value| {
@@ -219,7 +220,7 @@ fn process_compare_paths(
             }
             Ok(updates) => {
                 info!("Updates to overall report from block {block_num}: {updates}");
-                let _ = try_serialize(path_for_overall_report(), &overall_report)
+                let _ = try_serialize(path_for_overall_report(network), &overall_report)
                     .inspect_err(|err| warn!("{err}"));
             }
         }
