@@ -66,18 +66,23 @@ async fn execute_traces(
             continue;
         }
 
-        let base_trace_result =
-            trace_base(redo_traces, block_number, tx_count, &mut base_juno).await?;
+        // let base_trace_result =
+        //     trace_base(redo_traces, block_number, tx_count, &mut base_juno).await?;
 
-        info!("Switching from Base Juno to Native Juno");
-        base_juno.ensure_dead().await?;
+        // info!("Switching from Base Juno to Native Juno");
+        // base_juno.ensure_dead().await?;
 
-        info!("TRACING block {block_number} with Native. It has {tx_count} transactions");
-        let native_trace = trace_native(block_number, tx_count, &simulation_flags).await?;
+        // info!("TRACING block {block_number} with Native. It has {tx_count} transactions");
+        // let native_trace = trace_native(block_number, tx_count, &simulation_flags).await?;
 
-        if let Some(native_trace) = native_trace {
+        let (base_trace_result, native_trace) = tokio::join!(
+            trace_base(redo_traces, block_number, tx_count, &mut base_juno),
+            trace_native(block_number, tx_count, &simulation_flags)
+        );
+
+        if let Some(native_trace) = native_trace? {
             let comparison =
-                generate_block_comparison(block_number, base_trace_result, native_trace);
+                generate_block_comparison(block_number, base_trace_result?, native_trace);
             log_comparison_report(block_number, comparison).await;
         }
     }

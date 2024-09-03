@@ -64,6 +64,7 @@ pub struct Config {
     juno_path: String,
     juno_native_path: String,
     juno_database_path: String,
+    juno_native_database_path: String,
 }
 impl Config {
     fn from_path(path: &Path) -> Result<Self, anyhow::Error> {
@@ -80,6 +81,7 @@ pub struct JunoManager {
     juno_path: String,
     juno_native_path: String,
     juno_database_path: String,
+    juno_native_database_path: String,
 }
 
 impl JunoManager {
@@ -90,10 +92,11 @@ impl JunoManager {
         let mut juno_manager = JunoManager {
             branch,
             process: None,
-            rpc_client: Self::create_rpc_client(),
+            rpc_client: Self::create_rpc_client(branch),
             juno_path: config.juno_path,
             juno_native_path: config.juno_native_path,
             juno_database_path: config.juno_database_path,
+            juno_native_database_path: config.juno_native_database_path,
         };
 
         juno_manager.ensure_usable().await?;
@@ -103,9 +106,14 @@ impl JunoManager {
         Ok(juno_manager)
     }
 
-    pub fn create_rpc_client() -> JsonRpcClient<HttpTransport> {
+    pub fn create_rpc_client(branch: JunoBranch) -> JsonRpcClient<HttpTransport> {
+        let port = match branch {
+            JunoBranch::Base => 6060,
+            JunoBranch::Native => 6061,
+        };
+
         JsonRpcClient::new(HttpTransport::new(
-            Url::parse("http://localhost:6060/").unwrap(),
+            Url::parse(format!("http://localhost:{port}/").as_str()).unwrap(),
         ))
     }
 
@@ -126,6 +134,8 @@ impl JunoManager {
                     "--disable-sync",
                     "--db-path",
                     &self.juno_database_path,
+                    "--http-port",
+                    "6060",
                 ])
                 .env("JUNO_EXECUTOR", "VM")
                 .stdin(Stdio::null())
@@ -138,7 +148,9 @@ impl JunoManager {
                     "--http",
                     "--disable-sync",
                     "--db-path",
-                    &self.juno_database_path,
+                    &self.juno_native_database_path,
+                    "--http-port",
+                    "6061",
                 ])
                 .env("JUNO_EXECUTOR", "Native")
                 .stdin(Stdio::null())
