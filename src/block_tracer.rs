@@ -22,9 +22,12 @@ impl BlockTracer for JunoManager {
         self.ensure_usable().await?;
 
         let block_id = BlockId::Number(block_num);
-        debug!("rpc call to trace_block_transactions {block_num}");
+        debug!(
+            "{} rpc call to trace_block_transactions {block_num}",
+            self.branch
+        );
         let trace_result = self.rpc_client.trace_block_transactions(block_id).await;
-        debug!("rpc call completed");
+        debug!("{}, rpc call completed", self.branch);
 
         match trace_result {
             Ok(trace_result) => Ok(TraceBlockReport {
