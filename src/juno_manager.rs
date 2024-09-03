@@ -121,7 +121,13 @@ impl JunoManager {
         let juno_err_file = juno_out_file.try_clone().unwrap();
         let process = match self.branch {
             JunoBranch::Base => Command::new(&self.juno_path)
-                .args(["--http", "--db-path", &self.juno_database_path])
+                .args([
+                    "--http",
+                    "--disable-sync",
+                    "--db-path",
+                    &self.juno_database_path,
+                ])
+                .env("JUNO_EXECUTOR", "VM")
                 .stdin(Stdio::null())
                 .stdout(juno_out_file)
                 .stderr(juno_err_file)
@@ -134,6 +140,7 @@ impl JunoManager {
                     "--db-path",
                     &self.juno_database_path,
                 ])
+                .env("JUNO_EXECUTOR", "Native")
                 .stdin(Stdio::null())
                 .stdout(juno_out_file)
                 .stderr(juno_err_file)
