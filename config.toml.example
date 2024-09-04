@@ -1,0 +1,4 @@
+juno_path = "/Users/xander/Nethermind/juno-native/build/juno"
+juno_native_path = "/Users/xander/Nethermind/juno-native/build/juno"
+juno_database_path = "/Volumes/Archive/Nethermind/juno_mainnet"
+juno_native_database_path = "/Volumes/Archive/Nethermind/juno_mainnet_copy"

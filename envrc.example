@@ -1,0 +1,4 @@
+source ../cairo_native/env.sh
+export CAIRO_NATIVE_RUNTIME_LIBRARY=/home/ubuntu/juno-native/libcairo_native_runtime.a
+export JUNO_NATIVE_CACHE_DIR=/home/ubuntu/native_cache
+export JUNO_RECORD_DIR=/home/ubuntu/record_mainnet
