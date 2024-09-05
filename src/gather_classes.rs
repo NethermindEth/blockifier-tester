@@ -293,8 +293,8 @@ fn get_calls<'a>(
 
     match obj {
         Value::String(string) => {
-            if string_is_same(string) {
-                Ok(Box::new(::std::iter::empty()))
+            if string_is_same(string) || string_is_empty(string) {
+                Ok(Vec::new())
             } else {
                 Err(anyhow!("unexpected string: {}", string))
             }

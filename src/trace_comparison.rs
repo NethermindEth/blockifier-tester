@@ -463,6 +463,10 @@ pub(crate) fn string_is_same(string: &str) -> bool {
     string.starts_with(SAME)
 }
 
+pub(crate) fn string_is_empty(string: &str) -> bool {
+    string == EMPTY
+}
+
 pub(crate) fn value_is_same(val: &Value) -> bool {
     matches!(val, Value::String(str) if string_is_same(str))
 }
