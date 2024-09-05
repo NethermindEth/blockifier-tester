@@ -301,13 +301,11 @@ fn get_calls_with_count(obj: &Value) -> Result<Vec<CallWithCount>, anyhow::Error
                 Err(anyhow!("unexpected string: {}", string))
             }
         }
-        Value::Array(call_list) => {
-            let mut result = Vec::new();
-            for call in call_list {
-                result.extend(get_calls_with_count(call)?);
-            }
-            Ok(result)
-        }
+        Value::Array(call_list) => Ok(call_list
+            .iter()
+            .filter_map(|call| get_calls_with_count(call).ok())
+            .flatten()
+            .collect_vec()),
         Value::Object(obj_map) => {
             let mut result = Vec::new();
             // If call is different, then base and native will have their own list of calls
