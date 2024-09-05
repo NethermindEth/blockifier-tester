@@ -14,6 +14,9 @@ pub struct Cli {
     /// Forces the tracing of a block with base juno if this already exists.
     #[clap(long)]
     pub redo_base_trace: bool,
+    /// Avoid simulating individual transactions of crashed blocks
+    #[clap(long)]
+    pub skip_crash_simulation: bool,
     /// Enables `SKIP_FEE_CHARGE` mode for simulating transactions.
     #[clap(long)]
     pub skip_fee_charge: bool,

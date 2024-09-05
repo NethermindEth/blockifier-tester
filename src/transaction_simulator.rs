@@ -264,7 +264,7 @@ impl TransactionSimulator for JunoManager {
             .filter_map(|tx| tx.tx.clone())
             .collect_vec();
         let mut known_succesful_results = vec![];
-        let mut known_failure_length = transactions.len() + 1;
+        let mut known_failure_length = broadcasted_transactions.len() + 1;
         let mut i = known_failure_length / 2;
         loop {
             info!(

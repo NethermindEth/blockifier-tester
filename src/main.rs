@@ -52,6 +52,7 @@ async fn execute_traces(
     network: Network,
     redo_comparison: bool,
     redo_traces: bool,
+    skip_simulation: bool,
     simulation_flags: Vec<SimulationFlag>,
 ) -> Result<(), ManagerError> {
     let config = Config::from_path(&config_path())
@@ -84,8 +85,14 @@ async fn execute_traces(
 
         native_juno.start_juno().await?;
         info!("TRACING block {block_number} with Native. It has {tx_count} transactions");
-        let native_trace =
-            trace_native(block_number, tx_count, &simulation_flags, &mut native_juno).await?;
+        let native_trace = trace_native(
+            block_number,
+            tx_count,
+            &mut native_juno,
+            skip_simulation,
+            &simulation_flags,
+        )
+        .await?;
         native_juno.stop_juno().await?;
 
         if let Some(native_trace) = native_trace {
@@ -162,8 +169,9 @@ async fn trace_base(
 async fn trace_native(
     block_number: u64,
     tx_count: u64,
-    simulation_flags: &[SimulationFlag],
     native_juno: &mut JunoManager,
+    skip_simulation: bool,
+    simulation_flags: &[SimulationFlag],
 ) -> Result<Option<Vec<TransactionTraceWithHash>>, ManagerError> {
     let native_trace_result = native_juno.trace_block(block_number).await;
 
@@ -189,7 +197,7 @@ async fn trace_native(
             }
             Ok(Some(native_trace))
         }
-        native_report => {
+        native_report if !skip_simulation => {
             // When tracing a block with native fails, the next step is performing a
             // binary search over the transactions searching for the one that crashes
             info!("Failed to trace block with Native, got {native_report:?}");
@@ -221,6 +229,7 @@ async fn trace_native(
             };
             Ok(None)
         }
+        _ => Ok(None),
     }
 }
 
@@ -234,6 +243,8 @@ async fn main() -> Result<(), ManagerError> {
     let redo_comparison = cli.redo_comp;
 
     let redo_base_trace = cli.redo_base_trace;
+
+    let skip_simulation = cli.skip_crash_simulation;
 
     let network = match cli.network.as_deref() {
         Some("mainnet") | None => Network::Mainnet,
@@ -266,6 +277,7 @@ async fn main() -> Result<(), ManagerError> {
                         network,
                         redo_comparison,
                         redo_base_trace,
+                        skip_simulation,
                         simulation_flags,
                     ) => trace
                   }
@@ -284,6 +296,7 @@ async fn main() -> Result<(), ManagerError> {
                         network,
                         redo_comparison,
                         redo_base_trace,
+                        skip_simulation,
                         simulation_flags,
                     )
                     => trace
