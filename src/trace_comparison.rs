@@ -445,16 +445,11 @@ fn clean_json_array(arr: Vec<Value>) -> Value {
     }
 }
 
-pub(crate) fn parse_same_value(val: Value) -> Result<Value, anyhow::Error> {
-    if let Value::String(string) = val {
-        if string.starts_with(SAME) {
-            return Ok(Value::String(
-                string
-                    .trim_start_matches(format!("{SAME}(").as_str())
-                    .trim_end_matches(")")
-                    .to_string(),
-            ));
-        }
+pub(crate) fn parse_same_string(string: &str) -> Result<&str, anyhow::Error> {
+    if string.starts_with(SAME) {
+        return Ok(string
+            .trim_start_matches(format!("{SAME}(").as_str())
+            .trim_end_matches(")"));
     }
     return Err(anyhow::anyhow!("Value is not a SAME value"));
 }
