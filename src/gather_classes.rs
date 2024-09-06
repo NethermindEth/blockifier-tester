@@ -270,19 +270,23 @@ fn update_report(
     Ok(updates)
 }
 
-/// Merges two lists of calls into a single list of calls, taking the sum of matching keys.
-/// TODO: should this take the max instead?
+/// Merges two lists of calls into a single list of calls. We only consider a CallWithCount if
+/// it exists in both lists.
 fn merge_calls_with_count(
     base_calls: Vec<CallWithCount>,
     native_calls: Vec<CallWithCount>,
 ) -> Vec<CallWithCount> {
     let mut merged_map: HashMap<CallKey, usize> = HashMap::new();
 
-    for (key, count) in base_calls.into_iter().chain(native_calls.into_iter()) {
-        merged_map
-            .entry(key)
-            .and_modify(|existing_count| *existing_count += count)
-            .or_insert(count);
+    let native_keys: HashSet<CallKey> = native_calls
+        .iter()
+        .map(|((ep, ch), _)| (*ep, *ch))
+        .collect();
+    for (call_key, base_count) in base_calls.iter() {
+        if native_keys.contains(call_key) {
+            // Take the base count as source of truth instead of native count
+            merged_map.insert(*call_key, *base_count);
+        }
     }
 
     merged_map.into_iter().collect()
@@ -324,7 +328,7 @@ fn get_calls_with_count(obj: &Value) -> Result<Vec<CallWithCount>, anyhow::Error
             } else {
                 match get_tuples_from_call(obj) {
                     Ok(current_call) => {
-                        result.extend(current_call);
+                        result.push(current_call);
                     }
                     Err(err) => {
                         debug!("Failed to extract tuple with error: {err}");
@@ -343,64 +347,30 @@ fn get_calls_with_count(obj: &Value) -> Result<Vec<CallWithCount>, anyhow::Error
     }
 }
 
-/// Identifies possible call tuples and returns them as a `Vec<CallWithCount>`.
+/// Retrieves a CallWithCount from a call object.
 ///
-/// Call tuples are identified by the presence of a `class_hash` and `entry_point_selector` key.
-/// If both keys are present, the tuple is considered valid.
-/// If only one key is present, the tuple is considered invalid.
-fn get_tuples_from_call(call: &Value) -> Result<Vec<CallWithCount>, anyhow::Error> {
-    // Maximum of 2 values if base and native have different values
-    // [[base.entry_point_selector, base.class_hash], [native.entry_point_selector, native.class_hash]] or
-    // [[entry_point_selector, class_hash]]
-    let mut values = [Vec::with_capacity(2), Vec::with_capacity(2)];
+/// If any of the keys are Different, then the call is considered invalid.
+fn get_tuples_from_call(call: &Value) -> Result<CallWithCount, anyhow::Error> {
+    let keys = ["entry_point_selector", "class_hash"];
+    let mut values = Vec::with_capacity(keys.len());
 
-    for (index, key) in ["entry_point_selector", "class_hash"].iter().enumerate() {
-        if let Some(val) = call.get(key) {
-            match val {
-                Value::String(string) => {
-                    let value = if string_is_same(string) {
-                        parse_same_string(&string).context("Failed to parse SAME value")?
-                    } else {
-                        string
-                    };
+    for key in keys {
+        if let Some(Value::String(string)) = call.get(key) {
+            let value = if string_is_same(string) {
+                parse_same_string(string).context("Failed to parse SAME value")?
+            } else {
+                string
+            };
 
-                    let felt_version = FieldElement::from_hex_be(value)
-                        .context(format!("Failed to convert value to felt"))?;
-                    values[index].push(felt_version);
-                }
-                Value::Object(obj) if obj.contains_key("Different") => {
-                    if let Value::String(base) = &obj["Different"]["base"] {
-                        if !string_is_empty(&base) {
-                            let felt = FieldElement::from_hex_be(&base)?;
-                            values[index].push(felt);
-                        }
-                    }
-                    if let Value::String(native) = &obj["Different"]["native"] {
-                        if !string_is_empty(&native) {
-                            let felt = FieldElement::from_hex_be(&native)?;
-                            values[index].push(felt);
-                        }
-                    }
-                }
-                _ => return Err(anyhow!("Unexpected value for {key}: {val}")),
-            }
+            let felt_version = FieldElement::from_hex_be(value)
+                .context(format!("Failed to convert value to felt"))?;
+            values.push(felt_version);
         } else {
-            return Err(anyhow!("Failed to parse call {call}. Missing key: {key}",));
+            return Err(anyhow!("Failed to parse call {call} for key: {key}"));
         }
     }
 
-    let mut results: Vec<CallWithCount> = Vec::with_capacity(2);
-    if !values[0].is_empty() && !values[1].is_empty() {
-        results.push(((values[0][0], values[1][0]), 1));
-        //
-        if values[0].len() == 2 && values[1].len() == 2 {
-            results.push(((values[0][1], values[1][1]), 1));
-        }
-    }
-
-    assert!(results.len().ge(&1));
-
-    Ok(results)
+    Ok(((values[0], values[1]), 1))
 }
 
 #[cfg(test)]
@@ -446,8 +416,8 @@ mod tests {
         });
 
         let result = get_tuples_from_call(&call).unwrap();
-        assert_eq!(result[0].0 .0, FieldElement::from_hex_be("0x123").unwrap());
-        assert_eq!(result[0].0 .1, FieldElement::from_hex_be("0x456").unwrap());
+        assert_eq!(result.0 .0, FieldElement::from_hex_be("0x123").unwrap());
+        assert_eq!(result.0 .1, FieldElement::from_hex_be("0x456").unwrap());
     }
 
     #[test]
@@ -511,23 +481,21 @@ mod tests {
             "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)"
         });
         let calls = get_calls_with_count(&obj).unwrap();
-        assert_eq!(calls.len(), 2);
-        for call in calls {
-            assert_eq!(
-                call.0,
-                ((
-                    FieldElement::from_hex_be(
-                        "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29"
-                    )
-                    .unwrap(),
-                    FieldElement::from_hex_be(
-                        "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be"
-                    )
-                    .unwrap()
-                ))
-            );
-            assert_eq!(call.1, 1);
-        }
+        assert_eq!(calls.len(), 1);
+        assert_eq!(
+            calls[0].0,
+            ((
+                FieldElement::from_hex_be(
+                    "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29"
+                )
+                .unwrap(),
+                FieldElement::from_hex_be(
+                    "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be"
+                )
+                .unwrap()
+            ))
+        );
+        assert_eq!(calls[0].1, 1);
     }
 
     #[test]
@@ -660,20 +628,6 @@ mod tests {
             }
         });
         let calls = get_calls_with_count(&obj).unwrap();
-        assert_eq!(calls.len(), 1);
-        assert_eq!(
-            calls[0].0,
-            (
-                FieldElement::from_hex_be(
-                    "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29"
-                )
-                .unwrap(),
-                FieldElement::from_hex_be(
-                    "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be"
-                )
-                .unwrap()
-            )
-        );
-        assert_eq!(calls[0].1, 8);
+        assert_eq!(calls.len(), 0);
     }
 }
