@@ -272,6 +272,8 @@ fn update_report(
 
 /// Merges two lists of calls into a single list of calls. We only consider a CallWithCount if
 /// it exists in both lists.
+///
+/// This means that if native is empty, then no calls will be added to the merged list.
 fn merge_calls_with_count(
     base_calls: Vec<CallWithCount>,
     native_calls: Vec<CallWithCount>,
@@ -282,10 +284,12 @@ fn merge_calls_with_count(
         .iter()
         .map(|((ep, ch), _)| (*ep, *ch))
         .collect();
-    for (call_key, base_count) in base_calls.iter() {
-        if native_keys.contains(call_key) {
-            // Take the base count as source of truth instead of native count
-            merged_map.insert(*call_key, *base_count);
+    for (call_key, base_count) in base_calls {
+        if native_keys.contains(&call_key) {
+            merged_map
+                .entry(call_key)
+                .and_modify(|count| *count += base_count)
+                .or_insert(base_count);
         }
     }
 
@@ -295,8 +299,6 @@ fn merge_calls_with_count(
 /// Converts recursive calls to value.get("calls") to a boxed iterator.
 fn get_calls_with_count(obj: &Value) -> Result<Vec<CallWithCount>, anyhow::Error> {
     // TODO (#72) Put debug logging here under a core::option_env flag so it is normally hidden.
-    // TODO: perf: use a local vec to minimize allocations
-
     match obj {
         Value::String(string) => {
             if string_is_same(string) || string_is_empty(string) {
