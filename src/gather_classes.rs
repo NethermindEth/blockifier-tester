@@ -266,7 +266,7 @@ fn update_report(
     Ok(updates)
 }
 
-/// Merges two lists of calls into a single list of calls. We only consider a CallWithCount if
+/// Merges two lists of calls into a single list of calls. We only consider a [CallWithCount] if
 /// it exists in both lists.
 ///
 /// This means that if native is empty, then no calls will be added to the merged list.
@@ -292,12 +292,16 @@ fn merge_calls_with_count(
     merged_map.into_iter().collect()
 }
 
-/// Converts recursive calls to value.get("calls") to a boxed iterator.
+/// Recursively extracts calls with their counts from a [Value] object representing a transaction trace.
+///
+/// This traverses the object recursively and extracts calls with their counts. It also handles the case
+/// where the calls are Different.
 fn get_calls_with_count(obj: &Value) -> Result<Vec<CallWithCount>, anyhow::Error> {
     // TODO (#72) Put debug logging here under a core::option_env flag so it is normally hidden.
     fn get_calls_inner(obj: &Value, result: &mut Vec<CallWithCount>) -> Result<(), anyhow::Error> {
         match obj {
             Value::String(string) => {
+                // If the string is SAME or EMPTY, then there are no calls to extract and continue processing
                 if string_is_same(string) || string_is_empty(string) {
                     Ok(())
                 } else {
@@ -327,10 +331,11 @@ fn get_calls_with_count(obj: &Value) -> Result<Vec<CallWithCount>, anyhow::Error
 
                     result.extend(merge_calls_with_count(base_calls, native_calls));
                 } else {
-                    match get_tuples_from_call(obj) {
+                    match get_call_with_count(obj) {
                         Ok(current_call) => {
                             result.push(current_call);
                         }
+                        // We let the parsing fail silently, as there may be inner calls that are valid
                         Err(err) => {
                             debug!("Failed to extract tuple with error: {err}");
                         }
@@ -351,10 +356,10 @@ fn get_calls_with_count(obj: &Value) -> Result<Vec<CallWithCount>, anyhow::Error
     Ok(result)
 }
 
-/// Retrieves a CallWithCount from a call object.
+/// Retrieves a [CallWithCount] from a call object.
 ///
 /// If any of the keys are Different, then the call is considered invalid.
-fn get_tuples_from_call(call: &Value) -> Result<CallWithCount, anyhow::Error> {
+fn get_call_with_count(call: &Value) -> Result<CallWithCount, anyhow::Error> {
     let keys = ["entry_point_selector", "class_hash"];
     let mut values = Vec::with_capacity(keys.len());
 
