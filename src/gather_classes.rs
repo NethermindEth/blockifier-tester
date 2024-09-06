@@ -295,56 +295,60 @@ fn merge_calls_with_count(
 /// Converts recursive calls to value.get("calls") to a boxed iterator.
 fn get_calls_with_count(obj: &Value) -> Result<Vec<CallWithCount>, anyhow::Error> {
     // TODO (#72) Put debug logging here under a core::option_env flag so it is normally hidden.
-    match obj {
-        Value::String(string) => {
-            if string_is_same(string) || string_is_empty(string) {
-                Ok(Vec::new())
-            } else {
-                Err(anyhow!("unexpected string: {}", string))
-            }
-        }
-        Value::Array(call_list) => Ok(call_list
-            .iter()
-            .map(|call| get_calls_with_count(call))
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .flatten()
-            .collect_vec()),
-        Value::Object(obj_map) => {
-            let mut result = Vec::new();
-            // If call is different, then base and native will have their own list of calls
-            if let Some(Value::Object(diff_map)) = obj_map.get(DIFFERENT) {
-                let base_list = diff_map
-                    .get("base")
-                    .ok_or(anyhow!("difference should have base"))?;
-                let native_list = diff_map
-                    .get("native")
-                    .ok_or(anyhow!("difference should have native"))?;
-
-                let base_calls: Vec<CallWithCount> = get_calls_with_count(base_list)?;
-                let native_calls: Vec<CallWithCount> = get_calls_with_count(native_list)?;
-
-                result = merge_calls_with_count(base_calls, native_calls);
-            } else {
-                match get_tuples_from_call(obj) {
-                    Ok(current_call) => {
-                        result.push(current_call);
-                    }
-                    Err(err) => {
-                        debug!("Failed to extract tuple with error: {err}");
-                    }
-                }
-
-                if let Some(calls_value) = obj_map.get("calls") {
-                    let mut child_calls = get_calls_with_count(calls_value)?;
-                    result.append(&mut child_calls);
+    fn get_calls_inner(obj: &Value, result: &mut Vec<CallWithCount>) -> Result<(), anyhow::Error> {
+        match obj {
+            Value::String(string) => {
+                if string_is_same(string) || string_is_empty(string) {
+                    Ok(())
+                } else {
+                    Err(anyhow!("unexpected string: {}", string))
                 }
             }
+            Value::Array(call_list) => {
+                for call in call_list {
+                    get_calls_inner(call, result)?;
+                }
+                Ok(())
+            }
+            Value::Object(obj_map) => {
+                // If call is different, then base and native will have their own list of calls
+                if let Some(Value::Object(diff_map)) = obj_map.get(DIFFERENT) {
+                    let base_list = diff_map
+                        .get("base")
+                        .ok_or(anyhow!("difference should have base"))?;
+                    let native_list = diff_map
+                        .get("native")
+                        .ok_or(anyhow!("difference should have native"))?;
 
-            Ok(result)
+                    let mut base_calls = Vec::new();
+                    get_calls_inner(base_list, &mut base_calls)?;
+                    let mut native_calls = Vec::new();
+                    get_calls_inner(native_list, &mut native_calls)?;
+
+                    result.extend(merge_calls_with_count(base_calls, native_calls));
+                } else {
+                    match get_tuples_from_call(obj) {
+                        Ok(current_call) => {
+                            result.push(current_call);
+                        }
+                        Err(err) => {
+                            debug!("Failed to extract tuple with error: {err}");
+                        }
+                    }
+
+                    if let Some(calls_value) = obj_map.get("calls") {
+                        get_calls_inner(calls_value, result)?;
+                    }
+                }
+                Ok(())
+            }
+            _ => Err(anyhow!("unexpected value: `{}`", obj)),
         }
-        _ => Err(anyhow!("unexpected value: `{}`", obj)),
     }
+
+    let mut result = Vec::new();
+    get_calls_inner(obj, &mut result)?;
+    Ok(result)
 }
 
 /// Retrieves a CallWithCount from a call object.
