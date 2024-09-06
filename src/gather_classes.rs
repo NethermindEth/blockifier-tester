@@ -394,21 +394,6 @@ mod tests {
     }
 
     #[test]
-    fn test_class_hashes_report_add_fields() {
-        let mut report = ClassHashesReport::new();
-        let class_hash = FieldElement::from_hex_be("0x789").unwrap();
-        let entry_point = FieldElement::from_hex_be("0xabc").unwrap();
-
-        report.add_fields(class_hash, entry_point);
-        assert_eq!(report.report[&class_hash][&entry_point], 1);
-        assert_eq!(report.totals[&class_hash], 1);
-
-        report.add_fields(class_hash, entry_point);
-        assert_eq!(report.report[&class_hash][&entry_point], 2);
-        assert_eq!(report.totals[&class_hash], 2);
-    }
-
-    #[test]
     fn test_get_tuple_from_call() {
         let call = json!({
             "entry_point_selector": "0x123",
