@@ -9,9 +9,11 @@ use crate::{
     utils::{self, felt_to_hex},
 };
 
+use futures::future;
 use glob::glob;
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
+use tokio::task::{self};
 
 use crate::trace_comparison::DIFFERENT;
 
@@ -134,7 +136,7 @@ pub async fn gather_class_hashes(network: Network) -> Result<(), ManagerError> {
         .filter(|(block_num, _path)| !overall_report.contains_block(block_num))
         .collect_vec();
     info!("New blocks to add: {}", compare_paths.len());
-    let overall_report = process_compare_paths(overall_report, compare_paths, network);
+    let overall_report = process_compare_paths(overall_report, compare_paths, network).await;
 
     info!("{overall_report}");
 
@@ -170,7 +172,7 @@ fn get_comparison_blocks(network: Network) -> Vec<(u64, PathBuf)> {
 /// Updates overall_report to include data from block reports.
 ///
 /// Params: `file_paths` Vector of (block_num, file_path).
-fn process_compare_paths(
+async fn process_compare_paths(
     overall_report: ClassHashesReport,
     file_paths: Vec<(u64, PathBuf)>,
     network: Network,
@@ -183,43 +185,42 @@ fn process_compare_paths(
             100.00 * ((value as f64) / (total as f64)),
         )
     };
-    let mut failures = 0;
-    let mut processed = 0;
 
     let mut overall_report = overall_report;
-    // TODO (#72) Potential speedup: Process each file with `Process(path) -> ClassHashesReport` in parallel, then merge ClassHashesReport together.
-    for (block_num, path) in file_paths.into_iter() {
-        info!(
-            "{}\t{}\t{}",
-            get_stat("Processed", processed),
-            get_stat("Successes", processed - failures),
-            get_stat("Failures", failures)
-        );
-        info!(
-            "Processing path: `{}`",
-            path.file_name().unwrap().to_str().unwrap()
-        );
+
+    let mut tasks = Vec::new();
+    for (block_num, path) in file_paths {
+        let task = task::spawn(async move { process_single_file(block_num, path) });
+        tasks.push(task);
+    }
+
+    let results = future::join_all(tasks).await;
+
+    let mut processed = 0;
+    let mut failures = 0;
+
+    for result in results {
         processed += 1;
-
-        let json_result: Result<Value, _> = try_deserialize(path);
-        if let Err(err) = json_result {
-            warn!("Failed to process file with err: {err}");
-            failures += 1;
-            continue;
-        }
-        let json_obj = json_result.unwrap();
-
-        let update_result = update_report(&mut overall_report, &json_obj, block_num);
-        match update_result {
+        // Unwrap the JoinError.
+        match result.unwrap() {
             Err(err) => {
-                info!("{err}");
+                warn!("{err}");
                 failures += 1;
             }
-            Ok(updates) => {
-                info!("Updates to overall report from block {block_num}: {updates}");
-                let _ = try_serialize(path_for_overall_report(network), &overall_report)
-                    .inspect_err(|err| warn!("{err}"));
-            }
+            Ok((block_num, report)) => match overall_report.update(&report) {
+                Err(err) => {
+                    warn!(
+                        "Failed to update overall report for block {}: {}",
+                        block_num, err
+                    );
+                    failures += 1;
+                }
+                Ok(updates) => {
+                    info!("Updates to overall report from block {block_num}: {updates}");
+                    let _ = try_serialize(path_for_overall_report(network), &overall_report)
+                        .inspect_err(|err| warn!("{err}"));
+                }
+            },
         }
     }
     info!(
@@ -229,6 +230,22 @@ fn process_compare_paths(
         get_stat("Failures", failures)
     );
     overall_report
+}
+
+fn process_single_file(
+    block_num: u64,
+    path: PathBuf,
+) -> Result<(u64, ClassHashesReport), anyhow::Error> {
+    let path_name = path.file_name().unwrap().to_str().unwrap();
+    info!("Processing path: `{}`", path_name);
+
+    let json_obj: Value =
+        try_deserialize(path.clone()).context(format!("Failed to process file `{}`", path_name))?;
+    let mut report = ClassHashesReport::new();
+    let updates = update_report(&mut report, &json_obj, block_num)
+        .context(format!("Failed to update report for block {}", block_num))?;
+    info!("Updates from block {}: {}", block_num, updates);
+    Ok((block_num, report))
 }
 
 /// Returns: Either `Some(updates)` where `updates` is the number of updates made to the report or an Error.
@@ -327,7 +344,7 @@ fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::
                         // Continue parsing, as there may be other branches in `get_calls_inner` that are valid.
                         // `obj` may be an object with no key-value pair for "calls".
                         // For example, if passing a root transaction that failed, `obj` would instead have only the key "revert_reason".
-                        Err(err) => debug!("Failed to extract tuple with error: {err}"),
+                        Err(err) => debug!("Failed to extract tuple with error: {err:?}"),
                     }
 
                     if let Some(calls_value) = obj_map.get("calls") {
@@ -448,7 +465,7 @@ mod tests {
             "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)"
         });
 
-        let call_key = get_call_key(&call).unwrap();
+        let call_key = get_call_key(&call.as_object().unwrap()).unwrap();
         let expected_key = (
             FieldElement::from_hex_be(
                 "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29",
@@ -502,7 +519,7 @@ mod tests {
         let obj = json!({
             "calls": [{
                 "entry_point_selector": {
-                    "Different": {
+                "Different": {
                         "base": "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29",
                         "native": "Empty"
                     }
@@ -511,7 +528,7 @@ mod tests {
                     "Different": {
                         "base": "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be",
                         "native": "Empty"
-                    }
+                }
                 }
             }],
             "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
