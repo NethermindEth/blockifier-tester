@@ -305,7 +305,9 @@ fn get_calls_with_count(obj: &Value) -> Result<Vec<CallWithCount>, anyhow::Error
         }
         Value::Array(call_list) => Ok(call_list
             .iter()
-            .filter_map(|call| get_calls_with_count(call).ok())
+            .map(|call| get_calls_with_count(call))
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
             .flatten()
             .collect_vec()),
         Value::Object(obj_map) => {
