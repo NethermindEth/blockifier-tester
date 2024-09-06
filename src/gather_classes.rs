@@ -86,10 +86,6 @@ impl ClassHashesReport {
         let totals_entry = self.totals.entry(class_hash).or_insert(0);
         *totals_entry += count;
     }
-
-    fn add_fields(&mut self, class_hash: ClassHash, entry_point: EntryPoint) {
-        self.update_count(class_hash, entry_point, 1)
-    }
 }
 
 impl core::fmt::Display for ClassHashesReport {
