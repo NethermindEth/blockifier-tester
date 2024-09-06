@@ -383,30 +383,64 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn test_class_hashes_report_update_count() {
-        let mut report = ClassHashesReport::new();
-        let class_hash = FieldElement::from_hex_be("0x123").unwrap();
-        let entry_point = FieldElement::from_hex_be("0x456").unwrap();
+    fn test_merge_calls_with_count() {
+        let ep1 = FieldElement::from_hex_be("0x111").unwrap();
+        let ep2 = FieldElement::from_hex_be("0x222").unwrap();
+        let ch1 = FieldElement::from_hex_be("0xaaa").unwrap();
+        let ch2 = FieldElement::from_hex_be("0xbbb").unwrap();
 
-        report.update_count(class_hash, entry_point, 5);
-        assert_eq!(report.report[&class_hash][&entry_point], 5);
-        assert_eq!(report.totals[&class_hash], 5);
+        let base_calls = vec![((ep1, ch1), 3), ((ep2, ch2), 2), ((ep1, ch2), 1)];
 
-        report.update_count(class_hash, entry_point, 3);
-        assert_eq!(report.report[&class_hash][&entry_point], 8);
-        assert_eq!(report.totals[&class_hash], 8);
+        let native_calls = vec![((ep1, ch1), 2), ((ep2, ch2), 1), ((ep2, ch1), 4)];
+
+        let merged = merge_calls_with_count(base_calls, native_calls);
+
+        assert_eq!(merged.len(), 2);
+        assert!(merged.contains(&((ep1, ch1), 3)));
+        assert!(merged.contains(&((ep2, ch2), 2)));
     }
 
     #[test]
-    fn test_get_tuple_from_call() {
-        let call = json!({
-            "entry_point_selector": "0x123",
-            "class_hash": "0x456"
-        });
+    fn test_merge_calls_with_count_empty_native() {
+        let ep1 = FieldElement::from_hex_be("0x111").unwrap();
+        let ch1 = FieldElement::from_hex_be("0xaaa").unwrap();
 
-        let result = get_tuples_from_call(&call).unwrap();
-        assert_eq!(result.0 .0, FieldElement::from_hex_be("0x123").unwrap());
-        assert_eq!(result.0 .1, FieldElement::from_hex_be("0x456").unwrap());
+        let base_calls = vec![((ep1, ch1), 3)];
+
+        let native_calls = vec![];
+
+        let merged = merge_calls_with_count(base_calls, native_calls);
+
+        assert_eq!(merged.len(), 0);
+    }
+
+    #[test]
+    fn test_merge_calls_with_count_empty_base() {
+        let ep1 = FieldElement::from_hex_be("0x111").unwrap();
+        let ch1 = FieldElement::from_hex_be("0xaaa").unwrap();
+
+        let base_calls = vec![];
+
+        let native_calls = vec![((ep1, ch1), 3)];
+
+        let merged = merge_calls_with_count(base_calls, native_calls);
+
+        assert_eq!(merged.len(), 0);
+    }
+
+    #[test]
+    fn test_merge_calls_with_count_multiple_occurrences() {
+        let ep1 = FieldElement::from_hex_be("0x111").unwrap();
+        let ch1 = FieldElement::from_hex_be("0xaaa").unwrap();
+
+        let base_calls = vec![((ep1, ch1), 3), ((ep1, ch1), 2)];
+
+        let native_calls = vec![((ep1, ch1), 1)];
+
+        let merged = merge_calls_with_count(base_calls, native_calls);
+
+        assert_eq!(merged.len(), 1);
+        assert!(merged.contains(&((ep1, ch1), 5)));
     }
 
     #[test]
@@ -450,7 +484,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_calls_missing_native() {
+    fn test_get_calls_missing_native_fields() {
         let obj = json!({
             "calls": [{
                 "entry_point_selector": {
@@ -557,7 +591,28 @@ mod tests {
     }
 
     #[test]
-    fn test_get_calls_nested_different() {
+    fn test_get_calls_nested_missing_native() {
+        let obj = json!({
+            "calls": {
+                "Different": {
+                    "base": [
+                    {
+                        "calls": [],
+                        "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)",
+                        "contract_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+                        "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+                    }
+                    ],
+                    "native": "Empty"
+                }
+            }
+        });
+        let calls = get_calls_with_count(&obj).unwrap();
+        assert_eq!(calls.len(), 0);
+    }
+
+    #[test]
+    fn test_get_calls_different_nested_calls() {
         let obj = json!({
             "calls": {
                 "Different": {
@@ -612,11 +667,39 @@ mod tests {
                         "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
                     }
                     ],
-                    "native": "Empty"
+                    "native": [
+                        {
+                            "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)",
+                            "contract_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+                            "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+                            "calls": []
+                        },
+                        {
+                            // This should not be included in the result
+                            "class_hash": "Same(0x123)",
+                            "contract_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+                            "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+                            "calls": []
+                        }
+                    ]
                 }
             }
         });
         let calls = get_calls_with_count(&obj).unwrap();
-        assert_eq!(calls.len(), 0);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(
+            calls[0].0,
+            ((
+                FieldElement::from_hex_be(
+                    "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29"
+                )
+                .unwrap(),
+                FieldElement::from_hex_be(
+                    "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be"
+                )
+                .unwrap()
+            ))
+        );
+        assert_eq!(calls[0].1, 8);
     }
 }
