@@ -388,7 +388,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn test_merge_calls_with_count() {
+    fn test_get_call_with_count() {
         let ep1 = FieldElement::from_hex_be("0x111").unwrap();
         let ep2 = FieldElement::from_hex_be("0x222").unwrap();
         let ch1 = FieldElement::from_hex_be("0xaaa").unwrap();
@@ -406,7 +406,7 @@ mod tests {
     }
 
     #[test]
-    fn test_merge_calls_with_count_empty_native() {
+    fn test_get_call_with_count_empty_native() {
         let ep1 = FieldElement::from_hex_be("0x111").unwrap();
         let ch1 = FieldElement::from_hex_be("0xaaa").unwrap();
 
@@ -420,7 +420,7 @@ mod tests {
     }
 
     #[test]
-    fn test_merge_calls_with_count_empty_base() {
+    fn test_get_call_with_count_empty_base() {
         let ep1 = FieldElement::from_hex_be("0x111").unwrap();
         let ch1 = FieldElement::from_hex_be("0xaaa").unwrap();
 
@@ -434,7 +434,7 @@ mod tests {
     }
 
     #[test]
-    fn test_merge_calls_with_count_multiple_occurrences() {
+    fn test_get_call_with_count_multiple_occurrences() {
         let ep1 = FieldElement::from_hex_be("0x111").unwrap();
         let ch1 = FieldElement::from_hex_be("0xaaa").unwrap();
 
