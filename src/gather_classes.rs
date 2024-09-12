@@ -434,6 +434,27 @@ mod tests {
     }
 
     #[test]
+    fn test_get_call_key() {
+        let call = json!({
+            "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+            "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)"
+        });
+
+        let call_key = get_call_key(&call).unwrap();
+        let expected_key = (
+            FieldElement::from_hex_be(
+                "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29",
+            )
+            .unwrap(),
+            FieldElement::from_hex_be(
+                "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be",
+            )
+            .unwrap(),
+        );
+        assert_eq!(call_key, expected_key);
+    }
+
+    #[test]
     fn test_get_calls() {
         let obj = json!({
             "calls": [
