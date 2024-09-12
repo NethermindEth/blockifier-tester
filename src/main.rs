@@ -190,9 +190,12 @@ async fn trace_native(
     match native_trace_result.result {
         TraceResult::Success(native_trace) => {
             info!("SUCCESS tracing block with native");
-            if let Err(e) =
-                graph::write_transaction_dependencies(block_number, "native", native_trace.iter())
-            {
+            if let Err(e) = graph::write_transaction_dependencies(
+                block_number,
+                network,
+                "native",
+                native_trace.iter(),
+            ) {
                 warn!("Error writing transaction dependencies: {e:?}");
             }
             Ok(Some(native_trace))

@@ -1,3 +1,5 @@
+use crate::juno_manager::Network;
+use crate::utils::felt_to_hex;
 use anyhow::Context;
 use itertools::Itertools;
 use log::{info, warn};
@@ -5,7 +7,6 @@ use petgraph::visit::Walker;
 use starknet::core::types::{ContractStorageDiffItem, FieldElement, TransactionTraceWithHash};
 use std::io::Write;
 use std::{collections::HashMap, fs::OpenOptions, path::Path};
-use crate::utils::felt_to_hex;
 
 use petgraph::{
     graph::{Graph, NodeIndex},
@@ -179,20 +180,21 @@ impl TransactionDiffStore {
 #[allow(dead_code)]
 pub fn write_transaction_dependencies<'a, T>(
     block_num: u64,
+    network: Network,
     branch: &str,
     transactions: T,
 ) -> Result<(), anyhow::Error>
 where
     T: Iterator<Item = &'a TransactionTraceWithHash>,
 {
-    info!("Dumping transaction dependencies for block '{block_num}' on branch '{branch}'");
+    info!("Dumping transaction dependencies for block '{block_num}' on {network} on branch '{branch}'");
     let (contract_graph, storage_graph) = make_graphs(transactions);
 
     let contracts_path_string =
-        format!("./results/dependencies/transaction_contracts-{block_num}-{branch}.log");
+        format!("./results-{network}/dependencies/transaction_contracts-{block_num}-{branch}.log");
     let transaction_contracts_path = Path::new(contracts_path_string.as_str());
     let storage_path_string =
-        format!("./results/dependencies/transaction_storage-{block_num}-{branch}.log");
+        format!("./results-{network}/dependencies/transaction_storage-{block_num}-{branch}.log");
     let transaction_storage_path = Path::new(storage_path_string.as_str());
 
     let log_result_1 =
