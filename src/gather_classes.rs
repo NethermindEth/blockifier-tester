@@ -348,8 +348,26 @@ fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::
 /// Retrieves a [CallKey] from a call object.
 ///
 /// If any of the keys are Different, then the call is considered invalid and this function will return an Error.
+fn get_call_key(call: &Value) -> Result<CallKey, anyhow::Error> {
+    let parse_field = |key: &str| -> Result<FieldElement, anyhow::Error> {
+        call.get(key)
+            .and_then(Value::as_str)
+            .ok_or_else(|| anyhow!("Failed to parse call {call} for key: {key}"))
+            .and_then(|s| {
+                if string_is_same(s) {
+                    parse_same_string(s).context(anyhow!("Failed to parse SAME value"))
+                } else {
+                    Ok(s)
+                }
+            })
+            .and_then(|v| {
+                FieldElement::from_hex_be(v).context(format!("Failed to convert value to felt"))
+            })
+    };
 
-    Ok(((values[0], values[1]), 1))
+    Ok((
+        parse_field("entry_point_selector")?,
+        parse_field("class_hash")?,
     ))
 }
 
