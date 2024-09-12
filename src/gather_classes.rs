@@ -35,7 +35,6 @@ type ClassHash = FieldElement;
 /// Table of EntryPoint -> Number of occurrences.
 type SelectorTable = HashMap<EntryPoint, Count>;
 type CallKey = (EntryPoint, ClassHash);
-type CallWithCount = (CallKey, usize);
 
 #[derive(Serialize, Deserialize)]
 struct ClassHashesReport {
@@ -327,11 +326,8 @@ fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::
 
                     merge_calls_with_count(&base_calls, &native_calls, &mut result);
                 } else {
-                    if let Ok(current_call) = get_call_with_count(obj) {
-                        result
-                            .entry(current_call.0)
-                            .and_modify(|c| *c += 1)
-                            .or_insert(1);
+                    if let Ok(call_key) = get_call_key(obj) {
+                        result.entry(call_key).and_modify(|c| *c += 1).or_insert(1);
                     }
 
                     if let Some(calls_value) = obj_map.get("calls") {
@@ -349,29 +345,12 @@ fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::
     Ok(result)
 }
 
-/// Retrieves a [CallWithCount] from a call object.
+/// Retrieves a [CallKey] from a call object.
 ///
 /// If any of the keys are Different, then the call is considered invalid and this function will return an Error.
-fn get_call_with_count(call: &Value) -> Result<CallWithCount, anyhow::Error> {
-    let mut values = Vec::with_capacity(2);
-
-    for key in ["entry_point_selector", "class_hash"] {
-        if let Some(Value::String(string)) = call.get(key) {
-            let value = if string_is_same(string) {
-                parse_same_string(string).context("Failed to parse SAME value")?
-            } else {
-                string
-            };
-
-            let felt_version = FieldElement::from_hex_be(value)
-                .context(format!("Failed to convert value to felt"))?;
-            values.push(felt_version);
-        } else {
-            return Err(anyhow!("Failed to parse call {call} for key: {key}"));
-        }
-    }
 
     Ok(((values[0], values[1]), 1))
+    ))
 }
 
 #[cfg(test)]
