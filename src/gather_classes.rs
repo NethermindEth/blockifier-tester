@@ -272,8 +272,8 @@ fn update_report(
 fn merge_calls_with_count(
     base_calls: &HashMap<CallKey, usize>,
     native_calls: &HashMap<CallKey, usize>,
-    result: &mut HashMap<CallKey, usize>,
-) {
+    mut result: HashMap<CallKey, usize>,
+) -> HashMap<CallKey, usize> {
     for (call_key, base_count) in base_calls {
         if native_calls.contains_key(call_key) {
             result
@@ -282,6 +282,7 @@ fn merge_calls_with_count(
                 .or_insert(*base_count);
         }
     }
+    result
 }
 
 /// Recursively extracts calls with their counts from a [Value] object representing a transaction trace.
@@ -292,22 +293,22 @@ fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::
     // TODO (#72) Put debug logging here under a core::option_env flag so it is normally hidden.
     fn get_calls_inner(
         obj: &Value,
-        mut result: &mut HashMap<CallKey, usize>,
-    ) -> Result<(), anyhow::Error> {
+        mut result: HashMap<CallKey, usize>,
+    ) -> Result<HashMap<CallKey, usize>, anyhow::Error> {
         match obj {
             Value::String(string) => {
                 // If the string is SAME or EMPTY, then there are no calls to extract and continue processing
                 if string_is_same(string) || string_is_empty(string) {
-                    Ok(())
+                    Ok(result)
                 } else {
                     Err(anyhow!("String is not SAME or EMPTY: {}", string))
                 }
             }
             Value::Array(call_list) => {
                 for call in call_list {
-                    get_calls_inner(call, result)?;
+                    result = get_calls_inner(call, result)?;
                 }
-                Ok(())
+                Ok(result)
             }
             Value::Object(obj_map) => {
                 // If call is different, then base and native will have their own list of calls
@@ -319,12 +320,10 @@ fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::
                         .get("native")
                         .ok_or(anyhow!("Different should have native"))?;
 
-                    let mut base_calls = HashMap::new();
-                    get_calls_inner(base_list, &mut base_calls)?;
-                    let mut native_calls = HashMap::new();
-                    get_calls_inner(native_list, &mut native_calls)?;
+                    let base_calls = get_calls_inner(base_list, HashMap::new())?;
+                    let native_calls = get_calls_inner(native_list, HashMap::new())?;
 
-                    merge_calls_with_count(&base_calls, &native_calls, &mut result);
+                    result = merge_calls_with_count(&base_calls, &native_calls, result);
                 } else {
                     match get_call_key(obj) {
                         Ok(call_key) => {
@@ -337,17 +336,16 @@ fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::
                     }
 
                     if let Some(calls_value) = obj_map.get("calls") {
-                        get_calls_inner(calls_value, result)?;
+                        result = get_calls_inner(calls_value, result)?;
                     }
                 }
-                Ok(())
+                Ok(result)
             }
             _ => Err(anyhow!("unexpected value: `{}`", obj)),
         }
     }
 
-    let mut result = HashMap::new();
-    get_calls_inner(obj, &mut result)?;
+    let result = get_calls_inner(obj, HashMap::new())?;
     Ok(result)
 }
 
@@ -399,8 +397,7 @@ mod tests {
         native_calls.insert((ep2, ch2), 1);
         native_calls.insert((ep2, ch1), 4);
 
-        let mut merged = HashMap::new();
-        merge_calls_with_count(&base_calls, &native_calls, &mut merged);
+        let merged = merge_calls_with_count(&base_calls, &native_calls, HashMap::new());
 
         assert_eq!(merged.len(), 2);
         assert_eq!(merged.get(&(ep1, ch1)), Some(&3));
@@ -417,8 +414,7 @@ mod tests {
 
         let native_calls = HashMap::new();
 
-        let mut merged = HashMap::new();
-        merge_calls_with_count(&base_calls, &native_calls, &mut merged);
+        let merged = merge_calls_with_count(&base_calls, &native_calls, HashMap::new());
 
         assert_eq!(merged.len(), 0);
     }
@@ -433,8 +429,7 @@ mod tests {
         let mut native_calls = HashMap::new();
         native_calls.insert((ep1, ch1), 3);
 
-        let mut merged = HashMap::new();
-        merge_calls_with_count(&base_calls, &native_calls, &mut merged);
+        let merged = merge_calls_with_count(&base_calls, &native_calls, HashMap::new());
 
         assert_eq!(merged.len(), 0);
     }
@@ -450,8 +445,7 @@ mod tests {
         let mut native_calls = HashMap::new();
         native_calls.insert((ep1, ch1), 1);
 
-        let mut merged = HashMap::new();
-        merge_calls_with_count(&base_calls, &native_calls, &mut merged);
+        let merged = merge_calls_with_count(&base_calls, &native_calls, HashMap::new());
 
         assert_eq!(merged.len(), 1);
         assert_eq!(merged.get(&(ep1, ch1)), Some(&5));
