@@ -346,6 +346,7 @@ fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::
 /// Retrieves a [CallKey] from a call object.
 ///
 /// If any of the keys are Different, then the call is considered invalid and this function will return an Error.
+// TODO: can take ownership of call here, same with the other get call functions
 fn get_call_key(call: &Map<String, Value>) -> Result<CallKey, anyhow::Error> {
     let parse_field = |key: &str| -> Result<FieldElement, anyhow::Error> {
         call.get(key)
