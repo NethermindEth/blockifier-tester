@@ -315,10 +315,10 @@ fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::
                 if let Some(Value::Object(diff_map)) = obj_map.get(DIFFERENT) {
                     let base_list = diff_map
                         .get("base")
-                        .ok_or(anyhow!("difference should have base"))?;
+                        .ok_or(anyhow!("Different should have base"))?;
                     let native_list = diff_map
                         .get("native")
-                        .ok_or(anyhow!("difference should have native"))?;
+                        .ok_or(anyhow!("Different should have native"))?;
 
                     let mut base_calls = HashMap::new();
                     get_calls_inner(base_list, &mut base_calls)?;
