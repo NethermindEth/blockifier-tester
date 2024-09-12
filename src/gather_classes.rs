@@ -722,4 +722,70 @@ mod tests {
         );
         assert_eq!(calls.get(&expected_key), Some(&8));
     }
+
+    // TODO: uncomment this test once get_calls_with_count handles different depths of CallKeys
+    // #[test]
+    // fn test_get_calls_with_count_different_layers() {
+    //     let obj = json!({
+    //         "calls": {
+    //             "Different": {
+    //                 "base": [
+    //                     {
+    //                         "entry_point_selector": "Same(0x111)",
+    //                         "class_hash": "Same(0xaaa)",
+    //                         "calls": [
+    //                             {
+    //                                 "entry_point_selector": "Same(0x222)",
+    //                                 "class_hash": "Same(0xaaa)",
+    //                                 "calls": [
+    //                                     {
+    //                                         "entry_point_selector": "Same(0x333)",
+    //                                         "class_hash": "Same(0xaaa)",
+    //                                         "calls": []
+    //                                     }
+    //                                 ]
+    //                             }
+    //                         ]
+    //                     }
+    //                 ],
+    //                 "native": [
+    //                     {
+    //                         "entry_point_selector": "Same(0x111)",
+    //                         "class_hash": "Same(0xaaa)",
+    //                         "calls": [
+    //                             {
+    //                                 "entry_point_selector": "Same(0x333)",
+    //                                 "class_hash": "Same(0xaaa)",
+    //                                 "calls": []
+    //                             }
+    //                         ]
+    //                     }
+    //                 ]
+    //             }
+    //         }
+    //     });
+
+    //     let calls = get_calls_with_count(&obj).unwrap();
+    //     println!("Calls {:?}", calls);
+    //     assert_eq!(calls.len(), 1);
+
+    //     let expected_key = (
+    //         FieldElement::from_hex_be("0x111").unwrap(),
+    //         FieldElement::from_hex_be("0xaaa").unwrap(),
+    //     );
+    //     assert_eq!(calls.get(&expected_key), Some(&1));
+
+    //     // Ensure that call_2 and call_3 are not in the result
+    //     let call_2_key = (
+    //         FieldElement::from_hex_be("0x222").unwrap(),
+    //         FieldElement::from_hex_be("0xaaa").unwrap(),
+    //     );
+    //     assert_eq!(calls.get(&call_2_key), None);
+
+    //     let call_3_key = (
+    //         FieldElement::from_hex_be("0x333").unwrap(),
+    //         FieldElement::from_hex_be("0xaaa").unwrap(),
+    //     );
+    //     assert_eq!(calls.get(&call_3_key), None);
+    // }
 }
