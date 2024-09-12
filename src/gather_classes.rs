@@ -326,8 +326,14 @@ fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::
 
                     merge_calls_with_count(&base_calls, &native_calls, &mut result);
                 } else {
-                    if let Ok(call_key) = get_call_key(obj) {
-                        result.entry(call_key).and_modify(|c| *c += 1).or_insert(1);
+                    match get_call_key(obj) {
+                        Ok(call_key) => {
+                            result.entry(call_key).and_modify(|c| *c += 1).or_insert(1);
+                        }
+                        // Continue parsing, as there may be other branches in `get_calls_inner` that are valid.
+                        // `obj` may be an object with no key-value pair for "calls".
+                        // For example, if passing a root transaction that failed, `obj` would instead have only the key "revert_reason".
+                        Err(err) => debug!("Failed to extract tuple with error: {err}"),
                     }
 
                     if let Some(calls_value) = obj_map.get("calls") {
