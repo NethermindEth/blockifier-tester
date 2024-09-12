@@ -300,7 +300,7 @@ fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::
                 if string_is_same(string) || string_is_empty(string) {
                     Ok(())
                 } else {
-                    Err(anyhow!("unexpected string: {}", string))
+                    Err(anyhow!("String is not SAME or EMPTY: {}", string))
                 }
             }
             Value::Array(call_list) => {
