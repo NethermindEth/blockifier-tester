@@ -266,39 +266,35 @@ fn update_report(
     Ok(updates)
 }
 
-/// Merges two lists of calls into a single list of calls. We only consider a [CallWithCount] if
-/// it exists in both lists.
+/// Merges two HashMaps of calls into a single HashMap of calls. We only consider a call if
+/// it exists in both maps.
 ///
-/// For example if either base or native is empty, then no calls from the other will be added to the merged list
+/// This function updates the `result` HashMap in-place with the merged calls.
 fn merge_calls_with_count(
-    base_calls: Vec<CallWithCount>,
-    native_calls: Vec<CallWithCount>,
-) -> Vec<CallWithCount> {
-    let mut merged_map: HashMap<CallKey, usize> = HashMap::new();
-
-    let native_keys: HashSet<CallKey> = native_calls
-        .iter()
-        .map(|((ep, ch), _)| (*ep, *ch))
-        .collect();
+    base_calls: &HashMap<CallKey, usize>,
+    native_calls: &HashMap<CallKey, usize>,
+    result: &mut HashMap<CallKey, usize>,
+) {
     for (call_key, base_count) in base_calls {
-        if native_keys.contains(&call_key) {
-            merged_map
-                .entry(call_key)
+        if native_calls.contains_key(call_key) {
+            result
+                .entry(*call_key)
                 .and_modify(|count| *count += base_count)
-                .or_insert(base_count);
+                .or_insert(*base_count);
         }
     }
-
-    merged_map.into_iter().collect()
 }
 
 /// Recursively extracts calls with their counts from a [Value] object representing a transaction trace.
 ///
 /// This traverses the object recursively and extracts calls with their counts. It also handles the case
 /// where the calls are Different.
-fn get_calls_with_count(obj: &Value) -> Result<Vec<CallWithCount>, anyhow::Error> {
+fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::Error> {
     // TODO (#72) Put debug logging here under a core::option_env flag so it is normally hidden.
-    fn get_calls_inner(obj: &Value, result: &mut Vec<CallWithCount>) -> Result<(), anyhow::Error> {
+    fn get_calls_inner(
+        obj: &Value,
+        mut result: &mut HashMap<CallKey, usize>,
+    ) -> Result<(), anyhow::Error> {
         match obj {
             Value::String(string) => {
                 // If the string is SAME or EMPTY, then there are no calls to extract and continue processing
@@ -324,21 +320,18 @@ fn get_calls_with_count(obj: &Value) -> Result<Vec<CallWithCount>, anyhow::Error
                         .get("native")
                         .ok_or(anyhow!("difference should have native"))?;
 
-                    let mut base_calls = Vec::new();
+                    let mut base_calls = HashMap::new();
                     get_calls_inner(base_list, &mut base_calls)?;
-                    let mut native_calls = Vec::new();
+                    let mut native_calls = HashMap::new();
                     get_calls_inner(native_list, &mut native_calls)?;
 
-                    result.extend(merge_calls_with_count(base_calls, native_calls));
+                    merge_calls_with_count(&base_calls, &native_calls, &mut result);
                 } else {
-                    match get_call_with_count(obj) {
-                        Ok(current_call) => {
-                            result.push(current_call);
-                        }
-                        // We let the parsing fail silently, as there may be inner calls that are valid
-                        Err(err) => {
-                            debug!("Failed to extract tuple with error: {err}");
-                        }
+                    if let Ok(current_call) = get_call_with_count(obj) {
+                        result
+                            .entry(current_call.0)
+                            .and_modify(|c| *c += 1)
+                            .or_insert(1);
                     }
 
                     if let Some(calls_value) = obj_map.get("calls") {
@@ -351,7 +344,7 @@ fn get_calls_with_count(obj: &Value) -> Result<Vec<CallWithCount>, anyhow::Error
         }
     }
 
-    let mut result = Vec::new();
+    let mut result = HashMap::new();
     get_calls_inner(obj, &mut result)?;
     Ok(result)
 }
@@ -360,10 +353,9 @@ fn get_calls_with_count(obj: &Value) -> Result<Vec<CallWithCount>, anyhow::Error
 ///
 /// If any of the keys are Different, then the call is considered invalid and this function will return an Error.
 fn get_call_with_count(call: &Value) -> Result<CallWithCount, anyhow::Error> {
-    let keys = ["entry_point_selector", "class_hash"];
-    let mut values = Vec::with_capacity(keys.len());
+    let mut values = Vec::with_capacity(2);
 
-    for key in keys {
+    for key in ["entry_point_selector", "class_hash"] {
         if let Some(Value::String(string)) = call.get(key) {
             let value = if string_is_same(string) {
                 parse_same_string(string).context("Failed to parse SAME value")?
@@ -388,64 +380,78 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn test_get_call_with_count() {
+    fn test_merge_calls_with_count() {
         let ep1 = FieldElement::from_hex_be("0x111").unwrap();
         let ep2 = FieldElement::from_hex_be("0x222").unwrap();
         let ch1 = FieldElement::from_hex_be("0xaaa").unwrap();
         let ch2 = FieldElement::from_hex_be("0xbbb").unwrap();
 
-        let base_calls = vec![((ep1, ch1), 3), ((ep2, ch2), 2), ((ep1, ch2), 1)];
+        let mut base_calls = HashMap::new();
+        base_calls.insert((ep1, ch1), 3);
+        base_calls.insert((ep2, ch2), 2);
+        base_calls.insert((ep1, ch2), 1);
 
-        let native_calls = vec![((ep1, ch1), 2), ((ep2, ch2), 1), ((ep2, ch1), 4)];
+        let mut native_calls = HashMap::new();
+        native_calls.insert((ep1, ch1), 2);
+        native_calls.insert((ep2, ch2), 1);
+        native_calls.insert((ep2, ch1), 4);
 
-        let merged = merge_calls_with_count(base_calls, native_calls);
+        let mut merged = HashMap::new();
+        merge_calls_with_count(&base_calls, &native_calls, &mut merged);
 
         assert_eq!(merged.len(), 2);
-        assert!(merged.contains(&((ep1, ch1), 3)));
-        assert!(merged.contains(&((ep2, ch2), 2)));
+        assert_eq!(merged.get(&(ep1, ch1)), Some(&3));
+        assert_eq!(merged.get(&(ep2, ch2)), Some(&2));
     }
 
     #[test]
-    fn test_get_call_with_count_empty_native() {
+    fn test_merge_calls_with_count_empty_native() {
         let ep1 = FieldElement::from_hex_be("0x111").unwrap();
         let ch1 = FieldElement::from_hex_be("0xaaa").unwrap();
 
-        let base_calls = vec![((ep1, ch1), 3)];
+        let mut base_calls = HashMap::new();
+        base_calls.insert((ep1, ch1), 3);
 
-        let native_calls = vec![];
+        let native_calls = HashMap::new();
 
-        let merged = merge_calls_with_count(base_calls, native_calls);
+        let mut merged = HashMap::new();
+        merge_calls_with_count(&base_calls, &native_calls, &mut merged);
 
         assert_eq!(merged.len(), 0);
     }
 
     #[test]
-    fn test_get_call_with_count_empty_base() {
+    fn test_merge_calls_with_count_empty_base() {
         let ep1 = FieldElement::from_hex_be("0x111").unwrap();
         let ch1 = FieldElement::from_hex_be("0xaaa").unwrap();
 
-        let base_calls = vec![];
+        let base_calls = HashMap::new();
 
-        let native_calls = vec![((ep1, ch1), 3)];
+        let mut native_calls = HashMap::new();
+        native_calls.insert((ep1, ch1), 3);
 
-        let merged = merge_calls_with_count(base_calls, native_calls);
+        let mut merged = HashMap::new();
+        merge_calls_with_count(&base_calls, &native_calls, &mut merged);
 
         assert_eq!(merged.len(), 0);
     }
 
     #[test]
-    fn test_get_call_with_count_multiple_occurrences() {
+    fn test_merge_calls_with_count_multiple_occurrences() {
         let ep1 = FieldElement::from_hex_be("0x111").unwrap();
         let ch1 = FieldElement::from_hex_be("0xaaa").unwrap();
 
-        let base_calls = vec![((ep1, ch1), 3), ((ep1, ch1), 2)];
+        let mut base_calls = HashMap::new();
+        base_calls.insert((ep1, ch1), 5);
 
-        let native_calls = vec![((ep1, ch1), 1)];
+        let mut native_calls = HashMap::new();
+        native_calls.insert((ep1, ch1), 1);
 
-        let merged = merge_calls_with_count(base_calls, native_calls);
+        let mut merged = HashMap::new();
+        merge_calls_with_count(&base_calls, &native_calls, &mut merged);
 
         assert_eq!(merged.len(), 1);
-        assert!(merged.contains(&((ep1, ch1), 5)));
+        assert_eq!(merged.get(&(ep1, ch1)), Some(&5));
     }
 
     #[test]
@@ -468,24 +474,19 @@ mod tests {
         });
 
         let calls = get_calls_with_count(&obj).unwrap();
-        assert_eq!(calls.len(), 3);
+        assert_eq!(calls.len(), 1);
 
-        for call in calls {
-            assert_eq!(
-                call.0,
-                ((
-                    FieldElement::from_hex_be(
-                        "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29"
-                    )
-                    .unwrap(),
-                    FieldElement::from_hex_be(
-                        "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be"
-                    )
-                    .unwrap()
-                ))
-            );
-            assert_eq!(call.1, 1);
-        }
+        let expected_key = (
+            FieldElement::from_hex_be(
+                "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29",
+            )
+            .unwrap(),
+            FieldElement::from_hex_be(
+                "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be",
+            )
+            .unwrap(),
+        );
+        assert_eq!(calls.get(&expected_key), Some(&3));
     }
 
     #[test]
@@ -509,21 +510,17 @@ mod tests {
             "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)"
         });
         let calls = get_calls_with_count(&obj).unwrap();
-        assert_eq!(calls.len(), 1);
-        assert_eq!(
-            calls[0].0,
-            ((
-                FieldElement::from_hex_be(
-                    "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29"
-                )
-                .unwrap(),
-                FieldElement::from_hex_be(
-                    "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be"
-                )
-                .unwrap()
-            ))
+        let expected_key = (
+            FieldElement::from_hex_be(
+                "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29",
+            )
+            .unwrap(),
+            FieldElement::from_hex_be(
+                "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be",
+            )
+            .unwrap(),
         );
-        assert_eq!(calls[0].1, 1);
+        assert_eq!(calls.get(&expected_key), Some(&1));
     }
 
     #[test]
@@ -576,23 +573,19 @@ mod tests {
         });
 
         let calls = get_calls_with_count(&obj).unwrap();
-        assert_eq!(calls.len(), 3);
-        for call in calls {
-            assert_eq!(
-                call.0,
-                ((
-                    FieldElement::from_hex_be(
-                        "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29"
-                    )
-                    .unwrap(),
-                    FieldElement::from_hex_be(
-                        "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be"
-                    )
-                    .unwrap()
-                ))
-            );
-            assert_eq!(call.1, 1);
-        }
+        assert_eq!(calls.len(), 1);
+
+        let expected_key = (
+            FieldElement::from_hex_be(
+                "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29",
+            )
+            .unwrap(),
+            FieldElement::from_hex_be(
+                "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be",
+            )
+            .unwrap(),
+        );
+        assert_eq!(calls.get(&expected_key), Some(&3));
     }
 
     #[test]
@@ -692,19 +685,17 @@ mod tests {
         });
         let calls = get_calls_with_count(&obj).unwrap();
         assert_eq!(calls.len(), 1);
-        assert_eq!(
-            calls[0].0,
-            ((
-                FieldElement::from_hex_be(
-                    "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29"
-                )
-                .unwrap(),
-                FieldElement::from_hex_be(
-                    "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be"
-                )
-                .unwrap()
-            ))
+
+        let expected_key = (
+            FieldElement::from_hex_be(
+                "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29",
+            )
+            .unwrap(),
+            FieldElement::from_hex_be(
+                "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be",
+            )
+            .unwrap(),
         );
-        assert_eq!(calls[0].1, 8);
+        assert_eq!(calls.get(&expected_key), Some(&8));
     }
 }
