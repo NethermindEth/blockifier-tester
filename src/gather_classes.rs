@@ -299,7 +299,6 @@ fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::
             Value::String(string) if string_is_same(string) || string_is_empty(string) => {
                 Ok(result)
             }
-            Value::String(string) => Err(anyhow!("String is not SAME or EMPTY: {}", string)),
             Value::Array(call_list) => {
                 for call in call_list {
                     result = get_calls_inner(call, result)?;
@@ -708,7 +707,7 @@ mod tests {
         assert_eq!(calls.get(&expected_key), Some(&8));
     }
 
-    // TODO: uncomment this test once get_calls_with_count handles different depths of CallKeys
+    // TODO(#91): uncomment this test once get_calls_with_count handles different depths of CallKeys
     // #[test]
     // fn test_get_calls_with_count_different_layers() {
     //     let obj = json!({
