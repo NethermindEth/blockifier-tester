@@ -357,12 +357,10 @@ fn get_call_key(call: &Value) -> Result<CallKey, anyhow::Error> {
         call.get(key)
             .and_then(Value::as_str)
             .ok_or_else(|| anyhow!("Failed to parse call {call} for key: {key}"))
-            .and_then(|s| {
-                if string_is_same(s) {
-                    parse_same_string(s).context(anyhow!("Failed to parse SAME value"))
-                } else {
-                    Ok(s)
-                }
+            .and_then(|s| match parse_same_string(s) {
+                Ok(value) => Ok(value),
+                // If the string is not a Same comparison result, then it must be the actual value
+                Err(_) => Ok(s),
             })
             .and_then(|v| {
                 FieldElement::from_hex_be(v).context(format!("Failed to convert value to felt"))
