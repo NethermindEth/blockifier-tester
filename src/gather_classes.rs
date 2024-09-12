@@ -296,14 +296,10 @@ fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::
         mut result: HashMap<CallKey, usize>,
     ) -> Result<HashMap<CallKey, usize>, anyhow::Error> {
         match obj {
-            Value::String(string) => {
-                // If the string is SAME or EMPTY, then there are no calls to extract and continue processing
-                if string_is_same(string) || string_is_empty(string) {
-                    Ok(result)
-                } else {
-                    Err(anyhow!("String is not SAME or EMPTY: {}", string))
-                }
+            Value::String(string) if string_is_same(string) || string_is_empty(string) => {
+                Ok(result)
             }
+            Value::String(string) => Err(anyhow!("String is not SAME or EMPTY: {}", string)),
             Value::Array(call_list) => {
                 for call in call_list {
                     result = get_calls_inner(call, result)?;
@@ -345,8 +341,7 @@ fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::
         }
     }
 
-    let result = get_calls_inner(obj, HashMap::new())?;
-    Ok(result)
+    get_calls_inner(obj, HashMap::new())
 }
 
 /// Retrieves a [CallKey] from a call object.
