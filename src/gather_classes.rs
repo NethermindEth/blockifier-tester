@@ -5,7 +5,7 @@
 use crate::{
     io::{self, block_num_from_path, path_for_overall_report, try_deserialize, try_serialize},
     juno_manager::{ManagerError, Network},
-    trace_comparison::string_is_same,
+    trace_comparison::{parse_same_string, string_is_empty, string_is_same},
     utils::{self, felt_to_hex},
 };
 
@@ -25,7 +25,7 @@ use anyhow::{anyhow, Context};
 use itertools::Itertools;
 use starknet::core::types::FieldElement;
 
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 type Count = usize;
 /// Value for `entry_point_selector` key.
@@ -34,6 +34,7 @@ type EntryPoint = FieldElement;
 type ClassHash = FieldElement;
 /// Table of EntryPoint -> Number of occurrences.
 type SelectorTable = HashMap<EntryPoint, Count>;
+type CallKey = (EntryPoint, ClassHash);
 
 #[derive(Serialize, Deserialize)]
 struct ClassHashesReport {
@@ -83,10 +84,6 @@ impl ClassHashesReport {
 
         let totals_entry = self.totals.entry(class_hash).or_insert(0);
         *totals_entry += count;
-    }
-
-    fn add_fields(&mut self, class_hash: ClassHash, entry_point: EntryPoint) {
-        self.update_count(class_hash, entry_point, 1)
     }
 }
 
@@ -257,80 +254,115 @@ fn update_report(
             debug!("skipping transaction: `{transaction}`");
             continue;
         }
-        let calls = get_calls(root_call).context("Failed to get calls from root_call")?;
-        for call in calls {
-            let maybe_kvp = get_tuple_from_call(call);
-            match maybe_kvp {
-                Ok(kvp) => {
-                    report.add_fields(kvp.1, kvp.0);
-                    updates += 1;
-                }
-                Err(err) => {
-                    debug!("Failed to extract tuple with error: {err}");
-                }
-            }
+        let calls =
+            get_calls_with_count(root_call).context("Failed to get calls from root_call")?;
+        for ((entry_point, class_hash), count) in calls {
+            report.update_count(class_hash, entry_point, count);
+            updates += count;
         }
     }
     assert!(report.blocks.insert(block_num));
     Ok(updates)
 }
 
-// Converts recursive calls to value.get("calls") to a boxed iterator.
-fn get_calls<'a>(obj: &'a Value) -> Result<Box<dyn Iterator<Item = &Value> + 'a>, anyhow::Error> {
-    // TODO (#72) Put debug logging here under a core::option_env flag so it is normally hidden.
-    match obj {
-        Value::String(string) => {
-            if string_is_same(string) {
-                Ok(Box::new(::std::iter::empty()))
-            } else {
-                Err(anyhow!("unexpected string: {}", string))
-            }
+/// Merges two HashMaps of calls into a single HashMap of calls. We only consider a call if
+/// it exists in both maps.
+///
+/// This function updates the `result` HashMap in-place with the merged calls.
+fn merge_calls_with_count(
+    base_calls: &HashMap<CallKey, usize>,
+    native_calls: &HashMap<CallKey, usize>,
+    mut result: HashMap<CallKey, usize>,
+) -> HashMap<CallKey, usize> {
+    for (call_key, base_count) in base_calls {
+        if native_calls.contains_key(call_key) {
+            result
+                .entry(*call_key)
+                .and_modify(|count| *count += base_count)
+                .or_insert(*base_count);
         }
-        Value::Array(call_list) => {
-            let nested_calls = call_list
-                .iter()
-                .map(|inner_call| get_calls(inner_call))
-                .collect::<Result<Vec<_>, _>>()?
-                .into_iter()
-                .flatten();
-            Ok(Box::new(call_list.iter().chain(nested_calls)))
-        }
-        Value::Object(obj_map) => {
-            if let Some(Value::Object(diff_map)) = obj_map.get(DIFFERENT) {
-                let base_list = diff_map
-                    .get("base")
-                    .ok_or(anyhow!("difference should have base"))?;
-                let native_list = diff_map
-                    .get("native")
-                    .ok_or(anyhow!("difference should have native"))?;
-                // TODO (#72) Compare and get diffs. For now we just chain.
-                Ok(Box::new(
-                    get_calls(base_list)?.chain(get_calls(native_list)?),
-                ))
-            } else if let Some(calls_value) = obj_map.get("calls") {
-                get_calls(calls_value)
-            } else if let Some(_val) = obj_map.get("revert_reason") {
-                Ok(Box::new(::std::iter::empty()))
-            } else {
-                Err(anyhow!("unexpected object: `{}`", obj))
-            }
-        }
-        _ => Err(anyhow!("unexpected value: `{}`", obj)),
     }
+    result
 }
 
-/// returns `Result<(EntryPoint, ClassHash), anyhow::Error>`
-fn get_tuple_from_call(call: &Value) -> Result<(EntryPoint, ClassHash), anyhow::Error> {
-    let mut values = Vec::<FieldElement>::new();
-    for key in ["entry_point_selector", "class_hash"] {
-        let next = call
-            .get(key)
-            .context(format!("call: `{call}`\n-------Extracting key {key}"))?;
-        let felt_version = serde_json::from_value(next.clone())
-            .context(format!("convert value `{}` to felt", next))?;
-        values.push(felt_version);
+/// Recursively extracts calls with their counts from a [Value] object representing a transaction trace.
+///
+/// This traverses the object recursively and extracts calls with their counts. It also handles the case
+/// where the calls are Different.
+fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::Error> {
+    // TODO (#72) Put debug logging here under a core::option_env flag so it is normally hidden.
+    fn get_calls_inner(
+        obj: &Value,
+        mut result: HashMap<CallKey, usize>,
+    ) -> Result<HashMap<CallKey, usize>, anyhow::Error> {
+        match obj {
+            Value::String(string) if string_is_same(string) || string_is_empty(string) => {
+                Ok(result)
+            }
+            Value::Array(call_list) => {
+                for call in call_list {
+                    result = get_calls_inner(call, result)?;
+                }
+                Ok(result)
+            }
+            Value::Object(obj_map) => {
+                // If call is different, then base and native will have their own list of calls
+                if let Some(Value::Object(diff_map)) = obj_map.get(DIFFERENT) {
+                    let base_list = diff_map
+                        .get("base")
+                        .ok_or(anyhow!("Different should have base"))?;
+                    let native_list = diff_map
+                        .get("native")
+                        .ok_or(anyhow!("Different should have native"))?;
+
+                    let base_calls = get_calls_inner(base_list, HashMap::new())?;
+                    let native_calls = get_calls_inner(native_list, HashMap::new())?;
+
+                    Ok(merge_calls_with_count(&base_calls, &native_calls, result))
+                } else {
+                    match get_call_key(obj_map) {
+                        Ok(call_key) => {
+                            result.entry(call_key).and_modify(|c| *c += 1).or_insert(1);
+                        }
+                        // Continue parsing, as there may be other branches in `get_calls_inner` that are valid.
+                        // `obj` may be an object with no key-value pair for "calls".
+                        // For example, if passing a root transaction that failed, `obj` would instead have only the key "revert_reason".
+                        Err(err) => debug!("Failed to extract tuple with error: {err}"),
+                    }
+
+                    if let Some(calls_value) = obj_map.get("calls") {
+                        result = get_calls_inner(calls_value, result)?;
+                    }
+                    Ok(result)
+                }
+            }
+            _ => Err(anyhow!("unexpected value: `{}`", obj)),
+        }
     }
-    Ok((values[0], values[1]))
+
+    get_calls_inner(obj, HashMap::new())
+}
+
+/// Retrieves a [CallKey] from a call object.
+///
+/// If any of the keys are Different, then the call is considered invalid and this function will return an Error.
+fn get_call_key(call: &Map<String, Value>) -> Result<CallKey, anyhow::Error> {
+    let parse_field = |key: &str| -> Result<FieldElement, anyhow::Error> {
+        call.get(key)
+            .and_then(Value::as_str)
+            .ok_or_else(|| anyhow!("Failed to parse call {call:?} for key: {key}"))
+            .and_then(|s| match parse_same_string(s) {
+                Ok(value) => Ok(value),
+                // If the string is not a Same comparison result, then it must be the actual value
+                Err(_) => Ok(s),
+            })
+            .and_then(|v| FieldElement::from_hex_be(v).context("Failed to convert value to felt"))
+    };
+
+    Ok((
+        parse_field("entry_point_selector")?,
+        parse_field("class_hash")?,
+    ))
 }
 
 #[cfg(test)]
@@ -339,71 +371,164 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn test_class_hashes_report_update_count() {
-        let mut report = ClassHashesReport::new();
-        let class_hash = FieldElement::from_hex_be("0x123").unwrap();
-        let entry_point = FieldElement::from_hex_be("0x456").unwrap();
+    fn test_merge_calls_with_count() {
+        let ep1 = FieldElement::from_hex_be("0x111").unwrap();
+        let ep2 = FieldElement::from_hex_be("0x222").unwrap();
+        let ch1 = FieldElement::from_hex_be("0xaaa").unwrap();
+        let ch2 = FieldElement::from_hex_be("0xbbb").unwrap();
 
-        report.update_count(class_hash, entry_point, 5);
-        assert_eq!(report.report[&class_hash][&entry_point], 5);
-        assert_eq!(report.totals[&class_hash], 5);
+        let mut base_calls = HashMap::new();
+        base_calls.insert((ep1, ch1), 3);
+        base_calls.insert((ep2, ch2), 2);
+        base_calls.insert((ep1, ch2), 1);
 
-        report.update_count(class_hash, entry_point, 3);
-        assert_eq!(report.report[&class_hash][&entry_point], 8);
-        assert_eq!(report.totals[&class_hash], 8);
+        let mut native_calls = HashMap::new();
+        native_calls.insert((ep1, ch1), 2);
+        native_calls.insert((ep2, ch2), 1);
+        native_calls.insert((ep2, ch1), 4);
+
+        let merged = merge_calls_with_count(&base_calls, &native_calls, HashMap::new());
+
+        assert_eq!(merged.len(), 2);
+        assert_eq!(merged.get(&(ep1, ch1)), Some(&3));
+        assert_eq!(merged.get(&(ep2, ch2)), Some(&2));
     }
 
     #[test]
-    fn test_class_hashes_report_add_fields() {
-        let mut report = ClassHashesReport::new();
-        let class_hash = FieldElement::from_hex_be("0x789").unwrap();
-        let entry_point = FieldElement::from_hex_be("0xabc").unwrap();
+    fn test_merge_calls_with_count_empty_native() {
+        let ep1 = FieldElement::from_hex_be("0x111").unwrap();
+        let ch1 = FieldElement::from_hex_be("0xaaa").unwrap();
 
-        report.add_fields(class_hash, entry_point);
-        assert_eq!(report.report[&class_hash][&entry_point], 1);
-        assert_eq!(report.totals[&class_hash], 1);
+        let mut base_calls = HashMap::new();
+        base_calls.insert((ep1, ch1), 3);
 
-        report.add_fields(class_hash, entry_point);
-        assert_eq!(report.report[&class_hash][&entry_point], 2);
-        assert_eq!(report.totals[&class_hash], 2);
+        let native_calls = HashMap::new();
+
+        let merged = merge_calls_with_count(&base_calls, &native_calls, HashMap::new());
+
+        assert_eq!(merged.len(), 0);
     }
 
     #[test]
-    fn test_get_tuple_from_call() {
+    fn test_merge_calls_with_count_empty_base() {
+        let ep1 = FieldElement::from_hex_be("0x111").unwrap();
+        let ch1 = FieldElement::from_hex_be("0xaaa").unwrap();
+
+        let base_calls = HashMap::new();
+
+        let mut native_calls = HashMap::new();
+        native_calls.insert((ep1, ch1), 3);
+
+        let merged = merge_calls_with_count(&base_calls, &native_calls, HashMap::new());
+
+        assert_eq!(merged.len(), 0);
+    }
+
+    #[test]
+    fn test_merge_calls_with_count_multiple_occurrences() {
+        let ep1 = FieldElement::from_hex_be("0x111").unwrap();
+        let ch1 = FieldElement::from_hex_be("0xaaa").unwrap();
+
+        let mut base_calls = HashMap::new();
+        base_calls.insert((ep1, ch1), 5);
+
+        let mut native_calls = HashMap::new();
+        native_calls.insert((ep1, ch1), 1);
+
+        let merged = merge_calls_with_count(&base_calls, &native_calls, HashMap::new());
+
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged.get(&(ep1, ch1)), Some(&5));
+    }
+
+    #[test]
+    fn test_get_call_key() {
         let call = json!({
-            "entry_point_selector": "0x123",
-            "class_hash": "0x456"
+            "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+            "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)"
         });
 
-        let result = get_tuple_from_call(&call).unwrap();
-        assert_eq!(result.0, FieldElement::from_hex_be("0x123").unwrap());
-        assert_eq!(result.1, FieldElement::from_hex_be("0x456").unwrap());
+        let call_key = get_call_key(&call).unwrap();
+        let expected_key = (
+            FieldElement::from_hex_be(
+                "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29",
+            )
+            .unwrap(),
+            FieldElement::from_hex_be(
+                "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be",
+            )
+            .unwrap(),
+        );
+        assert_eq!(call_key, expected_key);
     }
 
     #[test]
     fn test_get_calls() {
         let obj = json!({
-            "calls": ["Same", "Same"]
+            "calls": [
+                {
+                    "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+                    "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)",
+                    "calls": []
+                },
+                {
+                    "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+                    "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)",
+                    "calls": []
+                }
+            ],
+            "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+            "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)"
         });
 
-        let calls: Vec<&Value> = get_calls(&obj).collect();
-        assert_eq!(calls.len(), 2);
+        let calls = get_calls_with_count(&obj).unwrap();
+        assert_eq!(calls.len(), 1);
+
+        let expected_key = (
+            FieldElement::from_hex_be(
+                "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29",
+            )
+            .unwrap(),
+            FieldElement::from_hex_be(
+                "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be",
+            )
+            .unwrap(),
+        );
+        assert_eq!(calls.get(&expected_key), Some(&3));
     }
 
     #[test]
-    fn test_get_calls_different() {
+    fn test_get_calls_missing_native_fields() {
         let obj = json!({
             "calls": [{
-                "Different": {
-                    "base": "dsa",
-                    "native": "asd"
+                "entry_point_selector": {
+                    "Different": {
+                        "base": "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29",
+                        "native": "Empty"
+                    }
+                },
+                "class_hash": {
+                    "Different": {
+                        "base": "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be",
+                        "native": "Empty"
+                    }
                 }
-            }]
+            }],
+            "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+            "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)"
         });
-        let calls: Vec<&Value> = get_calls(&obj).collect();
-        assert_eq!(calls.len(), 1);
-        assert_eq!(calls[0]["Different"]["base"], "dsa");
-        assert_eq!(calls[0]["Different"]["native"], "asd");
+        let calls = get_calls_with_count(&obj).unwrap();
+        let expected_key = (
+            FieldElement::from_hex_be(
+                "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29",
+            )
+            .unwrap(),
+            FieldElement::from_hex_be(
+                "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be",
+            )
+            .unwrap(),
+        );
+        assert_eq!(calls.get(&expected_key), Some(&1));
     }
 
     #[test]
@@ -412,7 +537,7 @@ mod tests {
             "revert_reason": "Same(0x08c379a000000000000000000000000000000000000000000000000000000000)",
         });
 
-        let calls: Vec<&Value> = get_calls(&obj).collect();
+        let calls = get_calls_with_count(&obj).unwrap();
         assert_eq!(calls.len(), 0);
     }
 
@@ -446,55 +571,205 @@ mod tests {
                 "Same({12})",
                 "Same({12})"
                 ],
-            }
-        ]});
+                "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)",
+                "contract_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+                "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+            }],
+            "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)",
+            "contract_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+            "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+        });
 
-        let calls: Vec<&Value> = get_calls(&obj).collect();
-        assert_eq!(calls.len(), 6);
+        let calls = get_calls_with_count(&obj).unwrap();
+        assert_eq!(calls.len(), 1);
+
+        let expected_key = (
+            FieldElement::from_hex_be(
+                "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29",
+            )
+            .unwrap(),
+            FieldElement::from_hex_be(
+                "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be",
+            )
+            .unwrap(),
+        );
+        assert_eq!(calls.get(&expected_key), Some(&3));
     }
 
     #[test]
-    fn test_get_calls_nested_different() {
+    fn test_get_calls_nested_missing_native() {
         let obj = json!({
-                "calls": {
-                    "Different": {
-                        "base": [
-                        {
-                            "calls": [
-                            {
-                                "calls": [],
-                            },
-                            {
-                              "calls": [
-                                {
-                                  "calls": [
-                                    {
-                                      "calls": [],
-                                    }
-                                  ],
-                                }
-                              ],
-                            },
-                            {
-                              "calls": [],
-                            },
-                            {
-                              "calls": [],
-                            },
-                            {
-                              "calls": [],
-                            },
-                            {
-                              "calls": [],
-                            }
-                          ],
-                        }
-                      ],
-                      "native": "Empty"
+            "calls": {
+                "Different": {
+                    "base": [
+                    {
+                        "calls": [],
+                        "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)",
+                        "contract_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+                        "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
                     }
+                    ],
+                    "native": "Empty"
                 }
+            }
         });
-        let calls: Vec<&Value> = get_calls(&obj).collect();
-        assert_eq!(calls.len(), 9);
+        let calls = get_calls_with_count(&obj).unwrap();
+        assert_eq!(calls.len(), 0);
     }
+
+    #[test]
+    fn test_get_calls_different_nested_calls() {
+        let obj = json!({
+            "calls": {
+                "Different": {
+                    "base": [
+                    {
+                        "calls": [
+                        {
+                            "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)",
+                            "contract_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+                            "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+                            "calls": [],
+                        },
+                        {
+                            "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)",
+                            "contract_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+                            "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+                            "calls": [
+                                {
+                                    "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)",
+                                    "contract_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+                                    "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+                                    "calls": [],
+                                }
+                                ],
+                            },
+                        {
+                            "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)",
+                            "contract_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+                            "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+                            "calls": [],
+                        },
+                        {
+                            "calls": [],
+                            "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)",
+                            "contract_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+                            "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+                        },
+                        {
+                            "calls": [],
+                            "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)",
+                            "contract_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+                            "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+                        },
+                        {
+                            "calls": [],
+                            "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)",
+                            "contract_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+                            "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+                        }],
+                        "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)",
+                        "contract_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+                        "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+                    }
+                    ],
+                    "native": [
+                        {
+                            "class_hash": "Same(0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be)",
+                            "contract_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+                            "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+                            "calls": []
+                        },
+                        {
+                            // This should not be included in the result
+                            "class_hash": "Same(0x123)",
+                            "contract_address": "Same(0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b)",
+                            "entry_point_selector": "Same(0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29)",
+                            "calls": []
+                        }
+                    ]
+                }
+            }
+        });
+        let calls = get_calls_with_count(&obj).unwrap();
+        assert_eq!(calls.len(), 1);
+
+        let expected_key = (
+            FieldElement::from_hex_be(
+                "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29",
+            )
+            .unwrap(),
+            FieldElement::from_hex_be(
+                "0x3e8d67c8817de7a2185d418e88d321c89772a9722b752c6fe097192114621be",
+            )
+            .unwrap(),
+        );
+        assert_eq!(calls.get(&expected_key), Some(&8));
+    }
+
+    // TODO(#91): uncomment this test once get_calls_with_count handles different depths of CallKeys
+    // #[test]
+    // fn test_get_calls_with_count_different_layers() {
+    //     let obj = json!({
+    //         "calls": {
+    //             "Different": {
+    //                 "base": [
+    //                     {
+    //                         "entry_point_selector": "Same(0x111)",
+    //                         "class_hash": "Same(0xaaa)",
+    //                         "calls": [
+    //                             {
+    //                                 "entry_point_selector": "Same(0x222)",
+    //                                 "class_hash": "Same(0xaaa)",
+    //                                 "calls": [
+    //                                     {
+    //                                         "entry_point_selector": "Same(0x333)",
+    //                                         "class_hash": "Same(0xaaa)",
+    //                                         "calls": []
+    //                                     }
+    //                                 ]
+    //                             }
+    //                         ]
+    //                     }
+    //                 ],
+    //                 "native": [
+    //                     {
+    //                         "entry_point_selector": "Same(0x111)",
+    //                         "class_hash": "Same(0xaaa)",
+    //                         "calls": [
+    //                             {
+    //                                 "entry_point_selector": "Same(0x333)",
+    //                                 "class_hash": "Same(0xaaa)",
+    //                                 "calls": []
+    //                             }
+    //                         ]
+    //                     }
+    //                 ]
+    //             }
+    //         }
+    //     });
+
+    //     let calls = get_calls_with_count(&obj).unwrap();
+    //     println!("Calls {:?}", calls);
+    //     assert_eq!(calls.len(), 1);
+
+    //     let expected_key = (
+    //         FieldElement::from_hex_be("0x111").unwrap(),
+    //         FieldElement::from_hex_be("0xaaa").unwrap(),
+    //     );
+    //     assert_eq!(calls.get(&expected_key), Some(&1));
+
+    //     // Ensure that call_2 and call_3 are not in the result
+    //     let call_2_key = (
+    //         FieldElement::from_hex_be("0x222").unwrap(),
+    //         FieldElement::from_hex_be("0xaaa").unwrap(),
+    //     );
+    //     assert_eq!(calls.get(&call_2_key), None);
+
+    //     let call_3_key = (
+    //         FieldElement::from_hex_be("0x333").unwrap(),
+    //         FieldElement::from_hex_be("0xaaa").unwrap(),
+    //     );
+    //     assert_eq!(calls.get(&call_3_key), None);
+    // }
 }
