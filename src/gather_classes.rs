@@ -25,7 +25,7 @@ use anyhow::{anyhow, Context};
 use itertools::Itertools;
 use starknet::core::types::FieldElement;
 
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 type Count = usize;
 /// Value for `entry_point_selector` key.
@@ -323,9 +323,9 @@ fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::
                     let base_calls = get_calls_inner(base_list, HashMap::new())?;
                     let native_calls = get_calls_inner(native_list, HashMap::new())?;
 
-                    result = merge_calls_with_count(&base_calls, &native_calls, result);
+                    Ok(merge_calls_with_count(&base_calls, &native_calls, result))
                 } else {
-                    match get_call_key(obj) {
+                    match get_call_key(obj_map) {
                         Ok(call_key) => {
                             result.entry(call_key).and_modify(|c| *c += 1).or_insert(1);
                         }
@@ -338,8 +338,8 @@ fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::
                     if let Some(calls_value) = obj_map.get("calls") {
                         result = get_calls_inner(calls_value, result)?;
                     }
+                    Ok(result)
                 }
-                Ok(result)
             }
             _ => Err(anyhow!("unexpected value: `{}`", obj)),
         }
@@ -352,19 +352,17 @@ fn get_calls_with_count(obj: &Value) -> Result<HashMap<CallKey, usize>, anyhow::
 /// Retrieves a [CallKey] from a call object.
 ///
 /// If any of the keys are Different, then the call is considered invalid and this function will return an Error.
-fn get_call_key(call: &Value) -> Result<CallKey, anyhow::Error> {
+fn get_call_key(call: &Map<String, Value>) -> Result<CallKey, anyhow::Error> {
     let parse_field = |key: &str| -> Result<FieldElement, anyhow::Error> {
         call.get(key)
             .and_then(Value::as_str)
-            .ok_or_else(|| anyhow!("Failed to parse call {call} for key: {key}"))
+            .ok_or_else(|| anyhow!("Failed to parse call {call:?} for key: {key}"))
             .and_then(|s| match parse_same_string(s) {
                 Ok(value) => Ok(value),
                 // If the string is not a Same comparison result, then it must be the actual value
                 Err(_) => Ok(s),
             })
-            .and_then(|v| {
-                FieldElement::from_hex_be(v).context(format!("Failed to convert value to felt"))
-            })
+            .and_then(|v| FieldElement::from_hex_be(v).context("Failed to convert value to felt"))
     };
 
     Ok((
