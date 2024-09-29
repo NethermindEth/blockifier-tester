@@ -10,16 +10,20 @@ mod trace_comparison;
 mod transaction_simulator;
 mod transaction_tracer;
 mod utils;
+mod trim_comparison;
 
 use crate::cli::{Cli, Commands};
 use crate::io::{
     crashed_comparison_path, log_base_trace, log_comparison_report, log_crash_report,
     log_unexpected_error_report, read_base_trace, succesful_comparison_path,
 };
+use anyhow::{anyhow, Context};
 use block_tracer::BlockTracer;
 use cache::get_sorted_blocks_with_tx_count;
 use chrono::Local;
 use clap::Parser;
+use futures::TryFutureExt;
+use trim_comparison::TrimConfig;
 use core::panic;
 use dependencies::simulation_report_dependencies;
 use env_logger::Env;
@@ -237,7 +241,7 @@ async fn trace_native(
 }
 
 #[tokio::main]
-async fn main() -> Result<(), ManagerError> {
+async fn main() -> Result<(), anyhow::Error> {
     setup_env_logger();
     prepare_directories().await;
 
@@ -282,7 +286,7 @@ async fn main() -> Result<(), ManagerError> {
                         redo_base_trace,
                         skip_simulation,
                         simulation_flags,
-                    ) => trace
+                    ).map_err(|e| anyhow!(e)) => trace
                   }
         }
 
@@ -301,7 +305,7 @@ async fn main() -> Result<(), ManagerError> {
                         redo_base_trace,
                         skip_simulation,
                         simulation_flags,
-                    )
+                    ).map_err(|e| anyhow!(e))
                     => trace
                   }
         }
@@ -317,6 +321,25 @@ async fn main() -> Result<(), ManagerError> {
                 gather =
                         gather_classes::gather_class_hashes(network)
                         => gather
+            }
+        }
+
+        Commands::Trim {
+            block_num,
+            level: maybe_level
+        } => {
+            if redo_base_trace || redo_comparison {
+                // TODO Handle re-tracing before trimming or remove flags from this subcommand.
+                panic!("Not supported");
+            }
+            let level = maybe_level.unwrap_or(2);
+            let config = TrimConfig{level};
+            // TODO Handle tracing blocks before trimming classes to ensure all comparison files exist or optionally skip.
+            tokio::select! {
+                sigterm = tokio::signal::ctrl_c() => sigterm.map_err(|e| e.into()),
+                trim =
+                        trim_comparison::trim_comparison_file(block_num, network, config)
+                        => trim
             }
         }
     }

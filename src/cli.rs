@@ -43,7 +43,13 @@ pub enum Commands {
     },
 
     #[command(
-        about = "Scans comparison files for differences and outputs counts of class_hashes."
+        about = "Trims extraneous \"Same\" values from a comparison file."
     )]
     GatherClassHashes {},
+    Trim {
+      block_num : u64,
+      /// Keep same values within `level` of a different value.
+      #[clap(long)]
+      level : Option<usize>,
+    },
 }

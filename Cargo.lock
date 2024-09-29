@@ -1103,6 +1103,7 @@ dependencies = [
  "nix",
  "num-bigint",
  "petgraph",
+ "rctree",
  "regex",
  "serde",
  "serde_json",
@@ -1424,6 +1425,12 @@ checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
 dependencies = [
  "getrandom",
 ]
+
+[[package]]
+name = "rctree"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e03e7866abec1101869ffa8e2c8355c4c2419d0214ece0cc3e428e5b94dea6e9"
 
 [[package]]
 name = "redox_syscall"
