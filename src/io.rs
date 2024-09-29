@@ -55,6 +55,12 @@ pub fn successful_comparison_glob(network: Network) -> String {
     format!("results-{}/comparison-*.json", network)
 }
 
+pub fn trimmed_comparison_path(block_num: u64, network: Network) -> PathBuf {
+    PathBuf::from(format!(
+        "results-{network}/comparison-{block_num}-trimmed.json",
+    ))
+}
+
 pub fn succesful_comparison_path(block_num: u64, network: Network) -> PathBuf {
     PathBuf::from(format!("results-{}/comparison-{}.json", network, block_num))
 }

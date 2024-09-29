@@ -127,7 +127,7 @@ impl core::fmt::Display for ClassHashesReport {
 }
 
 /// Scans the `./results` folder for block comparisons and updates class_hashes report.
-pub async fn gather_class_hashes(network: Network) -> Result<(), ManagerError> {
+pub async fn gather_class_hashes(network: Network) -> Result<(), anyhow::Error > {
     let overall_report =
         try_deserialize(path_for_overall_report(network)).unwrap_or(ClassHashesReport::new());
 
@@ -142,7 +142,6 @@ pub async fn gather_class_hashes(network: Network) -> Result<(), ManagerError> {
 
     info!("Serializing...");
     try_serialize(path_for_overall_report(network), &overall_report)
-        .map_err(|err| ManagerError::Internal(format!("{err:?}")))
 }
 
 /// Returns Vec<block_num, comparison_file_path> for each results/comparison-*.json.
